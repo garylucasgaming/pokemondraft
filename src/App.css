@@ -98,13 +98,14 @@ body {
   cursor: pointer;
   width: 100px;
   text-align: center;
-  padding: 8px 8px 0 8px;
+  padding: 0;
   border-radius: 8px;
   transition: transform .12s ease, box-shadow .12s ease;
   background: radial-gradient(circle, #64748b 0%, #374151 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow: hidden;
 }
 .pokemon-card:hover {
   transform: translateY(-4px);
@@ -117,7 +118,7 @@ body {
 .pokemon-card img {
   width: 72px;
   height: 72px;
-  margin-bottom: 4px;
+  margin: 8px 8px 4px 8px;
 }
 .pokemon-name {
   text-transform: capitalize;
@@ -125,7 +126,6 @@ body {
   background: #333;
   color: #fff;
   padding: 4px 8px;
-  border-radius: 0 0 8px 8px;
   width: 100%;
   box-sizing: border-box;
   text-align: center;
@@ -165,15 +165,16 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0;
-  padding: 8px 8px 0 8px;
+  padding: 0;
   border-radius: 6px;
   background: radial-gradient(circle, #64748b 0%, #374151 100%);
   width: 70px;
+  overflow: hidden;
 }
 .removed-item img {
   width: 56px;
   height: 56px;
-  margin-bottom: 4px;
+  margin: 8px 8px 4px 8px;
 }
 .removed-name {
   text-transform: capitalize;
@@ -182,7 +183,6 @@ body {
   background: #333;
   color: #fff;
   padding: 4px 8px;
-  border-radius: 0 0 6px 6px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -587,14 +587,15 @@ body {
 }
 
 .final-team-pokemon .saved-team-card {
-  display: block;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 8px 8px 0 8px;
+  padding: 0;
   border-radius: 6px;
   background: radial-gradient(circle, #64748b 0%, #374151 100%);
+  overflow: hidden;
 }
 
 .final-team-pokemon .saved-team-card .pokemon-img {
@@ -602,7 +603,7 @@ body {
   height: 56px;
   object-fit: contain;
   display: block;
-  margin-bottom: 4px;
+  margin: 8px 8px 4px 8px;
 }
 
 .final-team-pokemon .saved-team-card .pokemon-img.placeholder {
@@ -619,7 +620,6 @@ body {
   background: #333;
   color: #fff;
   padding: 4px 8px;
-  border-radius: 0 0 6px 6px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -653,15 +653,16 @@ body {
   flex-direction: column; 
   align-items: center; 
   gap: 0; 
-  padding: 8px 8px 0 8px; 
+  padding: 0; 
   border-radius: 6px; 
   background: radial-gradient(circle, #64748b 0%, #374151 100%);
+  overflow: hidden;
 }
 .SavedTeamsPanel .saved-team-card .pokemon-img { 
   width: 56px; 
   height: 56px; 
   object-fit: contain; 
-  margin-bottom: 4px;
+  margin: 8px 8px 4px 8px;
 }
 .SavedTeamsPanel .saved-team-card .pokemon-img.placeholder { 
   width: 56px; 
@@ -675,7 +676,6 @@ body {
   background: #333;
   color: #fff;
   padding: 4px 8px;
-  border-radius: 0 0 6px 6px;
   width: 100%;
   box-sizing: border-box;
   text-align: center;
@@ -840,16 +840,17 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 0;
-    padding: 8px 8px 0 8px;
+    padding: 0;
     border-radius: 6px;
     background: radial-gradient(circle, #64748b 0%, #374151 100%);
     width: 70px;
+    overflow: hidden;
   }
   
   .removed-item img {
     width: 56px !important;
     height: 56px !important;
-    margin-bottom: 4px;
+    margin: 8px 8px 4px 8px;
   }
   
   .removed-name {
@@ -858,7 +859,6 @@ body {
     background: #333;
     color: #fff;
     padding: 4px 8px;
-    border-radius: 0 0 6px 6px;
     width: 100%;
     box-sizing: border-box;
   }
