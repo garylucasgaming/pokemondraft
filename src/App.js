@@ -1337,10 +1337,12 @@ function App() {
     }
 
     const speciesList = Object.keys(speciesToOrig);
-    const concurrency = 10;
+    const concurrency = 50;
     const result = {};
+    console.log(`Fetching legendary status for ${speciesList.length} unique species...`);
     for (let i = 0; i < speciesList.length; i += concurrency) {
       const chunk = speciesList.slice(i, i + concurrency);
+      console.log(`Progress: ${Math.min(i + concurrency, speciesList.length)}/${speciesList.length}`);
       await Promise.all(chunk.map(async (species) => {
         try {
           const res = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${species}`);
@@ -1354,6 +1356,7 @@ function App() {
       // update shared state incrementally for responsiveness
       setLegendaryMap((prev) => ({ ...prev, ...result }));
     }
+    console.log('Legendary status fetch complete!');
     // Build final mapping for all requested names (use cached values when available)
     const finalMap = {};
     for (const n of names) {
