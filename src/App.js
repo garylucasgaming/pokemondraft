@@ -758,9 +758,22 @@ function App() {
       }
       // show the saved team in the viewed panel
       setViewedOngoingTeam(payload);
-      // load as optimistic selections for the local player so they see their team immediately
+      
+      // Update BOTH optimistic and remote selections so the UI shows the team immediately
       const myId = socket ? socket.id : (`local-${Date.now()}`);
+      const myName = localPlayerName || PokemonName;
+      
+      // Set remote selections (this is what the UI reads from)
+      setRemoteSelections((prev) => {
+        const updated = { ...(prev || {}) };
+        updated[myId] = payload.team;
+        if (myName) updated[myName] = payload.team;
+        return updated;
+      });
+      
+      // Also set optimistic selections as backup
       setOptimisticSelections((prev) => ({ ...(prev || {}), [myId]: payload.team }));
+      
       // hide those pokemon from visible lists
       const ids = payload.team.map(p => p.id).filter(Boolean);
       if (ids.length > 0) {
@@ -1189,14 +1202,14 @@ function App() {
     }
   };
 
-  const joinLobby = (code) => {
+  const joinLobby = (code, savedPoints = null, savedSelections = null) => {
     // hide saved/ongoing panels when joining a lobby
     setSavedTeamsVisible(false);
     setOngoingDraftsVisible(false);
     if (!code || code.trim().length === 0) return;
     const name = (PokemonName && PokemonName.trim()) ? PokemonName.trim() : `Player-${Math.floor(Math.random()*1000)}`;
     if (socket) {
-      socket.emit('join_lobby', { code: code.trim().toUpperCase(), name }, (resp) => {
+      socket.emit('join_lobby', { code: code.trim().toUpperCase(), name, savedPoints, savedSelections }, (resp) => {
         if (resp && resp.ok) {
           setLobbyCode(resp.code);
           setLobbyUsers(resp.users || []);
@@ -1818,6 +1831,7 @@ function App() {
                                         return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
                                       }).map(p => (
                                       <div key={p.id} className="points-item-row">
+                                        <img src={p.img} alt={p.name} className="points-sprite" />
                                         <span className="points-name">{p.name}</span>
                                         { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
                                       </div>
@@ -1854,6 +1868,7 @@ function App() {
                                     return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
                                   }).map(p => (
                                   <div key={p.id} className="points-item-row">
+                                    <img src={p.img} alt={p.name} className="points-sprite" />
                                     <span>{p.name}</span>
                                     { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
                                   </div>
@@ -1923,7 +1938,13 @@ function App() {
                     <div className="ongoing-draft-current">Current Pick: {d.currentTurn}</div>
                   )}
                     <div className="ongoing-draft-actions">
-                      <button className="gen-button" onClick={() => { setRejoinPending({ code: d.code, expectedPlayers: d.players || [], draftEntry: d }); joinLobby(d.code); }}>Rejoin</button>
+                      <button className="gen-button" onClick={() => { 
+                        const savedPoints = d.pointsRemainingByName && d.pointsRemainingByName[PokemonName] != null ? d.pointsRemainingByName[PokemonName] : null;
+                        const savedTeam = readSavedTeamByCode(d.code);
+                        const savedSelections = savedTeam && savedTeam.team ? savedTeam.team : null;
+                        setRejoinPending({ code: d.code, expectedPlayers: d.players || [], draftEntry: d }); 
+                        joinLobby(d.code, savedPoints, savedSelections); 
+                      }}>Rejoin</button>
                       <button className="gen-button ml-8" onClick={() => {
                         const team = readSavedTeamByCode(d.code);
                         setViewedOngoingTeam(team);

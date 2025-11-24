@@ -234,7 +234,7 @@ body {
 
 /* Lobby container and controls moved from inline styles */
 .LobbyContainer { width: 100%; padding: 20px; box-sizing: border-box; }
-.LobbyControlsRow { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.LobbyControlsRow { gap: 12px; align-items: center; margin-bottom: 12px; }
 .JoinCodeInput { padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; }
 .LobbyMeta { margin-left: auto; }
 .LobbyHeaderRow { display: flex; justify-content: space-between; align-items: center; }
@@ -333,6 +333,7 @@ body {
 
 .points-item-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; }
 .points-name { flex: 1; }
+.points-sprite { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
 .banned-badge { background:#fff5f5; color:#c53030; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px; }
 .toggle-button.small { padding:4px 6px; font-size:12px; }
 
