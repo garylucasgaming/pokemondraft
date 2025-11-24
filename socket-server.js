@@ -271,10 +271,25 @@ io.on('connection', (socket) => {
     lobby.selections[socket.id].push(pokemon);
     lobby.pointsRemaining[socket.id] = remaining - cost;
     
-    // Move to next turn
+    // Move to next turn - skip disconnected players
     const currentIndex = lobby.draftOrder.indexOf(lobby.currentTurn);
-    const nextIndex = (currentIndex + 1) % lobby.draftOrder.length;
-    lobby.currentTurn = lobby.draftOrder[nextIndex];
+    let nextIndex = (currentIndex + 1) % lobby.draftOrder.length;
+    let attempts = 0;
+    const maxAttempts = lobby.draftOrder.length;
+    
+    // Find next active player (one who is still in the lobby)
+    while (attempts < maxAttempts) {
+      const nextPlayerId = lobby.draftOrder[nextIndex];
+      const playerExists = lobby.users.some(u => u.id === nextPlayerId);
+      if (playerExists) {
+        lobby.currentTurn = nextPlayerId;
+        break;
+      }
+      nextIndex = (nextIndex + 1) % lobby.draftOrder.length;
+      attempts++;
+    }
+    
+    console.log(`Turn moved from index ${currentIndex} to ${nextIndex}, currentTurn: ${lobby.currentTurn}`);
     
     io.to(code).emit('user_selected', {
       userId: socket.id,
