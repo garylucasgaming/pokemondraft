@@ -1,14 +1,26 @@
 const http = require('http');
 const { Server } = require('socket.io');
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 8080;
 
-const server = http.createServer();
+const server = http.createServer((req, res) => {
+  // Health check endpoint for Elastic Beanstalk
+  if (req.url === '/' || req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
-    methods: ['GET', 'POST']
-  }
+    origin: '*', // Allow all origins in production (or specify your Amplify URL)
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
 // In-memory storage for lobbies
