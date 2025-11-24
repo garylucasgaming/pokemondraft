@@ -1891,9 +1891,11 @@ function App() {
           ) : (
             <div className="muted-text">No lobby yet — create one or join with a code.</div>
           )}
-          {savedTeamsVisible && savedTeams && savedTeams.length > 0 && (
+          {savedTeamsVisible && (
             <div className="SavedTeamsPanel">
               <h4>Saved Teams</h4>
+              {savedTeams && savedTeams.length > 0 ? (
+                <>
               {savedTeams.map((s) => (
                 <div key={s.key} className="saved-team-item">
                   <div className="saved-team-key"><strong>{s.key.replace('pkmndraft_team_', '')}</strong></div>
@@ -1922,11 +1924,17 @@ function App() {
                   </div>
                 </div>
               ))}
+              </>
+              ) : (
+                <div className="muted-text">No saved teams found.</div>
+              )}
             </div>
           )}
-          {ongoingDraftsVisible && ongoingDrafts && ongoingDrafts.length > 0 && (
+          {ongoingDraftsVisible && (
             <div className="OngoingDraftsPanel">
               <h4>Ongoing Drafts</h4>
+              {ongoingDrafts && ongoingDrafts.length > 0 ? (
+                <>
               {ongoingDrafts.map((d) => (
                 <div key={d.code} className="ongoing-draft-item">
                   <div className="ongoing-draft-key"><strong>{d.code}</strong></div>
@@ -1972,6 +1980,10 @@ function App() {
                     ) : <em>No entries</em>}
                   </div>
                 </div>
+              )}
+              </>
+              ) : (
+                <div className="muted-text">No ongoing drafts found.</div>
               )}
             </div>
           )}
