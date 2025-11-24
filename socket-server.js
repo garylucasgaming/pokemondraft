@@ -291,6 +291,21 @@ io.on('connection', (socket) => {
     
     console.log(`Turn moved from index ${currentIndex} to ${nextIndex}, currentTurn: ${lobby.currentTurn}`);
     
+    // Check if draft is complete (all players have reached team size limit)
+    const teamSizeLimit = lobby.settings.teamSizeLimit || 10;
+    const allPlayersComplete = lobby.users.every(user => {
+      const userSelections = lobby.selections[user.id] || [];
+      return userSelections.length >= teamSizeLimit;
+    });
+    
+    if (allPlayersComplete) {
+      console.log(`Draft complete for lobby ${code}`);
+      io.to(code).emit('draft_complete', {
+        selections: lobby.selections,
+        users: lobby.users
+      });
+    }
+    
     io.to(code).emit('user_selected', {
       userId: socket.id,
       name,

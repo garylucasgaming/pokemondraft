@@ -77,6 +77,8 @@ function App() {
   const [rejoinPending, setRejoinPending] = useState(null);
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
   const [leaveDraftConfirmVisible, setLeaveDraftConfirmVisible] = useState(false);
+  const [draftComplete, setDraftComplete] = useState(false);
+  const [finalTeams, setFinalTeams] = useState(null);
   // app view: 'lobby' (main) or 'draft' (the drafting page)
   const [view, setView] = useState('lobby');
   // lobby state
@@ -1612,6 +1614,20 @@ function App() {
       if (!data) return;
       if (data.reason === 'not_host') alert('Only the lobby host may start the draft.');
     });
+    s.on('draft_complete', (data) => {
+      console.log('Draft complete!', data);
+      setDraftComplete(true);
+      setFinalTeams(data);
+      // Auto-save team
+      try {
+        const mySelections = getMergedSelectionsForUser({ id: s.id, name: localPlayerName });
+        if (mySelections && mySelections.length > 0) {
+          saveTeamToCookie();
+        }
+      } catch (err) {
+        console.error('Error auto-saving team:', err);
+      }
+    });
     return () => {
       s.disconnect();
     };
@@ -2006,6 +2022,38 @@ function App() {
 
       {view === 'draft' && (
         <div className="MainArea">
+          {draftComplete && finalTeams ? (
+            <div className="draft-complete-container">
+              <h2 style={{ textAlign: 'center', color: '#16a34a', marginBottom: 20 }}>🎉 Draft Complete! Final Teams:</h2>
+              <div className="final-teams-grid">
+                {(finalTeams.users || []).map(user => {
+                  const userSelections = finalTeams.selections[user.id] || [];
+                  return (
+                    <div key={user.id} className="final-team-card">
+                      <h3>{user.name}</h3>
+                      <div className="final-team-pokemon">
+                        {userSelections.length > 0 ? (
+                          <div className="saved-team-grid">
+                            {userSelections.map((p) => (
+                              <div key={p.id || p.name} className="saved-team-card">
+                                {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                                <div className="pokemon-name">{p.name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : <em>No selections</em>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ textAlign: 'center', marginTop: 30 }}>
+                <button className="export-button" onClick={exportRemoved}>Export My Team</button>
+                <button className="gen-button ml-8" onClick={() => { setView('lobby'); setDraftComplete(false); setFinalTeams(null); }}>Back to Lobby</button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="DisplaySection">
                     <div className="draft-header">
                     <h2>Available Pokémon ({draftPokemonList.length > 0 ? draftPokemonList.length : pokemonList.length}) — click to select</h2>
@@ -2124,6 +2172,8 @@ function App() {
               </div>
             </div>
           </aside>
+          </>
+          )}
         </div>
       )}
       <footer className="AppFooter">
