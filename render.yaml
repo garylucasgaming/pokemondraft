@@ -13,7 +13,7 @@ services:
   - type: web
     name: pkmndraft-app
     env: static
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     staticPublishPath: ./build
     pullRequestPreviewsEnabled: false
     headers:
