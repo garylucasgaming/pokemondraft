@@ -297,7 +297,7 @@ body {
 .hidden-file-input { display: none; }
 .mt-12 { margin-top: 12px; }
 
-.muted-text { color: #666; }
+.muted-text { color: #000; }
 .ml-8 { margin-left: 8px; }
 .mb-10 { margin-bottom: 10px; }
 .muted { color: #666; }
@@ -545,14 +545,13 @@ body {
 
 .final-teams-grid {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 20px;
   margin-bottom: 20px;
 }
 
 .final-team-card {
   background: #fff;
-  border: 2px solid #16a34a;
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
