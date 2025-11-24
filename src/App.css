@@ -647,6 +647,52 @@ body {
   .AppFooter .footer-right {
     text-align: center;
   }
+  
+  /* Mobile draft view optimization: show team overview above pokemon selection */
+  aside {
+    order: -1;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  .DisplaySection {
+    order: 1;
+  }
+  
+  .removed-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  
+  .removed-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px;
+    border-radius: 6px;
+    background: #f9f9f9;
+    width: 70px;
+  }
+  
+  .removed-item img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  
+  .removed-name {
+    font-size: 10px;
+    text-align: center;
+  }
+  
+  .player-item {
+    font-size: 14px;
+  }
+  
+  .player-meta {
+    font-size: 12px;
+  }
 }
 
 /* Extra small mobile devices */
