@@ -1171,6 +1171,68 @@ function App() {
     }
   };
 
+  // --- Restore full Pokemon list ---
+  const restoreFullPokemonList = () => {
+    // Re-fetch the full Pokemon list from API to restore any filtered Pokemon
+    axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000')
+      .then((res) => {
+        const rawList = res.data.results
+          .map((p) => {
+            const parts = p.url.split('/').filter(Boolean);
+            const idStr = parts[parts.length - 1];
+            const id = Number(idStr);
+            return {
+              name: p.name,
+              id,
+              img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+            };
+          })
+          .filter((p) => !Number.isNaN(p.id));
+
+        const excludeTokens = [
+          'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
+          'attack', 'defense', 'school', 'armored', 'masked', 'dusk', 'midnight', 'origin',
+          'size', 'eternamax', 'shield', 'disguised', 'solo', 'aria', 'therian', 'resolute', 'zen', 'cap'
+        ];
+        const keepRegional = [
+          'alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean', 'kantonian', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'
+        ];
+        const hyphenAllowTokens = [
+          'galar', 'alola', 'hisui', 'female', 'hero', 'paldea', 'belly',
+          'lele', 'koko', 'bulu', 'fini', 'average'
+        ];
+        const hyphenAllowNames = new Set([
+          'jangmo-o','hakamo-o','kommo-o','wo-chien','chien-pao','ting-lu','chi-yu',
+          'great-tusk','scream-tail','brute-bonnet','flutter-mane','slither-wing',
+          'sandy-shocks','iron-trades','iron-bundle','iron-hands','iron-jugulis',
+          'iron-moth','iron-thorns','oricorio-pom-pom','minior-red','mimikyu-busted',
+          'toxtricity-amped','porygon-z','mime-jr','dudunsparce-two-segment',
+          'tatsugiri-curly','calyrex-ice', 'nidoran-m', 'nidoran-f','urshifu-single-strike',
+          'urshifu-rapid-strike', 'ho-oh', 'porygon2', 'type-null', 'sirfetchd', 'mr-rime', 'mr-mime', 'farfetchd', 'eiscue-ice', 'indeedee-male', 'morpeko-full-belly'
+        ]);
+
+        const filtered = rawList.filter((item) => {
+          const name = item.name.toLowerCase();
+          if (hyphenAllowNames.has(name)) return true;
+          if (name.includes('-')) {
+            if (keepRegional.some((t) => name.includes(t))) return true;
+            if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
+            return false;
+          }
+          if (excludeTokens.some((t) => name.includes(t))) return false;
+          return true;
+        });
+
+        const byId = new Map();
+        for (const item of filtered) {
+          if (!byId.has(item.id)) byId.set(item.id, item);
+        }
+        const list = Array.from(byId.values()).sort((a, b) => a.id - b.id);
+        setPokemonList(list);
+      })
+      .catch((err) => console.error('Failed to restore pokemon list', err));
+  };
+
   // --- Lobby helpers (client-side scaffold) ---
   const generateLobbyCode = (length = 6) => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1180,6 +1242,8 @@ function App() {
   };
 
   const createLobby = () => {
+    // Restore full Pokemon list before creating lobby
+    restoreFullPokemonList();
     // hide saved/ongoing panels when creating a lobby
     setSavedTeamsVisible(false);
     setOngoingDraftsVisible(false);
@@ -1214,6 +1278,8 @@ function App() {
   };
 
   const joinLobby = (code, savedPoints = null, savedSelections = null) => {
+    // Restore full Pokemon list before joining lobby
+    restoreFullPokemonList();
     // hide saved/ongoing panels when joining a lobby
     setSavedTeamsVisible(false);
     setOngoingDraftsVisible(false);
@@ -1274,6 +1340,8 @@ function App() {
     setOptimisticSelections({});
     setRemoteSelections({});
     setHideLegendaries(false);
+    // Restore full Pokemon list when leaving lobby
+    restoreFullPokemonList();
     setView('lobby');
   };
 
