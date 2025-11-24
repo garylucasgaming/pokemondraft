@@ -179,7 +179,8 @@ io.on('connection', (socket) => {
       settings: lobby.settings,
       pointsMap: lobby.pointsMap,
       selections: lobby.selections,
-      pointsRemaining: lobby.pointsRemaining
+      pointsRemaining: lobby.pointsRemaining,
+      currentTurn: lobby.currentTurn
     });
   });
 
