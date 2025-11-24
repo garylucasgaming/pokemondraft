@@ -234,8 +234,31 @@ body {
 
 /* Lobby container and controls moved from inline styles */
 .LobbyContainer { width: 100%; padding: 20px; box-sizing: border-box; }
-.LobbyControlsRow { gap: 12px; align-items: center; margin-bottom: 12px; }
+.LobbyControlsRow { 
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.control-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .JoinCodeInput { padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; }
+.join-lobby-button {
+  padding: 6px 10px;
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.join-lobby-button:hover {
+  background: #15803d;
+}
 .LobbyMeta { margin-left: auto; }
 .LobbyHeaderRow { display: flex; justify-content: space-between; align-items: center; }
 .LobbyCode { letter-spacing: 2px; }
@@ -586,6 +609,20 @@ body {
   .lobby-right {
     width: 100% !important;
     max-width: 100% !important;
+  }
+  
+  .control-group {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .control-group input {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .control-group button {
+    white-space: nowrap;
   }
   
   .settings-panel,

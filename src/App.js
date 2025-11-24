@@ -1666,13 +1666,23 @@ function App() {
         <div className="LobbyContainer">
             {!lobbyCode && (
               <div className="LobbyControlsRow">
-                <input placeholder="Enter your name" id="name-input" className="JoinCodeInput" value={PokemonName} onChange={(e) => setPokemonName(e.target.value)} />
-                <button className="gen-button ml-8" onClick={() => { const val = (PokemonName || '').trim(); if (val) saveUsernameToCookie(val); else alert('Please enter a username before saving'); }}>Save Username</button>
+                <div className="control-group">
+                  <input placeholder="Enter your name" id="name-input" className="JoinCodeInput" value={PokemonName} onChange={(e) => setPokemonName(e.target.value)} />
+                  <button className="gen-button ml-8" onClick={() => { const val = (PokemonName || '').trim(); if (val) saveUsernameToCookie(val); else alert('Please enter a username before saving'); }}>Save Username</button>
+                </div>
+                
+                <div className="control-group">
                   <button onClick={createLobby} className="export-button">Create Lobby</button>
+                </div>
+                
+                <div className="control-group">
                   <input placeholder="Enter lobby code" id="join-code" className="JoinCodeInput" />
                   <button className="gen-button ml-8" onClick={pasteLobbyCodeFromClipboard}>Paste</button>
-                  <button className="gen-button" onClick={() => joinLobby(document.getElementById('join-code').value)}>Join Lobby</button>
-                  <button className="gen-button ml-8" onClick={() => {
+                  <button className="join-lobby-button ml-8" onClick={() => joinLobby(document.getElementById('join-code').value)}>Join Lobby</button>
+                </div>
+                
+                <div className="control-group">
+                  <button className="gen-button" onClick={() => {
                     const teams = readSavedTeamsFromCookies();
                     setSavedTeams(teams);
                     setSavedTeamsVisible((v) => !v);
@@ -1682,9 +1692,13 @@ function App() {
                     setOngoingDrafts(drafts);
                     setOngoingDraftsVisible((v) => !v);
                   }}>{ongoingDraftsVisible ? 'Hide Ongoing Drafts' : 'Show Ongoing Drafts'}</button>
-                  <button className="gen-button ml-8" onClick={() => { clearSavedTeamsCookies(); }}>Clear Saved Teams</button>
+                </div>
+                
+                <div className="control-group">
+                  <button className="gen-button" onClick={() => { clearSavedTeamsCookies(); }}>Clear Saved Teams</button>
                   <button className="gen-button ml-8" onClick={() => { clearOngoingDraftsCookie(); }}>Clear Ongoing Drafts</button>
                 </div>
+              </div>
             )}
           {lobbyCode ? (
             <div className="LobbyBox">
