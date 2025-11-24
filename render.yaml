@@ -8,12 +8,12 @@ services:
     envVars:
       - key: PORT
         value: 10000
-  
+
   # Frontend - React App
   - type: web
     name: pkmndraft-app
     env: static
-    buildCommand: npm install --legacy-peer-deps && npm run build
+    buildCommand: rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm run build
     staticPublishPath: ./build
     pullRequestPreviewsEnabled: false
     headers:

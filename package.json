@@ -13,6 +13,9 @@
     "socket.io-client": "^4.7.2",
     "web-vitals": "^2.1.4"
   },
+  "resolutions": {
+    "debug": "4.3.4"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
