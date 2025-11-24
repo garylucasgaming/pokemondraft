@@ -2164,36 +2164,17 @@ function App() {
                 </div>
 
                 <div className="pokemon-grid">
-                      {draftPokemonList.length > 0 ? draftPokemonList.map((p) => {
+                      {getVisiblePokemonList().map((p) => {
                       const isDisabled = (view === 'draft' && ((currentTurn && socket && socket.id !== currentTurn) || (socket && socket.id === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10))));
+                      const cost = pointsMap && pointsMap[p.name] !== undefined ? Number(pointsMap[p.name]) : 1;
                         return (
                           <div key={p.id} className={`pokemon-card ${isDisabled ? 'disabled' : ''}`} onClick={() => { console.debug('card click', { id: p.id, isDisabled, socketId: socket && socket.id, currentTurn, view }); if (isDisabled) return; removePokemon(p.id); }}>
+                            <div className="pokemon-cost-badge">{cost}</div>
                             <img className="pokemon-img" src={p.img} alt={p.name} />
                             <div className="pokemon-name">{p.name}</div>
                           </div>
                         );
-                    }) : (
-                      // fallback to full list if draft snapshot missing
-                      pokemonList
-                      .filter((p) => {
-                        if (lobbyGenFilter > 0 && p.id > genLimits[lobbyGenFilter]) return false;
-                        const name = p.name.toLowerCase();
-                        if (searchTerm && !name.includes(searchTerm)) return false;
-                        if (hideLegendaries) {
-                          if (legendaryMap[name]) return false;
-                        }
-                        if (pointsMap && Number(pointsMap[p.name]) === 0) return false;
-                        return true;
-                      }).map((p) => {
-                        const isDisabled = (view === 'draft' && ((currentTurn && socket && socket.id !== currentTurn) || (socket && socket.id === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10))));
-                        return (
-                          <div key={p.id} className={`pokemon-card ${isDisabled ? 'disabled' : ''}`} onClick={() => { console.debug('card click', { id: p.id, isDisabled, socketId: socket && socket.id, currentTurn, view }); if (isDisabled) return; removePokemon(p.id); }}>
-                            <img className="pokemon-img" src={p.img} alt={p.name} />
-                            <div className="pokemon-name">{p.name}</div>
-                          </div>
-                        );
-                      })
-                    )}
+                      })}
                 </div>
               </div>
             )}
