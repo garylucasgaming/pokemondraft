@@ -529,10 +529,11 @@ body {
 }
 
 .final-teams-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
   gap: 20px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 10px;
 }
 
 .final-team-card {
@@ -541,6 +542,8 @@ body {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  min-width: 300px;
+  flex-shrink: 0;
 }
 
 .final-team-card h3 {
@@ -552,6 +555,43 @@ body {
 
 .final-team-pokemon {
   margin-top: 10px;
+}
+
+.final-team-pokemon .saved-team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.final-team-pokemon .saved-team-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.final-team-pokemon .saved-team-card .pokemon-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  display: block;
+}
+
+.final-team-pokemon .saved-team-card .pokemon-img.placeholder {
+  width: 56px;
+  height: 56px;
+  background: #f3f4f6;
+  border-radius: 6px;
+}
+
+.final-team-pokemon .saved-team-card .pokemon-name {
+  text-align: center;
+  font-size: 12px;
+  word-break: break-word;
 }
 
 /* Saved Teams horizontal layout */
