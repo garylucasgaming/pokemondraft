@@ -160,21 +160,34 @@ body {
 }
 .removed-list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .removed-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 0;
+  padding: 8px 8px 0 8px;
+  border-radius: 6px;
+  background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+  width: 70px;
 }
 .removed-item img {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
 }
 .removed-name {
   text-transform: capitalize;
-  flex: 1;
+  font-size: 12px;
+  text-align: center;
+  background: #333;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 0 0 6px 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .restore-button {
   padding: 4px 6px;
@@ -637,9 +650,38 @@ body {
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
-.SavedTeamsPanel .saved-team-card { display:flex; flex-direction:column; align-items:center; gap:6px; padding:6px; border-radius:6px; background:#fafafa; }
-.SavedTeamsPanel .saved-team-card .pokemon-img { width:56px; height:56px; object-fit:contain; }
-.SavedTeamsPanel .saved-team-card .pokemon-img.placeholder { width:56px; height:56px; background:#f3f4f6; border-radius:6px; }
+.SavedTeamsPanel .saved-team-card { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 0; 
+  padding: 8px 8px 0 8px; 
+  border-radius: 6px; 
+  background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+}
+.SavedTeamsPanel .saved-team-card .pokemon-img { 
+  width: 56px; 
+  height: 56px; 
+  object-fit: contain; 
+  margin-bottom: 4px;
+}
+.SavedTeamsPanel .saved-team-card .pokemon-img.placeholder { 
+  width: 56px; 
+  height: 56px; 
+  background: #f3f4f6; 
+  border-radius: 6px; 
+}
+.SavedTeamsPanel .saved-team-card .pokemon-name {
+  text-transform: capitalize;
+  font-size: 12px;
+  background: #333;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 0 0 6px 6px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
 
 /* Mobile optimizations */
 @media (max-width: 768px) {
@@ -799,20 +841,28 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px;
+    gap: 0;
+    padding: 8px 8px 0 8px;
     border-radius: 6px;
-    background: #f9f9f9;
+    background: radial-gradient(circle, #6b7280 0%, #374151 100%);
     width: 70px;
   }
   
   .removed-item img {
     width: 56px !important;
     height: 56px !important;
+    margin-bottom: 4px;
   }
   
   .removed-name {
     font-size: 10px;
     text-align: center;
+    background: #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 0 0 6px 6px;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .player-item {
