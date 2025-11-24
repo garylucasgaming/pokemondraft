@@ -1749,7 +1749,6 @@ function App() {
                       <li key={u.id} className="player-list-item">
                         <strong>{u.name}</strong>
                         <span className="player-points">Points: {pointsRemaining && pointsRemaining[u.id] != null ? pointsRemaining[u.id] : lobbySettings.pointsLimit}</span>
-                        {currentTurn === u.id && (<span className="player-current"> (Current Turn)</span>)}
                       </li>
                     ))}
                   </ul>
@@ -1981,9 +1980,6 @@ function App() {
                   )}
                   {d.draftOrder && Array.isArray(d.draftOrder) && d.draftOrder.length > 0 && (
                     <div className="ongoing-draft-order">Draft Order: {d.draftOrder.join(', ')}</div>
-                  )}
-                  {d.currentTurn && (
-                    <div className="ongoing-draft-current">Current Pick: {d.currentTurn}</div>
                   )}
                     <div className="ongoing-draft-actions">
                       <button className="gen-button" onClick={() => { 

@@ -199,9 +199,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('import_points', ({ code, pointsMap }, callback) => {
+    console.log(`import_points request: code=${code}, host=${socket.id}`);
     const lobby = lobbies.get(code);
-    if (!lobby) return callback({ ok: false, error: 'Lobby not found' });
-    if (lobby.host !== socket.id) return callback({ ok: false, error: 'Only host can import points' });
+    if (!lobby) {
+      console.log('import_points error: Lobby not found');
+      return callback({ ok: false, error: 'Lobby not found' });
+    }
+    if (lobby.host !== socket.id) {
+      console.log(`import_points error: Not host. socket=${socket.id}, host=${lobby.host}`);
+      return callback({ ok: false, error: 'Only host can import points' });
+    }
     
     const normalized = {};
     for (const [k, v] of Object.entries(pointsMap)) {
@@ -209,6 +216,7 @@ io.on('connection', (socket) => {
     }
     
     lobby.pointsMap = { ...lobby.pointsMap, ...normalized };
+    console.log(`import_points success: imported ${Object.keys(normalized).length} entries`);
     
     callback({ ok: true, pointsMap: lobby.pointsMap });
     io.to(code).emit('pointsMap_update', { pointsMap: lobby.pointsMap });
@@ -220,7 +228,13 @@ io.on('connection', (socket) => {
     if (lobby.host !== socket.id) return socket.emit('start_rejected', { reason: 'not_host' });
     
     lobby.draftStarted = true;
-    lobby.draftOrder = lobby.users.map(u => u.id);
+    // Randomize draft order using Fisher-Yates shuffle
+    const userIds = lobby.users.map(u => u.id);
+    for (let i = userIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [userIds[i], userIds[j]] = [userIds[j], userIds[i]];
+    }
+    lobby.draftOrder = userIds;
     lobby.currentTurn = lobby.draftOrder[0];
     
     callback({ ok: true });
