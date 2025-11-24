@@ -13,7 +13,7 @@ services:
   - type: web
     name: pkmndraft-app
     env: static
-    buildCommand: rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm run build
+    buildCommand: yarn install && yarn build
     staticPublishPath: ./build
     pullRequestPreviewsEnabled: false
     headers:
