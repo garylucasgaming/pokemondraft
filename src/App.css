@@ -543,10 +543,9 @@ body {
 
 .final-teams-grid {
   display: flex;
+  flex-direction: column;
   gap: 20px;
   margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 10px;
 }
 
 .final-team-card {
@@ -555,8 +554,7 @@ body {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  min-width: 300px;
-  flex-shrink: 0;
+  width: 100%;
 }
 
 .final-team-card h3 {
