@@ -1273,6 +1273,7 @@ function App() {
     setDraftPokemonList([]);
     setOptimisticSelections({});
     setRemoteSelections({});
+    setHideLegendaries(false);
     setView('lobby');
   };
 
