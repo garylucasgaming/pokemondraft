@@ -2048,9 +2048,17 @@ function App() {
                 })}
               </div>
               <div style={{ textAlign: 'center', marginTop: 30 }}>
-                <button className="export-button" onClick={exportRemoved}>Export My Team</button>
-                <button className="gen-button ml-8" onClick={() => { setView('lobby'); setDraftComplete(false); setFinalTeams(null); }}>Back to Lobby</button>
+                <button className="export-button" onClick={() => {
+                  exportRemoved();
+                  alert('Team exported to clipboard!');
+                }}>Export My Team</button>
+                <button className="gen-button ml-8" onClick={() => { 
+                  leaveLobby(true); 
+                  setDraftComplete(false); 
+                  setFinalTeams(null); 
+                }}>Back to Lobby</button>
               </div>
+              {exportMessage && (<div className="export-msg" style={{ textAlign: 'center', marginTop: 10 }}>{exportMessage}</div>)}
             </div>
           ) : (
             <>
