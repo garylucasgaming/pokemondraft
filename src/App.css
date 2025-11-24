@@ -6,14 +6,12 @@
   align-items: stretch;
   width: 100%;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f0f4f8 0%, #2d3748 100%);
-  background-attachment: fixed;
+  background: #ffffff;
 }
 body {
   margin: 0;
   padding: 0;
-  background: linear-gradient(to bottom, #f0f4f8 0%, #2d3748 100%);
-  background-attachment: fixed;
+  background: #ffffff;
 }
 
 .TitleSection {
@@ -104,7 +102,7 @@ body {
   padding: 8px 8px 0 8px;
   border-radius: 8px;
   transition: transform .12s ease, box-shadow .12s ease;
-  background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+  background: radial-gradient(circle, #f5f5f5 0%, #374151 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -170,7 +168,7 @@ body {
   gap: 0;
   padding: 8px 8px 0 8px;
   border-radius: 6px;
-  background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+  background: radial-gradient(circle, #f5f5f5 0%, #374151 100%);
   width: 70px;
 }
 .removed-item img {
@@ -584,8 +582,9 @@ body {
 
 .final-team-pokemon .saved-team-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(80px, 80px));
   gap: 8px;
+  justify-content: start;
 }
 
 .final-team-pokemon .saved-team-card {
@@ -596,7 +595,7 @@ body {
   gap: 0;
   padding: 8px 8px 0 8px;
   border-radius: 6px;
-  background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+  background: radial-gradient(circle, #f5f5f5 0%, #374151 100%);
 }
 
 .final-team-pokemon .saved-team-card .pokemon-img {
@@ -657,7 +656,7 @@ body {
   gap: 0; 
   padding: 8px 8px 0 8px; 
   border-radius: 6px; 
-  background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+  background: radial-gradient(circle, #f5f5f5 0%, #374151 100%);
 }
 .SavedTeamsPanel .saved-team-card .pokemon-img { 
   width: 56px; 
@@ -844,7 +843,7 @@ body {
     gap: 0;
     padding: 8px 8px 0 8px;
     border-radius: 6px;
-    background: radial-gradient(circle, #6b7280 0%, #374151 100%);
+    background: radial-gradient(circle, #f5f5f5 0%, #374151 100%);
     width: 70px;
   }
   
