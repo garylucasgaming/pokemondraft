@@ -525,3 +525,160 @@ body {
 .SavedTeamsPanel .saved-team-card { display:flex; flex-direction:column; align-items:center; gap:6px; padding:6px; border-radius:6px; background:#fafafa; }
 .SavedTeamsPanel .saved-team-card .pokemon-img { width:56px; height:56px; object-fit:contain; }
 .SavedTeamsPanel .saved-team-card .pokemon-img.placeholder { width:56px; height:56px; background:#f3f4f6; border-radius:6px; }
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .App {
+    font-size: 18px;
+  }
+  
+  .TitleSection {
+    height: auto;
+    padding: 20px 10px;
+  }
+  
+  .TitleSection input,
+  .TitleSection button {
+    width: 90%;
+    max-width: 300px;
+    margin: 10px auto;
+  }
+  
+  .MainArea {
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+  }
+  
+  .DisplaySection {
+    width: 100%;
+  }
+  
+  .displaySection {
+    width: 100%;
+  }
+  
+  .pokemon-grid {
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .pokemon-card {
+    width: 80px;
+    padding: 6px;
+    font-size: 12px;
+  }
+  
+  .pokemon-card img {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  
+  .pokemon-card-name {
+    font-size: 11px;
+  }
+  
+  .pokemon-card-cost {
+    font-size: 10px;
+  }
+  
+  .lobby-left,
+  .lobby-right {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .settings-panel,
+  .users-panel {
+    padding: 10px;
+  }
+  
+  .gen-buttons-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .gen-button {
+    min-width: 60px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  
+  .points-table {
+    font-size: 14px;
+  }
+  
+  .points-table th,
+  .points-table td {
+    padding: 6px 8px;
+  }
+  
+  .points-sprite {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  
+  .MyTeam-item {
+    width: 70px;
+    padding: 6px;
+    font-size: 11px;
+  }
+  
+  .MyTeam-item img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  
+  .SavedTeamsPanel .saved-team-item {
+    flex: 0 0 200px;
+  }
+  
+  .footer-page {
+    width: 95%;
+    padding: 15px;
+    max-height: 90%;
+  }
+  
+  .AppFooter .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .AppFooter .footer-right {
+    text-align: center;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .App {
+    font-size: 16px;
+  }
+  
+  .pokemon-card {
+    width: 70px;
+    padding: 4px;
+  }
+  
+  .pokemon-card img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  
+  .gen-button {
+    min-width: 50px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .MyTeam-item {
+    width: 60px;
+    padding: 4px;
+    font-size: 10px;
+  }
+  
+  .MyTeam-item img {
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
