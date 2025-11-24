@@ -853,14 +853,23 @@ function App() {
       if (parsed) {
         // emit to server as bulk import
         if (socket && lobbyCode) {
+          console.log('Importing points to lobby:', lobbyCode);
           socket.emit('import_points', { code: lobbyCode, pointsMap: parsed }, (resp) => {
-            if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to import points');
-              else setPointsMap(normalizePointsMap(resp.pointsMap || {}));
+            console.log('Import points response:', resp);
+            if (!resp || !resp.ok) {
+              alert(resp && resp.error ? resp.error : 'Failed to import points');
+            } else {
+              setPointsMap(normalizePointsMap(resp.pointsMap || {}));
+              alert('Settings imported successfully!');
+            }
           });
         } else {
           // local: just set map
+          alert('Not connected to a lobby. Create or join a lobby first.');
           setPointsMap(normalizePointsMap(parsed));
         }
+      } else {
+        alert('Failed to parse settings file. Please check the format.');
       }
     };
     reader.readAsText(file);
@@ -1536,9 +1545,8 @@ function App() {
       } catch (err) {
         // ignore
       }
-      // remove the selected pokemon from the visible list for everyone
+      // remove the selected pokemon from the draft list for everyone
       if (data.pokemon && data.pokemon.id) {
-        setPokemonList((prev) => prev.filter(p => p.id !== data.pokemon.id));
         setDraftPokemonList((prev) => prev.filter(p => p.id !== data.pokemon.id));
       }
     });
@@ -1547,7 +1555,6 @@ function App() {
       if (!data) return;
       setRemoteSelections(data.selections || {});
       const allSelectedIds = Object.values(data.selections || {}).flat().map(p => p.id).filter(Boolean);
-      setPokemonList((prev) => prev.filter(p => !allSelectedIds.includes(p.id)));
       setDraftPokemonList((prev) => prev.filter(p => !allSelectedIds.includes(p.id)));
       // Reconcile optimistic picks: remove any optimistic picks that the server now confirms
       try {
