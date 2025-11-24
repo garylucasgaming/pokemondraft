@@ -15,13 +15,12 @@
       script-src 'self' 'unsafe-inline';
       style-src 'self' 'unsafe-inline';
       img-src 'self' data: https: http:;
-      connect-src 'self' https://pokeapi.co http://localhost:4000 ws://localhost:4000 wss:;
+      connect-src 'self' https://pokeapi.co http://localhost:4000 ws://localhost:4000 http://*.elasticbeanstalk.com ws://*.elasticbeanstalk.com wss://*.elasticbeanstalk.com;
       font-src 'self' data:;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
       frame-ancestors 'none';
-      upgrade-insecure-requests;
     " />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <!--
