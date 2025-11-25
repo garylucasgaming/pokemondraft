@@ -2158,7 +2158,8 @@ function App() {
     setFilterPointsMin('');
     setFilterPointsMax('');
     setFilterAbility('');
-    setFilterMove('');
+    setFilterMoves([]);
+    setFilterMoveInput('');
     setAbilitySuggestions([]);
     setShowAbilitySuggestions(false);
     setPokemonWithAbility([]);
