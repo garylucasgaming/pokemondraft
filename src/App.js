@@ -2635,15 +2635,17 @@ function App() {
         if (data.draftOrder) setLobbyDraftOrder(data.draftOrder || []);
         
         // If host, cache current settings for draft_complete fallback
-        if (socket && socket.id === hostId) {
+        if (s && s.id === hostId) {
           try {
             const settingsCache = {
               allowTrading: lobbySettings.allowTrading,
               maxTradeLimit: lobbySettings.maxTradeLimit,
               unlimitedTrades: lobbySettings.unlimitedTrades,
-              lobbyCode: data.code
+              lobbyCode: data.code,
+              hostSocketId: s.id // Store host's socket ID for verification
             };
             localStorage.setItem('hostDraftSettings', JSON.stringify(settingsCache));
+            console.log('Cached host settings:', settingsCache);
           } catch (err) {
             console.warn('Failed to cache host settings:', err);
           }
@@ -2803,17 +2805,18 @@ function App() {
         isHost: s?.id === hostId
       });
       
-      // If server didn't provide settings and we're the host, use cached settings
-      if (!data.settings && s && s.id === hostId) {
+      // If server didn't provide settings, try to use cached settings
+      // Check cache first to see if current socket was the host
+      if (!data.settings && s) {
         console.log('Attempting to read cached host settings...');
         try {
           const cachedStr = localStorage.getItem('hostDraftSettings');
           console.log('Cache raw value:', cachedStr);
           if (cachedStr) {
             const cached = JSON.parse(cachedStr);
-            console.log('Parsed cache:', cached, 'Current lobbyCode:', lobbyCode);
-            // Verify cache is for current lobby
-            if (cached.lobbyCode === lobbyCode) {
+            console.log('Parsed cache:', cached, 'Current socket ID:', s.id, 'Current lobbyCode:', lobbyCode);
+            // Verify cache is for current lobby AND current socket is the host
+            if (cached.lobbyCode === lobbyCode && cached.hostSocketId === s.id) {
               tradingEnabled = cached.allowTrading;
               console.log('✓ Using cached host settings:', cached);
               // Update local state with cached values
@@ -3112,6 +3115,7 @@ function App() {
                                     const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
                                     cached.allowTrading = newValue;
                                     cached.lobbyCode = lobbyCode;
+                                    cached.hostSocketId = socket.id;
                                     localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
                                   } catch (err) {
                                     console.warn('Failed to cache setting update:', err);
@@ -3145,6 +3149,7 @@ function App() {
                                       const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
                                       cached.maxTradeLimit = newLimit;
                                       cached.lobbyCode = lobbyCode;
+                                      cached.hostSocketId = socket.id;
                                       localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
                                     } catch (err) {
                                       console.warn('Failed to cache setting update:', err);
@@ -3172,6 +3177,7 @@ function App() {
                                           const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
                                           cached.unlimitedTrades = newValue;
                                           cached.lobbyCode = lobbyCode;
+                                          cached.hostSocketId = socket.id;
                                           localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
                                         } catch (err) {
                                           console.warn('Failed to cache setting update:', err);
