@@ -141,7 +141,8 @@ function App() {
   const [filterPointsMin, setFilterPointsMin] = useState('');
   const [filterPointsMax, setFilterPointsMax] = useState('');
   const [filterAbility, setFilterAbility] = useState('');
-  const [filterMove, setFilterMove] = useState(''); // Applied filter
+  const [filterMoves, setFilterMoves] = useState([]); // Applied filters (array)
+  const [filterMoveInput, setFilterMoveInput] = useState(''); // Current input text
   const [moveInput, setMoveInput] = useState(''); // Input field value
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [allAbilitiesList, setAllAbilitiesList] = useState([]); // All abilities from PokeAPI
@@ -653,16 +654,35 @@ function App() {
         return;
       }
       
+      console.log('Loading team from ongoing drafts, lobbyCode:', lobbyCode, 'username:', currentUsername);
+      
       const ongoingDrafts = readOngoingDraftsFromCookies();
+      console.log('Found ongoing drafts:', ongoingDrafts.length);
+      
       const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === lobbyCode);
       
-      if (!draft || !draft.playerData || !draft.playerData[currentUsername]) {
-        alert('Team not found in ongoing drafts');
+      if (!draft) {
+        console.error('Draft not found for code:', lobbyCode);
+        alert('Draft not found');
+        return;
+      }
+      
+      if (!draft.playerData) {
+        console.error('No playerData in draft:', draft);
+        alert('No player data in draft');
+        return;
+      }
+      
+      if (!draft.playerData[currentUsername]) {
+        console.error('No data for username:', currentUsername, 'Available users:', Object.keys(draft.playerData));
+        alert('Team not found for your username in this draft');
         return;
       }
       
       const playerData = draft.playerData[currentUsername];
       const selectedPokemon = playerData.selectedPokemon || [];
+      
+      console.log('Found selected Pokemon:', selectedPokemon.length);
       
       if (selectedPokemon.length === 0) {
         alert('No Pokemon in this team');
@@ -730,14 +750,22 @@ function App() {
         teamData.slots.push(slot);
       }
       
+      console.log('Team data prepared:', {
+        totalSlots: teamData.slots.length,
+        slotsWithPokemon: teamData.slots.filter(s => s.pokemon).length,
+        firstSlot: teamData.slots[0]
+      });
+      
       setTeamBuilderData(teamData);
       saveTeamBuilderData(teamData);
       setTeamBuilderLoaded(true);
       setView('teambuilder');
       
+      console.log('Successfully loaded team into builder');
+      
     } catch (err) {
       console.error('Failed to load team into builder:', err);
-      alert('Failed to load team into builder');
+      alert('Failed to load team into builder: ' + err.message);
     }
   };
   
@@ -995,15 +1023,27 @@ function App() {
       }
       
       console.log('Raw team data from storage:', team.data);
+      console.log('Number of slots:', team.data.slots?.length);
+      console.log('Slots with pokemon:', team.data.slots?.filter(s => s && s.pokemon).length);
       
       // Fetch pokemon_data.json to get moves and abilities
       const response = await fetch('/pokemon_data.json');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch pokemon_data.json: ${response.status}`);
+      }
       const allPokemon = await response.json();
+      console.log('Loaded pokemon data, count:', allPokemon?.length);
       
       // Process each slot and fetch full data including base stats from PokeAPI
       const processedSlots = await Promise.all(team.data.slots.map(async (slot, idx) => {
         // Check if slot has pokemon data
         if (slot && (slot.pokemon || slot.pokemonName)) {
+          console.log(`Processing slot ${idx}:`, { 
+            hasPokemon: !!slot.pokemon, 
+            pokemonType: typeof slot.pokemon,
+            hasPokemonName: !!slot.pokemonName 
+          });
+          
           // Get the pokemon name and ID - handle both old format (string) and new format (object)
           let pokemonName, pokemonId;
           
@@ -1011,10 +1051,12 @@ function App() {
             // New format - pokemon is an object
             pokemonName = (slot.pokemon.name || '').toLowerCase();
             pokemonId = slot.pokemon.id || 0;
+            console.log(`Slot ${idx} using new format:`, { pokemonName, pokemonId });
           } else {
             // Old format - pokemon is a string or pokemonName exists
             pokemonName = (slot.pokemonName || slot.pokemon || '').toLowerCase();
             pokemonId = slot.pokemonId || 0;
+            console.log(`Slot ${idx} using old format:`, { pokemonName, pokemonId });
           }
           
           // Find the full pokemon data from pokemon_data.json
@@ -1023,6 +1065,13 @@ function App() {
             (p.species_name || '').toLowerCase() === pokemonName ||
             p.id === pokemonId
           );
+          
+          console.log(`Slot ${idx} search result:`, { 
+            pokemonName, 
+            pokemonId, 
+            found: !!fullPokemonData,
+            fullPokemonData: fullPokemonData ? { id: fullPokemonData.id, form_name: fullPokemonData.form_name, species_name: fullPokemonData.species_name } : null
+          });
           
           let pokemonObj;
           
@@ -1120,10 +1169,11 @@ function App() {
         slots: processedSlots
       };
       
-      console.log('Team loaded:', {
-        loadedData,
+      console.log('Team loaded successfully:', {
+        totalSlots: loadedData.slots.length,
         slotsWithPokemon: loadedData.slots.filter(s => s.pokemon).length,
-        firstSlot: loadedData.slots.find(s => s.pokemon)
+        firstPokemonSlot: loadedData.slots.find(s => s.pokemon),
+        allSlotsPokemonStatus: loadedData.slots.map((s, i) => ({ index: i, hasPokemon: !!s.pokemon, pokemonName: s.pokemon?.name }))
       });
       
       setTeamBuilderData(loadedData);
@@ -1965,13 +2015,15 @@ function App() {
         if (!hasAbility) return false;
       }
       
-      // Move filter
-      if (filterMove && filterMove.trim()) {
+      // Move filter (all selected moves must be present)
+      if (filterMoves && filterMoves.length > 0) {
         if (!p.moves || !Array.isArray(p.moves) || p.moves.length === 0) return false;
-        const hasMove = p.moves.some(move => 
-          move && move.toLowerCase().includes(filterMove.toLowerCase())
+        const hasAllMoves = filterMoves.every(filterMove => 
+          p.moves.some(move => 
+            move && move.toLowerCase().includes(filterMove.toLowerCase())
+          )
         );
-        if (!hasMove) return false;
+        if (!hasAllMoves) return false;
       }
       
       return true;
@@ -3385,9 +3437,15 @@ function App() {
                               checked={lobbySettings.allowTrading} 
                               onChange={(e) => {
                                 const newValue = e.target.checked;
-                                setLobbySettings((s) => ({...s, allowTrading: newValue}));
+                                // Set default trade limit to 1 when enabling trading
+                                const updatedSettings = {
+                                  ...lobbySettings,
+                                  allowTrading: newValue,
+                                  maxTradeLimit: newValue && lobbySettings.maxTradeLimit === 0 ? 1 : lobbySettings.maxTradeLimit
+                                };
+                                setLobbySettings(updatedSettings);
                                 if (socket && lobbyCode && socket.id === hostId) {
-                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, allowTrading: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...updatedSettings, genFilter: lobbyGenFilter } }, (resp) => {
                                     if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                   });
                                   // Cache updated settings for draft_complete fallback
@@ -3395,6 +3453,7 @@ function App() {
                                     const cacheKey = 'hostDraftSettings_' + lobbyCode;
                                     const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
                                     cached.allowTrading = newValue;
+                                    cached.maxTradeLimit = updatedSettings.maxTradeLimit;
                                     cached.lobbyCode = lobbyCode;
                                     cached.hostSocketId = socket.id;
                                     localStorage.setItem(cacheKey, JSON.stringify(cached));
@@ -3968,7 +4027,7 @@ function App() {
                   >
                     {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
                   </button>
-                  {(filterTypes.length > 0 || filterGeneration > 0 || filterPointsMin || filterPointsMax || filterAbility || filterMove) && (
+                  {(filterTypes.length > 0 || filterGeneration > 0 || filterPointsMin || filterPointsMax || filterAbility || filterMoves.length > 0) && (
                     <>
                       <button 
                         className="gen-button ml-8" 
@@ -3983,7 +4042,7 @@ function App() {
                           if (filterGeneration > 0) activeFilters.push(`Gen ${filterGeneration}`);
                           if (filterPointsMin || filterPointsMax) activeFilters.push('Points range');
                           if (filterAbility) activeFilters.push('Ability');
-                          if (filterMove) activeFilters.push('Move');
+                          if (filterMoves.length > 0) activeFilters.push(`${filterMoves.length} Move${filterMoves.length > 1 ? 's' : ''}`);
                           return `Active: ${activeFilters.join(', ')}`;
                         })()}
                       </span>
@@ -4125,23 +4184,59 @@ function App() {
                     
                     {/* Move Filter */}
                     <div className="filter-section" style={{ position: 'relative' }}>
-                      <label className="filter-label">Move:</label>
-                      <input 
-                        type="text" 
-                        placeholder="Search by move" 
-                        value={filterMove} 
-                        onChange={(e) => {
-                          setFilterMove(e.target.value);
-                          updateMoveSuggestions(e.target.value);
-                        }}
-                        onFocus={() => {
-                          if (filterMove) updateMoveSuggestions(filterMove);
-                        }}
-                        onBlur={() => {
-                          setTimeout(() => setShowMoveSuggestions(false), 200);
-                        }}
-                        className="filter-input"
-                      />
+                      <label className="filter-label">Moves:</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {/* Selected moves chips */}
+                        {filterMoves.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+                            {filterMoves.map((move, idx) => (
+                              <div key={idx} style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px',
+                                padding: '2px 8px',
+                                background: '#1d8ca8',
+                                color: 'white',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: '500'
+                              }}>
+                                <span>{move}</span>
+                                <button 
+                                  onClick={() => setFilterMoves(filterMoves.filter(m => m !== move))}
+                                  style={{ 
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    marginLeft: '2px',
+                                    fontSize: '14px',
+                                    lineHeight: 1,
+                                    fontWeight: 'bold'
+                                  }}
+                                >×</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <input 
+                          type="text" 
+                          placeholder="Add move to filter" 
+                          value={filterMoveInput} 
+                          onChange={(e) => {
+                            setFilterMoveInput(e.target.value);
+                            updateMoveSuggestions(e.target.value);
+                          }}
+                          onFocus={() => {
+                            if (filterMoveInput) updateMoveSuggestions(filterMoveInput);
+                          }}
+                          onBlur={() => {
+                            setTimeout(() => setShowMoveSuggestions(false), 200);
+                          }}
+                          className="filter-input"
+                        />
+                      </div>
                       {showMoveSuggestions && moveSuggestions.length > 0 && (
                         <div className="suggestions-dropdown" style={{ 
                           position: 'absolute', 
@@ -4168,7 +4263,10 @@ function App() {
                               }}
                               onMouseDown={(e) => {
                                 e.preventDefault();
-                                setFilterMove(move);
+                                if (!filterMoves.includes(move)) {
+                                  setFilterMoves([...filterMoves, move]);
+                                }
+                                setFilterMoveInput('');
                                 setShowMoveSuggestions(false);
                               }}
                               onMouseEnter={(e) => {
@@ -4201,9 +4299,9 @@ function App() {
                   {draftSuggestionsVisible && searchTerm && (
                     <div className="suggestions-dropdown" style={{ position: 'absolute', top: '36px', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto' }}>
                       {(draftPokemonList.length > 0 ? draftPokemonList : pokemonList).filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0,8).map(p => (
-                        <div key={p.id} className="suggestion-item" style={{ padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
-                          <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
-                          <span>{p.name}</span>
+                        <div key={p.id} className="suggestion-item" style={{ padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
+                          <img src={p.img} alt={p.name} style={{ width: '24px', height: '24px' }} />
+                          <span style={{ fontSize: '14px' }}>{p.name}</span>
                         </div>
                       ))}
                     </div>
