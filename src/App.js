@@ -1818,12 +1818,21 @@ function App() {
   // Fetch all abilities from PokeAPI and filter by what's in our pokemon_data.json
   const fetchAllAbilities = async () => {
     try {
+      console.log('fetchAllAbilities called, pokemonList length:', pokemonList.length);
+      
+      if (pokemonList.length === 0) {
+        console.warn('Pokemon list is empty, cannot fetch abilities');
+        return;
+      }
+      
       // Fetch all abilities from PokeAPI
       const response = await axios.get('https://pokeapi.co/api/v2/ability?limit=1000');
       const allAbilities = response.data.results.map(ability => ({
         name: ability.name,
         displayName: ability.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
       }));
+      
+      console.log('Fetched', allAbilities.length, 'abilities from PokeAPI');
       
       // Get unique abilities from our pokemon data
       const pokemonAbilities = new Set();
@@ -1838,6 +1847,8 @@ function App() {
           });
         }
       });
+      
+      console.log('Found', pokemonAbilities.size, 'unique abilities in pokemon data');
       
       // Filter abilities to only those in our pokemon data
       const filteredAbilities = allAbilities.filter(ability => {
