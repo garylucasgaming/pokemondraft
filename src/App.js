@@ -86,6 +86,7 @@ function App() {
   const [naturesList, setNaturesList] = useState([]);
   const [teamBuilderData, setTeamBuilderData] = useState(null);
   const [teamBuilderLoaded, setTeamBuilderLoaded] = useState(false);
+  const [showTeamSelector, setShowTeamSelector] = useState(false);
   // lobby state
   const [lobbyCode, setLobbyCode] = useState('');
   const [lobbyUsers, setLobbyUsers] = useState([]);
@@ -108,6 +109,15 @@ function App() {
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [localPlayerName, setLocalPlayerName] = useState('');
   const [draftSuggestionsVisible, setDraftSuggestionsVisible] = useState(false);
+  
+  // Advanced filter states
+  const [filterTypes, setFilterTypes] = useState([]);
+  const [filterGeneration, setFilterGeneration] = useState(0);
+  const [filterPointsMin, setFilterPointsMin] = useState('');
+  const [filterPointsMax, setFilterPointsMax] = useState('');
+  const [filterAbility, setFilterAbility] = useState('');
+  const [filterMove, setFilterMove] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Team builder constants
   const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
@@ -335,6 +345,9 @@ function App() {
           // Extract all move names
           const moves = pokemon.moves.map(m => m.move.name);
           
+          // Extract abilities
+          const abilities = pokemon.abilities.map(a => a.ability.name);
+          
           // Get generation number
           const generationNum = parseInt(species.generation.url.split('/').filter(Boolean).pop());
           
@@ -344,6 +357,7 @@ function App() {
             species_name: speciesName,
             form_name: pokemon.name,
             types: types,
+            abilities: abilities,
             moves: moves,
             sprite_front_default: pokemon.sprites.front_default,
             generation: generationNum
@@ -509,12 +523,10 @@ function App() {
   
   const fetchItemsList = async () => {
     try {
-      const response = await axios.get('https://pokeapi.co/api/v2/item?limit=2000');
-      const items = response.data.results || [];
-      // Filter to only include holdable items (this is a simplified filter)
-      // In a full implementation, you'd need to check each item's attributes
-      // For now, we'll just use all items and let the user choose
-      setItemsList(items.map(item => item.name));
+      // Load from local JSON file instead of PokeAPI
+      const response = await fetch('/held_items.json');
+      const items = await response.json();
+      setItemsList(items.map(item => ({ name: item.name, description: item.description })));
     } catch (err) {
       console.error('Failed to fetch items list:', err);
       setItemsList([]);
@@ -602,10 +614,16 @@ function App() {
         
         if (i < selectedPokemon.length) {
           const pkmn = selectedPokemon[i];
-          // Fetch detailed Pokemon data including base stats, abilities, and moves
+          // Fetch detailed Pokemon data including base stats and abilities from PokeAPI
+          // But get moves from local JSON for faster loading
           try {
+            // First, get moves from local JSON
+            const jsonResponse = await fetch('/pokemon_data.json');
+            const pokemonDataList = await jsonResponse.json();
+            const pokemonFromJson = pokemonDataList.find(p => p.id === pkmn.id);
+            
+            // Fetch base stats and abilities from PokeAPI
             const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pkmn.id || pkmn.name.toLowerCase()}`);
-            const speciesResponse = await axios.get(response.data.species.url);
             
             slot.pokemon = {
               id: response.data.id,
@@ -620,7 +638,7 @@ function App() {
                 speed: response.data.stats.find(s => s.stat.name === 'speed')?.base_stat || 0
               },
               abilities: response.data.abilities.map(a => a.ability.name),
-              moves: response.data.moves.map(m => m.move.name)
+              moves: pokemonFromJson?.moves || [] // Use moves from local JSON
             };
             
             // Set default ability (first one)
@@ -751,6 +769,62 @@ function App() {
   const getTotalEVs = (slot) => {
     if (!slot || !slot.evs) return 0;
     return Object.values(slot.evs).reduce((sum, val) => sum + (val || 0), 0);
+  };
+  
+  const saveTeamBuilderToFile = () => {
+    if (!teamBuilderData) {
+      alert('No team data to save');
+      return;
+    }
+    
+    try {
+      const jsonString = JSON.stringify(teamBuilderData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `team_${teamBuilderData.playerName}_${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setExportMessage('Team saved to file!');
+      setTimeout(() => setExportMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to save team:', err);
+      alert('Failed to save team');
+    }
+  };
+  
+  const loadTeamBuilderFromFile = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        
+        // Validate structure
+        if (!data.playerName || !data.slots || !Array.isArray(data.slots)) {
+          alert('Invalid team file format');
+          return;
+        }
+        
+        setTeamBuilderData(data);
+        saveTeamBuilderData(data);
+        setTeamBuilderLoaded(true);
+        setView('teambuilder');
+        
+        setExportMessage('Team loaded successfully!');
+        setTimeout(() => setExportMessage(''), 3000);
+      } catch (err) {
+        console.error('Failed to parse team file:', err);
+        alert('Failed to load team file. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   // ========== END TEAM BUILDER FUNCTIONS ==========
@@ -1203,93 +1277,90 @@ function App() {
   };
 
   useEffect(() => {
-    // fetch a large number to include Gen 1-9 and normalize ids
-    axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000')
-      .then((res) => {
-        // build raw list
-        const rawList = res.data.results
-          .map((p) => {
-            const parts = p.url.split('/').filter(Boolean);
-            const idStr = parts[parts.length - 1];
-            const id = Number(idStr);
-            return {
-              name: p.name,
-              id,
-              img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
-            };
-          })
-          .filter((p) => !Number.isNaN(p.id)); // drop any non-numeric entries
-
-        // Heuristic filtering: exclude known alternate form tokens (mega, gmax, totem, etc.)
-        // but keep regional variants (alola, galar, hisui, paldea, etc.). This is a
-        // heuristic approach — we can make it exact later via species "is_default" checks.
-        const excludeTokens = [
-          'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
-          'attack', 'defense', 'school', 'armored', 'masked', 'dusk', 'midnight', 'origin',
-          'size', 'eternamax', 'shield', 'disguised', 'solo', 'aria', 'therian', 'resolute', 'zen', 'cap'
-        ];
-        const keepRegional = [
-          'alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean', 'kantonian', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'
-        ];
-
-        // Hyphen rules: exclude most names containing '-' except when they contain
-        // one of these allowed tokens or are explicitly allowed by name.
-        const hyphenAllowTokens = [
-          'galar', 'alola', 'hisui', 'female', 'hero', 'paldea', 'belly',
-          'lele', 'koko', 'bulu', 'fini', 'average'
-        ];
-        const hyphenAllowNames = new Set([
-          'jangmo-o','hakamo-o','kommo-o','wo-chien','chien-pao','ting-lu','chi-yu',
-          'great-tusk','scream-tail','brute-bonnet','flutter-mane','slither-wing',
-          'sandy-shocks','iron-trades','iron-bundle','iron-hands','iron-jugulis',
-          'iron-moth','iron-thorns','oricorio-pom-pom','minior-red','mimikyu-busted',
-          'toxtricity-amped','porygon-z','mime-jr','dudunsparce-two-segment',
-          'tatsugiri-curly','calyrex-ice', 'nidoran-m', 'nidoran-f','urshifu-single-strike',
-          'calyrex-shadow','type-null','lycanroc-midday', 'darmanitan-standard', 'doublade ', 'aegislash-shield'
-        ]);
-        const hyphenDisallowNames = new Set([
-          'darmanitan-zen',
-          'darmanitan-galar-zen'
-        ]);
-
-        const filtered = rawList.filter((p) => {
-          const name = p.name.toLowerCase();
-            // Special-case: exclude any Pikachu that contains a regional token
-            // (we want to keep only base Pikachu without region qualifiers).
-            if (name.includes('pikachu') && keepRegional.some((t) => name.includes(t))) return false;
-          
-            // always keep regional variants (for other species)
-          if (keepRegional.some((t) => name.includes(t))) return true;
-
-          // If name contains hyphen, we have special rules:
-          if (name.includes('-')) {
-           
-            // explicitly exclude specified hyphenated names (e.g., Darmanitan zen forms)
-            if (hyphenDisallowNames.has(name)) return false;
-
-            // allow if it contains an allowed hyphen token
-            if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
-            // allow if it is explicitly listed
-            if (hyphenAllowNames.has(name)) return true;
-            // otherwise exclude hyphenated forms
-            return false;
-          }
-
-          // exclude if any exclude token matches (for non-hyphenated names)
-          if (excludeTokens.some((t) => name.includes(t))) return false;
-          return true;
-        });
-
-        // deduplicate by id just in case, then sort by id
-        const byId = new Map();
-        for (const item of filtered) {
-          if (!byId.has(item.id)) byId.set(item.id, item);
-        }
-        const list = Array.from(byId.values()).sort((a, b) => a.id - b.id);
-
+    // Load Pokemon data from local JSON file instead of PokeAPI
+    fetch('/pokemon_data.json')
+      .then(response => response.json())
+      .then((data) => {
+        // Transform the data to match our existing format
+        const list = data.map(pokemon => ({
+          id: pokemon.id,
+          name: pokemon.form_name || pokemon.species_name,
+          img: pokemon.sprite_front_default,
+          types: pokemon.types,
+          moves: pokemon.moves,
+          generation: pokemon.generation
+        })).sort((a, b) => a.id - b.id);
+        
         setPokemonList(list);
       })
-      .catch((err) => console.error('Failed to fetch pokemon list', err));
+      .catch((err) => {
+        console.error('Failed to load pokemon data from local file:', err);
+        // Fallback to PokeAPI if local file fails
+        console.log('Falling back to PokeAPI...');
+        axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000')
+          .then((res) => {
+            const rawList = res.data.results
+              .map((p) => {
+                const parts = p.url.split('/').filter(Boolean);
+                const idStr = parts[parts.length - 1];
+                const id = Number(idStr);
+                return {
+                  name: p.name,
+                  id,
+                  img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+                };
+              })
+              .filter((p) => !Number.isNaN(p.id));
+
+            const excludeTokens = [
+              'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
+              'attack', 'defense', 'school', 'armored', 'masked', 'dusk', 'midnight', 'origin',
+              'size', 'eternamax', 'shield', 'disguised', 'solo', 'aria', 'therian', 'resolute', 'zen', 'cap'
+            ];
+            const keepRegional = [
+              'alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean', 'kantonian', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'
+            ];
+            const hyphenAllowTokens = [
+              'galar', 'alola', 'hisui', 'female', 'hero', 'paldea', 'belly',
+              'lele', 'koko', 'bulu', 'fini', 'average'
+            ];
+            const hyphenAllowNames = new Set([
+              'jangmo-o','hakamo-o','kommo-o','wo-chien','chien-pao','ting-lu','chi-yu',
+              'great-tusk','scream-tail','brute-bonnet','flutter-mane','slither-wing',
+              'sandy-shocks','iron-trades','iron-bundle','iron-hands','iron-jugulis',
+              'iron-moth','iron-thorns','oricorio-pom-pom','minior-red','mimikyu-busted',
+              'toxtricity-amped','porygon-z','mime-jr','dudunsparce-two-segment',
+              'tatsugiri-curly','calyrex-ice', 'nidoran-m', 'nidoran-f','urshifu-single-strike',
+              'calyrex-shadow','type-null','lycanroc-midday', 'darmanitan-standard', 'doublade ', 'aegislash-shield'
+            ]);
+            const hyphenDisallowNames = new Set([
+              'darmanitan-zen',
+              'darmanitan-galar-zen'
+            ]);
+
+            const filtered = rawList.filter((p) => {
+              const name = p.name.toLowerCase();
+              if (name.includes('pikachu') && keepRegional.some((t) => name.includes(t))) return false;
+              if (keepRegional.some((t) => name.includes(t))) return true;
+              if (name.includes('-')) {
+                if (hyphenDisallowNames.has(name)) return false;
+                if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
+                if (hyphenAllowNames.has(name)) return true;
+                return false;
+              }
+              if (excludeTokens.some((t) => name.includes(t))) return false;
+              return true;
+            });
+
+            const byId = new Map();
+            for (const item of filtered) {
+              if (!byId.has(item.id)) byId.set(item.id, item);
+            }
+            const list = Array.from(byId.values()).sort((a, b) => a.id - b.id);
+            setPokemonList(list);
+          })
+          .catch((err) => console.error('Failed to fetch pokemon list from PokeAPI:', err));
+      });
     
     // Fetch items and natures for team builder
     fetchItemsList();
@@ -1410,6 +1481,40 @@ function App() {
       if (searchTerm && !name.includes(searchTerm)) return false;
       if (hideLegendaries && legendaryMap[name]) return false;
       if (pointsMap && Number(pointsMap[name]) === 0) return false;
+      
+      // Advanced filters
+      // Type filter
+      if (filterTypes.length > 0) {
+        const hasMatchingType = p.types && p.types.some(type => filterTypes.includes(type));
+        if (!hasMatchingType) return false;
+      }
+      
+      // Generation filter (from advanced filters, distinct from lobbyGenFilter)
+      if (filterGeneration > 0 && p.generation && p.generation !== filterGeneration) {
+        return false;
+      }
+      
+      // Points range filter
+      const cost = getCost(p);
+      if (filterPointsMin !== '' && cost < Number(filterPointsMin)) return false;
+      if (filterPointsMax !== '' && cost > Number(filterPointsMax)) return false;
+      
+      // Ability filter
+      if (filterAbility && p.abilities) {
+        const hasAbility = p.abilities.some(ability => 
+          ability.toLowerCase().includes(filterAbility.toLowerCase())
+        );
+        if (!hasAbility) return false;
+      }
+      
+      // Move filter
+      if (filterMove && p.moves) {
+        const hasMove = p.moves.some(move => 
+          move.toLowerCase().includes(filterMove.toLowerCase())
+        );
+        if (!hasMove) return false;
+      }
+      
       return true;
     });
     const sorted = filtered.slice();
@@ -1504,64 +1609,82 @@ function App() {
 
   // --- Restore full Pokemon list ---
   const restoreFullPokemonList = () => {
-    // Re-fetch the full Pokemon list from API to restore any filtered Pokemon
-    axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000')
-      .then((res) => {
-        const rawList = res.data.results
-          .map((p) => {
-            const parts = p.url.split('/').filter(Boolean);
-            const idStr = parts[parts.length - 1];
-            const id = Number(idStr);
-            return {
-              name: p.name,
-              id,
-              img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
-            };
-          })
-          .filter((p) => !Number.isNaN(p.id));
-
-        const excludeTokens = [
-          'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
-          'attack', 'defense', 'school', 'armored', 'masked', 'dusk', 'midnight', 'origin',
-          'size', 'eternamax', 'shield', 'disguised', 'solo', 'aria', 'therian', 'resolute', 'zen', 'cap'
-        ];
-        const keepRegional = [
-          'alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean', 'kantonian', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'
-        ];
-        const hyphenAllowTokens = [
-          'galar', 'alola', 'hisui', 'female', 'hero', 'paldea', 'belly',
-          'lele', 'koko', 'bulu', 'fini', 'average'
-        ];
-        const hyphenAllowNames = new Set([
-          'jangmo-o','hakamo-o','kommo-o','wo-chien','chien-pao','ting-lu','chi-yu',
-          'great-tusk','scream-tail','brute-bonnet','flutter-mane','slither-wing',
-          'sandy-shocks','iron-trades','iron-bundle','iron-hands','iron-jugulis',
-          'iron-moth','iron-thorns','oricorio-pom-pom','minior-red','mimikyu-busted',
-          'toxtricity-amped','porygon-z','mime-jr','dudunsparce-two-segment',
-          'tatsugiri-curly','calyrex-ice', 'nidoran-m', 'nidoran-f','urshifu-single-strike',
-          'urshifu-rapid-strike', 'ho-oh', 'porygon2', 'type-null', 'sirfetchd', 'mr-rime', 'mr-mime', 'farfetchd', 'eiscue-ice', 'indeedee-male', 'morpeko-full-belly'
-        ]);
-
-        const filtered = rawList.filter((item) => {
-          const name = item.name.toLowerCase();
-          if (hyphenAllowNames.has(name)) return true;
-          if (name.includes('-')) {
-            if (keepRegional.some((t) => name.includes(t))) return true;
-            if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
-            return false;
-          }
-          if (excludeTokens.some((t) => name.includes(t))) return false;
-          return true;
-        });
-
-        const byId = new Map();
-        for (const item of filtered) {
-          if (!byId.has(item.id)) byId.set(item.id, item);
-        }
-        const list = Array.from(byId.values()).sort((a, b) => a.id - b.id);
+    // Load from local JSON file instead of PokeAPI
+    fetch('/pokemon_data.json')
+      .then(response => response.json())
+      .then((data) => {
+        const list = data.map(pokemon => ({
+          id: pokemon.id,
+          name: pokemon.form_name || pokemon.species_name,
+          img: pokemon.sprite_front_default,
+          types: pokemon.types,
+          moves: pokemon.moves,
+          generation: pokemon.generation
+        })).sort((a, b) => a.id - b.id);
+        
         setPokemonList(list);
       })
-      .catch((err) => console.error('Failed to restore pokemon list', err));
+      .catch((err) => {
+        console.error('Failed to restore pokemon list from local file:', err);
+        // Fallback to PokeAPI
+        axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000')
+          .then((res) => {
+            const rawList = res.data.results
+              .map((p) => {
+                const parts = p.url.split('/').filter(Boolean);
+                const idStr = parts[parts.length - 1];
+                const id = Number(idStr);
+                return {
+                  name: p.name,
+                  id,
+                  img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+                };
+              })
+              .filter((p) => !Number.isNaN(p.id));
+
+            const excludeTokens = [
+              'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
+              'attack', 'defense', 'school', 'armored', 'masked', 'dusk', 'midnight', 'origin',
+              'size', 'eternamax', 'shield', 'disguised', 'solo', 'aria', 'therian', 'resolute', 'zen', 'cap'
+            ];
+            const keepRegional = [
+              'alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean', 'kantonian', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'
+            ];
+            const hyphenAllowTokens = [
+              'galar', 'alola', 'hisui', 'female', 'hero', 'paldea', 'belly',
+              'lele', 'koko', 'bulu', 'fini', 'average'
+            ];
+            const hyphenAllowNames = new Set([
+              'jangmo-o','hakamo-o','kommo-o','wo-chien','chien-pao','ting-lu','chi-yu',
+              'great-tusk','scream-tail','brute-bonnet','flutter-mane','slither-wing',
+              'sandy-shocks','iron-trades','iron-bundle','iron-hands','iron-jugulis',
+              'iron-moth','iron-thorns','oricorio-pom-pom','minior-red','mimikyu-busted',
+              'toxtricity-amped','porygon-z','mime-jr','dudunsparce-two-segment',
+              'tatsugiri-curly','calyrex-ice', 'nidoran-m', 'nidoran-f','urshifu-single-strike',
+              'urshifu-rapid-strike', 'ho-oh', 'porygon2', 'type-null', 'sirfetchd', 'mr-rime', 'mr-mime', 'farfetchd', 'eiscue-ice', 'indeedee-male', 'morpeko-full-belly'
+            ]);
+
+            const filtered = rawList.filter((item) => {
+              const name = item.name.toLowerCase();
+              if (hyphenAllowNames.has(name)) return true;
+              if (name.includes('-')) {
+                if (keepRegional.some((t) => name.includes(t))) return true;
+                if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
+                return false;
+              }
+              if (excludeTokens.some((t) => name.includes(t))) return false;
+              return true;
+            });
+
+            const byId = new Map();
+            for (const item of filtered) {
+              if (!byId.has(item.id)) byId.set(item.id, item);
+            }
+            const list = Array.from(byId.values()).sort((a, b) => a.id - b.id);
+            setPokemonList(list);
+          })
+          .catch((err) => console.error('Failed to restore pokemon list from PokeAPI:', err));
+      });
   };
 
   // --- Lobby helpers (client-side scaffold) ---
@@ -1955,15 +2078,15 @@ function App() {
       }
       // remove the selected pokemon from the draft list for everyone
       if (data.pokemon && data.pokemon.id) {
-        setDraftPokemonList((prev) => prev.filter(p => p.id !== data.pokemon.id));
+        setDraftPokemonList((prev) => prev.filter(p => Number(p.id) !== Number(data.pokemon.id)));
       }
     });
     s.on('selections_update', (data) => {
       console.debug('socket event: selections_update', data);
       if (!data) return;
       setRemoteSelections(data.selections || {});
-      const allSelectedIds = Object.values(data.selections || {}).flat().map(p => p.id).filter(Boolean);
-      setDraftPokemonList((prev) => prev.filter(p => !allSelectedIds.includes(p.id)));
+      const allSelectedIds = Object.values(data.selections || {}).flat().map(p => Number(p.id)).filter(Boolean);
+      setDraftPokemonList((prev) => prev.filter(p => !allSelectedIds.includes(Number(p.id))));
       // Reconcile optimistic picks: remove any optimistic picks that the server now confirms
       try {
         const myId = s.id;
@@ -2119,11 +2242,6 @@ function App() {
                 
                 <div className="control-group">
                   <button className="gen-button" onClick={() => { clearOngoingDraftsCookie(); }}>Clear All Ongoing Drafts</button>
-                </div>
-                
-                <div className="control-group">
-                  <button className="import-button" onClick={exportPokemonData}>Export All Pokemon Data (JSON)</button>
-                  {exportMessage && <span className="ml-8" style={{ color: '#16a34a', fontWeight: 600 }}>{exportMessage}</span>}
                 </div>
               </div>
             )}
@@ -2520,6 +2638,117 @@ function App() {
               <h3>No Pokémon available</h3>
             ) : (
               <div>
+                {/* Advanced Filters Toggle */}
+                <div style={{ marginBottom: '12px' }}>
+                  <button 
+                    className="gen-button" 
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  >
+                    {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
+                  </button>
+                  {(filterTypes.length > 0 || filterGeneration > 0 || filterPointsMin || filterPointsMax || filterAbility || filterMove) && (
+                    <button 
+                      className="gen-button ml-8" 
+                      onClick={() => {
+                        setFilterTypes([]);
+                        setFilterGeneration(0);
+                        setFilterPointsMin('');
+                        setFilterPointsMax('');
+                        setFilterAbility('');
+                        setFilterMove('');
+                      }}
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
+                
+                {/* Advanced Filters Panel */}
+                {showAdvancedFilters && (
+                  <div className="advanced-filters-panel">
+                    {/* Type Filter */}
+                    <div className="filter-section">
+                      <label className="filter-label">Types:</label>
+                      <div className="type-filters">
+                        {['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'].map(type => (
+                          <button
+                            key={type}
+                            className={`type-filter-btn ${filterTypes.includes(type) ? 'active' : ''}`}
+                            onClick={() => {
+                              if (filterTypes.includes(type)) {
+                                setFilterTypes(filterTypes.filter(t => t !== type));
+                              } else {
+                                setFilterTypes([...filterTypes, type]);
+                              }
+                            }}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Generation Filter */}
+                    <div className="filter-section">
+                      <label className="filter-label">Generation:</label>
+                      <select value={filterGeneration} onChange={(e) => setFilterGeneration(Number(e.target.value))} className="filter-select">
+                        <option value={0}>All Generations</option>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(gen => (
+                          <option key={gen} value={gen}>Gen {gen}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Points Range Filter */}
+                    <div className="filter-section">
+                      <label className="filter-label">Points Range:</label>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input 
+                          type="number" 
+                          placeholder="Min" 
+                          value={filterPointsMin} 
+                          onChange={(e) => setFilterPointsMin(e.target.value)}
+                          className="filter-input"
+                          style={{ width: '80px' }}
+                        />
+                        <span>to</span>
+                        <input 
+                          type="number" 
+                          placeholder="Max" 
+                          value={filterPointsMax} 
+                          onChange={(e) => setFilterPointsMax(e.target.value)}
+                          className="filter-input"
+                          style={{ width: '80px' }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Ability Filter */}
+                    <div className="filter-section">
+                      <label className="filter-label">Ability:</label>
+                      <input 
+                        type="text" 
+                        placeholder="Search by ability" 
+                        value={filterAbility} 
+                        onChange={(e) => setFilterAbility(e.target.value)}
+                        className="filter-input"
+                      />
+                    </div>
+                    
+                    {/* Move Filter */}
+                    <div className="filter-section">
+                      <label className="filter-label">Move:</label>
+                      <input 
+                        type="text" 
+                        placeholder="Search by move" 
+                        value={filterMove} 
+                        onChange={(e) => setFilterMove(e.target.value)}
+                        className="filter-input"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="search-box" style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #ccc' }}>
@@ -2614,11 +2843,18 @@ function App() {
         </div>
       )}
 
-      {view === 'teambuilder' && teamBuilderData && (
+      {view === 'teambuilder' && teamBuilderData && !showTeamSelector && (
         <div className="TeamBuilderContainer">
           <div className="team-builder-header">
-            <h2>Team Builder - {teamBuilderData.playerName}</h2>
-            <button className="gen-button" onClick={() => setView('lobby')}>Back to Lobby</button>
+            <div>
+              <h2>Team Builder - {teamBuilderData.playerName}</h2>
+            </div>
+            <div className="team-builder-header-buttons">
+              <button className="gen-button" onClick={saveTeamBuilderToFile}>Save Team</button>
+              <button className="gen-button ml-8" onClick={() => setShowTeamSelector(true)}>Load Team</button>
+              <button className="gen-button ml-8" onClick={() => setView('lobby')}>Back to Lobby</button>
+              {exportMessage && <span className="ml-8" style={{ color: '#16a34a', fontWeight: 600 }}>{exportMessage}</span>}
+            </div>
           </div>
 
           <div className="team-builder-horizontal">
@@ -2646,7 +2882,11 @@ function App() {
                       <label>Held Item:</label>
                       <select value={slot.heldItem} onChange={(e) => updateTeamBuilderSlot(idx, 'heldItem', e.target.value)}>
                         <option value="">None</option>
-                        {itemsList.map(item => <option key={item} value={item}>{item}</option>)}
+                        {itemsList.map(item => {
+                          const itemName = typeof item === 'string' ? item : item.name;
+                          const itemDesc = typeof item === 'object' && item.description ? ` - ${item.description}` : '';
+                          return <option key={itemName} value={itemName} title={item.description || ''}>{itemName}</option>;
+                        })}
                       </select>
                     </div>
 
@@ -2731,6 +2971,75 @@ function App() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {view === 'teambuilder' && showTeamSelector && (
+        <div className="TeamBuilderContainer">
+          <div className="team-builder-header">
+            <h2>Load Team</h2>
+            <button className="gen-button" onClick={() => setShowTeamSelector(false)}>Back to Team Builder</button>
+          </div>
+
+          <div className="team-selector-content">
+            <div className="team-selector-section">
+              <h3>Load from File</h3>
+              <input 
+                type="file" 
+                accept=".json" 
+                onChange={loadTeamBuilderFromFile}
+                style={{ display: 'none' }}
+                id="team-file-input"
+              />
+              <label htmlFor="team-file-input" className="gen-button" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                Choose JSON File
+              </label>
+            </div>
+
+            <div className="team-selector-section">
+              <h3>Load from Ongoing Drafts</h3>
+              {(() => {
+                const teams = readSavedTeamsFromCookies();
+                if (teams.length === 0) {
+                  return <div className="muted-text">No teams found in ongoing drafts</div>;
+                }
+                
+                return (
+                  <div className="team-selector-grid">
+                    {teams.map((team) => (
+                      <div key={team.key} className="team-selector-card">
+                        <div className="team-selector-card-header">
+                          <strong>{team.draftName || team.key}</strong>
+                          <div className="fs-12 muted">Lobby: {team.lobbyCode}</div>
+                        </div>
+                        <div className="team-selector-card-body">
+                          <div className="saved-team-grid">
+                            {team.team.slice(0, 6).map((p) => (
+                              <div key={p.id || p.name} className="saved-team-card-small">
+                                {p.img && <img src={p.img} alt={p.name} />}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="fs-12 muted mt-8">
+                            {team.team.length} Pokémon | {team.pointsRemaining} pts remaining
+                          </div>
+                        </div>
+                        <button 
+                          className="gen-button mt-8" 
+                          onClick={() => {
+                            loadTeamIntoBuilder(team.key);
+                            setShowTeamSelector(false);
+                          }}
+                        >
+                          Load This Team
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}

@@ -1054,7 +1054,7 @@ body {
   text-align: center;
   font-weight: bold;
   font-size: 16px;
-  color: #374151;
+  color: #ffffff;
   text-transform: capitalize;
   margin-bottom: 8px;
 }
@@ -1182,6 +1182,80 @@ body {
   text-align: right;
 }
 
+.team-builder-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Team Selector Styles */
+.team-selector-content {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.team-selector-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.team-selector-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #1d8ca8;
+  font-size: 20px;
+}
+
+.team-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.team-selector-card {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 15px;
+  transition: all 0.2s;
+}
+
+.team-selector-card:hover {
+  border-color: #1d8ca8;
+  box-shadow: 0 4px 8px rgba(29, 140, 168, 0.2);
+}
+
+.team-selector-card-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.team-selector-card-body {
+  margin-bottom: 12px;
+}
+
+.saved-team-card-small {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.saved-team-card-small img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+
 /* Responsive adjustments for team builder */
 @media (max-width: 768px) {
   .team-builder-slot {
@@ -1197,5 +1271,139 @@ body {
     grid-template-columns: 60px 30px 45px 45px 50px;
     font-size: 10px;
   }
+  
+  .team-selector-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .team-builder-header-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
+/* Advanced Filters */
+.advanced-filters-panel {
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid #ffd700;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-section {
+  margin-bottom: 16px;
+}
+
+.filter-section:last-child {
+  margin-bottom: 0;
+}
+
+.filter-label {
+  display: block;
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.type-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.type-filter-btn {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: all 0.2s ease;
+}
+
+.type-filter-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: #ffd700;
+  transform: translateY(-1px);
+}
+
+.type-filter-btn.active {
+  background-color: #ffd700;
+  color: #000;
+  border-color: #ffd700;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
+}
+
+.filter-select {
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid #ffd700;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #ffed4e;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.filter-input {
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid #ffd700;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #ffed4e;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.filter-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ml-8 {
+  margin-left: 8px;
+}
+
+@media (max-width: 768px) {
+  .type-filters {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+  
+  .advanced-filters-panel {
+    padding: 12px;
+  }
+  
+  .filter-select,
+  .filter-input {
+    max-width: 100%;
+  }
+}
