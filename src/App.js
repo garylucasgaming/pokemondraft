@@ -2856,24 +2856,34 @@ function App() {
       let savedDraftSettings = null;
       try {
         const code = lobbyCodeRef.current;
+        console.log('Looking for settings with lobby code:', code);
         if (code) {
           // Try ongoing draft first
           const ongoingDrafts = readOngoingDraftsFromCookies();
           const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === code);
+          console.log('Found ongoing draft:', draft);
           if (draft && draft.lobbySettings) {
             savedDraftSettings = draft.lobbySettings;
             console.log('Found saved draft settings:', savedDraftSettings);
-          } else {
-            // Fallback to direct cache from lobby_update
+          }
+          
+          // If no trading settings in draft, try direct cache from lobby_update
+          if (!savedDraftSettings || savedDraftSettings.allowTrading === undefined) {
             const cachedStr = localStorage.getItem('draftSettings_' + code);
+            console.log('Checking direct cache, raw value:', cachedStr);
             if (cachedStr) {
-              savedDraftSettings = JSON.parse(cachedStr);
-              console.log('Found cached settings from lobby_update:', savedDraftSettings);
+              const cachedSettings = JSON.parse(cachedStr);
+              console.log('Found cached settings from lobby_update:', cachedSettings);
+              // Merge with draft settings if they exist
+              savedDraftSettings = savedDraftSettings 
+                ? { ...savedDraftSettings, ...cachedSettings }
+                : cachedSettings;
             }
           }
           
           if (savedDraftSettings) {
             tradingEnabled = savedDraftSettings.allowTrading || false;
+            console.log('Final trading enabled value:', tradingEnabled);
             // Update local state
             setLobbySettings(prev => ({
               ...prev,
