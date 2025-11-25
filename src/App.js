@@ -2640,19 +2640,21 @@ function App() {
         if (data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
         if (data.draftOrder) setLobbyDraftOrder(data.draftOrder || []);
         
-        // Cache current settings for ALL players (not just host) for draft_complete fallback
-        try {
-          const settingsCache = {
-            allowTrading: lobbySettings.allowTrading,
-            maxTradeLimit: lobbySettings.maxTradeLimit,
-            unlimitedTrades: lobbySettings.unlimitedTrades,
-            lobbyCode: data.code,
-            socketId: s.id // Store current socket ID for verification
-          };
-          localStorage.setItem('draftSettings_' + data.code, JSON.stringify(settingsCache));
-          console.log('Cached draft settings for all players:', settingsCache);
-        } catch (err) {
-          console.warn('Failed to cache draft settings:', err);
+        // If host, cache current settings for draft_complete fallback
+        if (s && s.id === hostId) {
+          try {
+            const settingsCache = {
+              allowTrading: lobbySettings.allowTrading,
+              maxTradeLimit: lobbySettings.maxTradeLimit,
+              unlimitedTrades: lobbySettings.unlimitedTrades,
+              lobbyCode: data.code,
+              hostSocketId: s.id
+            };
+            localStorage.setItem('hostDraftSettings_' + data.code, JSON.stringify(settingsCache));
+            console.log('Host cached draft settings:', settingsCache);
+          } catch (err) {
+            console.warn('Failed to cache host settings:', err);
+          }
         }
         // compute allowed pokemon based on lobby gen filter and other visible filters
         const gen = lobbyGenFilter || 0;
@@ -2809,39 +2811,41 @@ function App() {
         isHost: s?.id === hostId
       });
       
-      // If server didn't provide settings, try to use cached settings (for ALL players)
-      if (!data.settings && s) {
-        console.log('Attempting to read cached draft settings...');
+      // If host, check cache and broadcast trading phase status to all players
+      if (!data.settings && s && s.id === hostId) {
+        console.log('Host checking cached draft settings...');
         try {
-          // Use ref to get current lobby code (state is stale in closure)
           const code = lobbyCodeRef.current;
           console.log('Using lobby code from ref:', code);
-          const cachedStr = code ? localStorage.getItem('draftSettings_' + code) : null;
-          console.log('Cache raw value:', cachedStr);
+          const cachedStr = code ? localStorage.getItem('hostDraftSettings_' + code) : null;
+          console.log('Host cache raw value:', cachedStr);
           if (cachedStr) {
             const cached = JSON.parse(cachedStr);
-            console.log('Parsed cache:', cached, 'Current socket ID:', s.id);
-            // Use cached settings (no need to verify socket ID since all players cache same settings)
-            tradingEnabled = cached.allowTrading;
-            console.log('✓ Using cached draft settings:', cached);
-            // Update local state with cached values
-            setLobbySettings(prev => ({
-              ...prev,
-              allowTrading: cached.allowTrading,
-              maxTradeLimit: cached.maxTradeLimit,
-              unlimitedTrades: cached.unlimitedTrades
-            }));
-          } else {
-            console.log('No cache found in localStorage');
+            console.log('Host parsed cache:', cached);
+            if (cached.hostSocketId === s.id) {
+              tradingEnabled = cached.allowTrading;
+              console.log('✓ Host using cached settings:', cached);
+              // Update local state
+              setLobbySettings(prev => ({
+                ...prev,
+                allowTrading: cached.allowTrading,
+                maxTradeLimit: cached.maxTradeLimit,
+                unlimitedTrades: cached.unlimitedTrades
+              }));
+              
+              // Broadcast to all players
+              if (tradingEnabled && code) {
+                console.log('Host broadcasting trading phase start to all players');
+                s.emit('start_trading_phase', { code: code, settings: cached });
+              }
+            }
           }
         } catch (err) {
-          console.warn('Failed to restore cached settings:', err);
+          console.warn('Failed to restore host cached settings:', err);
         }
-      } else {
-        console.log('Not checking cache because:', !data.settings ? 'no server settings' : 'have server settings', s ? 'have socket' : 'no socket');
       }
       
-      console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from local:', lobbySettings.allowTrading);
+      console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from cache:', tradingEnabled);
       
       if (tradingEnabled) {
         console.log('Setting trading phase active to true');
@@ -2853,6 +2857,20 @@ function App() {
     });
     
     // Trading socket handlers
+    s.on('trading_phase_start', (data) => {
+      console.log('Received trading_phase_start from host:', data);
+      if (data && data.settings) {
+        setLobbySettings(prev => ({
+          ...prev,
+          allowTrading: data.settings.allowTrading,
+          maxTradeLimit: data.settings.maxTradeLimit,
+          unlimitedTrades: data.settings.unlimitedTrades
+        }));
+        setTradingPhaseActive(true);
+        console.log('Non-host entering trading phase');
+      }
+    });
+    
     s.on('trade_offer_received', (data) => {
       setIncomingTradeOffer(data);
     });
