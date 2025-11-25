@@ -884,6 +884,9 @@ function App() {
         return;
       }
       
+      console.log('Raw team data from storage:', team.data);
+      console.log('First slot from storage:', team.data.slots[0]);
+      
       // The team.data already has the correct structure (slots with pokemon objects)
       // Just need to ensure empty slots are properly structured
       const loadedData = {
