@@ -891,17 +891,33 @@ function App() {
         slots: team.data.slots.map((slot, idx) => {
           // If slot already has pokemon object, ensure it has all required properties
           if (slot && slot.pokemon) {
-            return {
-              ...slot,
+            // Ensure pokemon object has all required properties
+            const pokemon = {
+              id: slot.pokemon.id || 0,
+              name: slot.pokemon.name || '',
+              img: slot.pokemon.img || '',
+              baseStats: slot.pokemon.baseStats || {
+                hp: 0, attack: 0, defense: 0, 
+                specialAttack: 0, specialDefense: 0, speed: 0
+              },
+              abilities: slot.pokemon.abilities || [],
+              moves: slot.pokemon.moves || [],
+              types: slot.pokemon.types || []
+            };
+            
+            // Build the slot with proper defaults
+            const loadedSlot = {
               slotNumber: slot.slotNumber || idx + 1,
-              ivs: slot.ivs || { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
-              evs: slot.evs || { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
-              moves: slot.moves || ['', '', '', ''],
+              pokemon: pokemon,
+              heldItem: slot.heldItem || '',
               ability: slot.ability || '',
               nature: slot.nature || 'hardy',
-              heldItem: slot.heldItem || '',
+              moves: Array.isArray(slot.moves) && slot.moves.length === 4 ? slot.moves : ['', '', '', ''],
+              ivs: (slot.ivs && typeof slot.ivs === 'object') ? slot.ivs : { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+              evs: (slot.evs && typeof slot.evs === 'object') ? slot.evs : { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
               isCaptain: slot.isCaptain || false
             };
+            return loadedSlot;
           }
           // Otherwise return empty slot
           return createEmptySlot(idx);
@@ -911,6 +927,7 @@ function App() {
       console.log('Team loaded:', {
         loadedData,
         slotsWithPokemon: loadedData.slots.filter(s => s.pokemon).length,
+        firstSlot: loadedData.slots.find(s => s.pokemon),
         teamBuilderLoaded: true,
         showTeamSelector: false
       });
@@ -4002,9 +4019,9 @@ function App() {
                         const statDisplay = statKey === 'specialAttack' ? 'Sp. Atk' : 
                                           statKey === 'specialDefense' ? 'Sp. Def' : 
                                           statKey.charAt(0).toUpperCase() + statKey.slice(1);
-                        const base = slot.pokemon.baseStats[statKey] || 0;
-                        const iv = slot.ivs[statKey] || 0;
-                        const ev = slot.evs[statKey] || 0;
+                        const base = slot.pokemon?.baseStats?.[statKey] || 0;
+                        const iv = slot.ivs?.[statKey] || 0;
+                        const ev = slot.evs?.[statKey] || 0;
                         const total = calculateStatTotal(base, iv, ev, 100, slot.nature, statKey);
                         
                         return (
