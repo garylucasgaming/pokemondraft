@@ -884,8 +884,41 @@ function App() {
         return;
       }
       
-      setTeamBuilderData(team.data);
-      saveTeamBuilderData(team.data);
+      // Ensure all slots have proper structure
+      const loadedData = {
+        ...team.data,
+        slots: team.data.slots.map((slot, idx) => {
+          if (!slot) {
+            return createEmptySlot(idx);
+          }
+          // If slot has pokemonName but no pokemon object, create it
+          if (slot.pokemonName && !slot.pokemon) {
+            return {
+              ...slot,
+              pokemon: {
+                id: slot.pokemonId || 0,
+                name: slot.pokemonName,
+                img: slot.sprite || '',
+                baseStats: slot.stats ? {
+                  hp: slot.stats.hp?.base || 0,
+                  attack: slot.stats.attack?.base || 0,
+                  defense: slot.stats.defense?.base || 0,
+                  specialAttack: slot.stats.specialAttack?.base || 0,
+                  specialDefense: slot.stats.specialDefense?.base || 0,
+                  speed: slot.stats.speed?.base || 0
+                } : {
+                  hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0
+                },
+                abilities: [],
+                moves: []
+              }
+            };
+          }
+          return slot;
+        })
+      };
+      
+      setTeamBuilderData(loadedData);
       setTeamBuilderLoaded(true);
       setShowTeamSelector(false);
       
@@ -1711,11 +1744,11 @@ function App() {
           return false;
         }
         // Normalize ability name for comparison (handle both formats)
-        const searchAbility = filterAbility.toLowerCase().replace(/\s+/g, '-');
+        const searchAbility = filterAbility.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
         const hasAbility = p.abilities.some(ability => {
           if (!ability) return false;
-          const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '-');
-          return normalizedAbility.includes(searchAbility) || ability.toLowerCase().includes(filterAbility.toLowerCase());
+          const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
+          return normalizedAbility === searchAbility || normalizedAbility.includes(searchAbility);
         });
         if (!hasAbility) return false;
       }
