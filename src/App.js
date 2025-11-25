@@ -2795,16 +2795,27 @@ function App() {
       // Determine trading status: server > cached host settings > local state
       let tradingEnabled = data.settings?.allowTrading ?? lobbySettings.allowTrading;
       
+      console.log('Checking cache conditions:', {
+        hasServerSettings: !!data.settings,
+        hasSocket: !!socket,
+        socketId: socket?.id,
+        hostId: hostId,
+        isHost: socket?.id === hostId
+      });
+      
       // If server didn't provide settings and we're the host, use cached settings
       if (!data.settings && socket && socket.id === hostId) {
+        console.log('Attempting to read cached host settings...');
         try {
           const cachedStr = localStorage.getItem('hostDraftSettings');
+          console.log('Cache raw value:', cachedStr);
           if (cachedStr) {
             const cached = JSON.parse(cachedStr);
+            console.log('Parsed cache:', cached, 'Current lobbyCode:', lobbyCode);
             // Verify cache is for current lobby
             if (cached.lobbyCode === lobbyCode) {
               tradingEnabled = cached.allowTrading;
-              console.log('Using cached host settings:', cached);
+              console.log('✓ Using cached host settings:', cached);
               // Update local state with cached values
               setLobbySettings(prev => ({
                 ...prev,
@@ -2812,11 +2823,17 @@ function App() {
                 maxTradeLimit: cached.maxTradeLimit,
                 unlimitedTrades: cached.unlimitedTrades
               }));
+            } else {
+              console.log('Cache lobby mismatch:', cached.lobbyCode, 'vs', lobbyCode);
             }
+          } else {
+            console.log('No cache found in localStorage');
           }
         } catch (err) {
           console.warn('Failed to restore cached settings:', err);
         }
+      } else {
+        console.log('Not checking cache because:', !data.settings ? 'no server settings' : 'have server settings', socket ? 'have socket' : 'no socket', socket?.id === hostId ? 'is host' : 'not host');
       }
       
       console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from local:', lobbySettings.allowTrading);
