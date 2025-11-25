@@ -63,7 +63,7 @@ body {
 
 }
 
-.TitleSection button {
+.TitleSection button:not(.nav-button) {
   width: 200px;
   height: 30px;
   margin: 30px;
@@ -254,6 +254,29 @@ body {
   background: #bf5c3c;
 }
 
+.start-draft-button {
+  padding: 10px 20px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+  transition: all 0.2s ease;
+}
+
+.start-draft-button:hover {
+  background: #229954;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
+}
+
+.start-draft-button:active {
+  transform: translateY(0);
+}
+
 .toggle-button {
   padding: 6px 10px;
   background: #4a5568;
@@ -376,9 +399,100 @@ body {
 .PlayersPanel {
   flex: 0 0 280px;
 }
+
+.SettingsAndPointsContainer {
+  flex: 1 1 0;
+  display: flex;
+  gap: 16px;
+}
+
 .SettingsPanel {
   flex: 1 1 0;
   box-sizing: border-box;
+}
+
+.PointsAssignmentPanel {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.selected-pokemon-area {
+  margin-top: 12px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.selected-pokemon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.selected-pokemon-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selected-pokemon-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.selected-pokemon-item .remove-btn {
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0;
+}
+
+.selected-pokemon-item .remove-btn:hover {
+  background: #cc0000;
+}
+
+.points-apply-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.points-import-export {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.points-section-full-width {
+  margin-top: 20px;
+  width: 100%;
 }
 .BanListContainer {
   max-height: 120px;

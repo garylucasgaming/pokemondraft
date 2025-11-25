@@ -109,6 +109,7 @@ function App() {
   const [draftPokemonList, setDraftPokemonList] = useState([]);
   const [pointsSearchName, setPointsSearchName] = useState('');
   const [pointsValueSelected, setPointsValueSelected] = useState(1);
+  const [selectedPokemonForPoints, setSelectedPokemonForPoints] = useState([]); // Array of pokemon objects to apply points to
   const [currentTurn, setCurrentTurn] = useState(null);
   const [lobbyDraftOrder, setLobbyDraftOrder] = useState([]);
   const [lobbyGenFilter, setLobbyGenFilter] = useState(0);
@@ -1291,14 +1292,29 @@ function App() {
 
   // Export current pointsMap to a downloadable text file (CSV: name,points)
   const exportPoints = () => {
-    const map = pointsMap || {};
-    const lines = Object.keys(map).map(k => `${k},${map[k]}`);
-    const text = lines.join('\n');
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    // Create comprehensive settings export including all lobby settings
+    const exportData = {
+      version: 1,
+      exportDate: new Date().toISOString(),
+      lobbyCode: lobbyCode || 'unknown',
+      settings: {
+        pointsLimit: lobbySettings.pointsLimit,
+        teamSizeLimit: lobbySettings.teamSizeLimit,
+        genFilter: lobbyGenFilter,
+        allowTrading: lobbySettings.allowTrading || false,
+        maxTradeLimit: lobbySettings.maxTradeLimit || 0,
+        unlimitedTrades: lobbySettings.unlimitedTrades || false
+      },
+      pointsMap: pointsMap || {},
+      banList: banList || []
+    };
+    
+    const jsonText = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pkmndraftsettings_${lobbyCode || 'export'}.txt`;
+    a.download = `pkmndraftsettings_${lobbyCode || 'export'}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1312,9 +1328,40 @@ function App() {
     reader.onload = (e) => {
       const txt = e.target.result;
       let parsed = null;
+      let importedSettings = null;
+      let importedBanList = null;
+      
       try {
-        parsed = JSON.parse(txt);
-        if (typeof parsed !== 'object') parsed = null;
+        const jsonData = JSON.parse(txt);
+        if (typeof jsonData !== 'object') {
+          parsed = null;
+        } else {
+          // Check if it's the new format with version and settings
+          if (jsonData.version && jsonData.pointsMap) {
+            parsed = jsonData.pointsMap;
+            
+            // Extract settings if present
+            if (jsonData.settings) {
+              importedSettings = {
+                pointsLimit: jsonData.settings.pointsLimit,
+                teamSizeLimit: jsonData.settings.teamSizeLimit,
+                genFilter: jsonData.settings.genFilter,
+                allowTrading: jsonData.settings.allowTrading ?? false,
+                maxTradeLimit: jsonData.settings.maxTradeLimit ?? 0,
+                unlimitedTrades: jsonData.settings.unlimitedTrades ?? false
+              };
+              console.log('Importing new format with settings:', importedSettings);
+            }
+            
+            // Extract ban list if present
+            if (jsonData.banList && Array.isArray(jsonData.banList)) {
+              importedBanList = jsonData.banList;
+            }
+          } else {
+            // Old format: just pointsMap as object
+            parsed = jsonData;
+          }
+        }
       } catch (err) {
         // try CSV parse: each line name,points
         const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1330,25 +1377,91 @@ function App() {
             pm[name] = val;
           }
         }
-        parsed = pm;
+        if (Object.keys(pm).length > 0) {
+          parsed = pm;
+        }
       }
+      
       if (parsed) {
         // emit to server as bulk import
         if (socket && lobbyCode) {
-          console.log('Importing points to lobby:', lobbyCode);
+          console.log('Importing to lobby:', lobbyCode, { 
+            hasSettings: !!importedSettings, 
+            hasBanList: !!importedBanList,
+            pointsCount: Object.keys(parsed).length 
+          });
+          
+          // If we have imported settings, apply them first
+          if (importedSettings) {
+            const newSettings = {
+              pointsLimit: importedSettings.pointsLimit ?? lobbySettings.pointsLimit,
+              teamSizeLimit: importedSettings.teamSizeLimit ?? lobbySettings.teamSizeLimit,
+              allowTrading: importedSettings.allowTrading ?? false,
+              maxTradeLimit: importedSettings.maxTradeLimit ?? 0,
+              unlimitedTrades: importedSettings.unlimitedTrades ?? false
+            };
+            
+            // Update local settings immediately
+            setLobbySettings(newSettings);
+            
+            if (importedSettings.genFilter != null) {
+              setLobbyGenFilter(importedSettings.genFilter);
+            }
+            
+            // Send settings to server
+            socket.emit('update_settings', { 
+              code: lobbyCode, 
+              settings: {
+                ...newSettings,
+                genFilter: importedSettings.genFilter ?? lobbyGenFilter
+              }
+            }, (resp) => {
+              if (!resp || !resp.ok) {
+                console.warn('Failed to update lobby settings:', resp?.error);
+              } else {
+                console.log('Lobby settings updated successfully');
+              }
+            });
+          }
+          
+          // Update ban list if provided
+          if (importedBanList) {
+            setBanList(importedBanList);
+          }
+          
+          // Import points map
           socket.emit('import_points', { code: lobbyCode, pointsMap: parsed }, (resp) => {
             console.log('Import points response:', resp);
             if (!resp || !resp.ok) {
               alert(resp && resp.error ? resp.error : 'Failed to import points');
             } else {
               setPointsMap(normalizePointsMap(resp.pointsMap || {}));
-              alert('Settings imported successfully!');
+              let message = 'Points imported successfully';
+              if (importedSettings) message += '\nLobby settings updated';
+              if (importedBanList) message += '\nBan list updated';
+              alert(message + '!');
             }
           });
         } else {
           // local: just set map
           alert('Not connected to a lobby. Create or join a lobby first.');
           setPointsMap(normalizePointsMap(parsed));
+          if (importedSettings) {
+            setLobbySettings(prev => ({
+              ...prev,
+              pointsLimit: importedSettings.pointsLimit ?? prev.pointsLimit,
+              teamSizeLimit: importedSettings.teamSizeLimit ?? prev.teamSizeLimit,
+              allowTrading: importedSettings.allowTrading ?? prev.allowTrading,
+              maxTradeLimit: importedSettings.maxTradeLimit ?? prev.maxTradeLimit,
+              unlimitedTrades: importedSettings.unlimitedTrades ?? prev.unlimitedTrades
+            }));
+            if (importedSettings.genFilter != null) {
+              setLobbyGenFilter(importedSettings.genFilter);
+            }
+          }
+          if (importedBanList) {
+            setBanList(importedBanList);
+          }
         }
       } else {
         alert('Failed to parse settings file. Please check the format.');
@@ -1368,6 +1481,7 @@ function App() {
           name: pokemon.form_name || pokemon.species_name,
           img: pokemon.sprite_front_default,
           types: pokemon.types,
+          abilities: pokemon.abilities,
           moves: pokemon.moves,
           generation: pokemon.generation
         })).sort((a, b) => a.id - b.id);
@@ -2439,9 +2553,20 @@ function App() {
       setDraftComplete(true);
       setFinalTeams(data);
       
-      // Check if trading is enabled
-      if (lobbySettings.allowTrading) {
+      // Update lobby settings if provided by server
+      if (data.settings) {
+        setLobbySettings(data.settings);
+      }
+      
+      // Check if trading is enabled - use server data if available, fallback to local settings
+      const tradingEnabled = data.settings?.allowTrading ?? lobbySettings.allowTrading;
+      console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from local:', lobbySettings.allowTrading);
+      
+      if (tradingEnabled) {
+        console.log('Setting trading phase active to true');
         setTradingPhaseActive(true);
+      } else {
+        console.log('Trading is disabled, going directly to final teams');
       }
       // Team is already saved in ongoing draft, no need to auto-save separately
     });
@@ -2590,13 +2715,13 @@ function App() {
                     <strong>Lobby Code:</strong>
                     <span className="LobbyCode">{lobbyCode}</span>
                     <button className="gen-button ml-8" onClick={copyLobbyCode}>Copy</button>
+                    {socket && hostId && socket.id === hostId && (
+                      <button className="start-draft-button ml-8" onClick={startDraft}>Start Draft</button>
+                    )}
                     {exportMessage && (<span className="copy-confirm ml-8">{exportMessage}</span>)}
                   </div>
                   <div>
                     <button className="toggle-button btn-mr8" onClick={leaveLobby}>Leave</button>
-                    {socket && hostId && socket.id === hostId && (
-                      <button className="export-button" onClick={startDraft}>Start Draft</button>
-                    )}
                   </div>
                 </div>
                 <div className="LobbyMeta">Max players: 12</div>
@@ -2614,6 +2739,7 @@ function App() {
                   </ul>
                 </div>
 
+                <div className="SettingsAndPointsContainer">
                 <div className="SettingsPanel">
                       <div className="LobbySettingsTitle"><strong>Lobby Settings</strong></div>
                   {socket && hostId && socket.id === hostId ? (
@@ -2736,117 +2862,142 @@ function App() {
                           </div>
                         </>
                       )}
-
-                      
-
-                      <div className="mt-12">
-                        <strong>Points assignment (host only)</strong>
-                        <div className="points-controls">
-                          <div className="points-search">
-                              <input className="points-search-input" placeholder="pokemon-name" value={pointsSearchName} onChange={(e) => { setPointsSearchName(e.target.value.toLowerCase()); setSuggestionsVisible(true); }} />
-                              {suggestionsVisible && pointsSearchName && (
-                                <div className="points-suggestions suggestions-dropdown">
-                                  {pokemonList.filter(p => {
-                                    const gen = lobbyGenFilter || 0;
-                                    if (gen > 0 && p.id > genLimits[gen]) return false;
-                                    const name = p.name.toLowerCase();
-                                    if (hideLegendaries && legendaryMap[name]) return false;
-                                    return name.includes(pointsSearchName);
-                                  }).slice(0, 10).map(p => (
-                                    <div key={p.id} className="suggestion-item" onClick={() => { setPointsSearchName(p.name); setSuggestionsVisible(false); }}>{p.name}</div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          <select className="points-select" value={pointsValueSelected} onChange={(e) => setPointsValueSelected(Number(e.target.value))}>
-                            <option key={0} value={0}>banned</option>
-                            {Array.from({length:20}, (_,i) => i+1).map(n => <option key={n} value={n}>{n}</option>)}
-                          </select>
-                          <button className="set-button" onClick={() => {
-                            if (!pointsSearchName) return alert('Enter a pokemon name');
-                            console.debug('emitting set_points', { code: lobbyCode, name: pointsSearchName, value: pointsValueSelected });
-                            socket.emit('set_points', { code: lobbyCode, name: pointsSearchName, value: pointsValueSelected }, (resp) => {
-                              console.debug('set_points response:', resp);
-                              if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to set points');
-                              else {
-                                setPointsMap(resp.pointsMap || {});
-                                setPointsSearchName('');
-                              }
-                            });
-                          }}>Set</button>
-                          <button className="export-button" onClick={() => exportPoints()}>Export Settings</button>
-                          <input id="points-import-input" type="file" accept=".txt,.json,text/plain" className="hidden-file-input" onChange={(e) => { if (e.target.files && e.target.files[0]) handleImportPointsFile(e.target.files[0]); e.target.value = ''; }} />
-                          <button className="import-button" onClick={() => document.getElementById('points-import-input').click()}>Import Settings</button>
-                        </div>
-
-                        <div className="points-section">
-                            <div className="points-title"><strong>Points table (1-20)</strong></div>
-                            <div className="PointsGrid">
-                              {[0, ...Array.from({length:20}, (_,i) => i+1)].map((val) => (
-                                <div key={val} className="PointsTile">
-                                  <div className="points-header">{val === 0 ? 'Banned' : `Points ${val}`}</div>
-                                  <div className="points-list">
-                                    {pokemonList.filter(p => {
-                                        const pm = pointsMap[p.name];
-                                        const pmNum = pm == null ? null : Number(pm);
-                                        if (val === 0) return pmNum === 0;
-                                        const effective = (pmNum == null) ? 1 : pmNum;
-                                        return effective === val;
-                                      }).filter(p => {
-                                        // For the Banned column (val === 0) always show banned entries
-                                        if (val === 0) return true;
-                                        return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
-                                      }).map(p => (
-                                      <div key={p.id} className="points-item-row">
-                                        <img src={p.img} alt={p.name} className="points-sprite" />
-                                        <span className="points-name">{p.name}</span>
-                                        { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                      </div>
                     </div>
                   ) : (
-                    // Non-host read-only view: show settings summary, ban list and points table without controls
+                    // Non-host read-only view: show settings summary
                     <div>
                       <div className="row">
                             <div className="col-1"><div className="fs-12">Points Limit: <strong>{lobbySettings.pointsLimit}</strong></div></div>
                           </div>
-                      {/* Ban list box removed; bans are managed via the points table */}
-                        <div className="mt-12">
-                        <div className="points-title"><strong>Points table (Banned + 1-20)</strong></div>
-                        <div className="PointsGrid">
-                          {[0, ...Array.from({length:20}, (_,i) => i+1)].map((val) => (
-                            <div key={val} className="PointsTile">
-                              <div className="points-header">{val === 0 ? 'Banned' : `Points ${val}`}</div>
-                              <div className="points-list">
-                                {pokemonList.filter(p => {
-                                    const pm = pointsMap[p.name];
-                                    const pmNum = pm == null ? null : Number(pm);
-                                    if (val === 0) return pmNum === 0;
-                                    const effective = (pmNum == null) ? 1 : pmNum;
-                                    return effective === val;
-                                  }).filter(p => {
-                                    if (val === 0) return true;
-                                    return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
-                                  }).map(p => (
-                                  <div key={p.id} className="points-item-row">
-                                    <img src={p.img} alt={p.name} className="points-sprite" />
-                                    <span>{p.name}</span>
-                                    { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
-                                  </div>
-                                ))}
-                              </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Points Assignment Panel - Host Only */}
+                {socket && hostId && socket.id === hostId && (
+                  <div className="PointsAssignmentPanel">
+                    <div className="LobbySettingsTitle"><strong>Points Assignment</strong></div>
+                    <div className="points-controls">
+                      <div className="points-search">
+                          <input className="points-search-input" placeholder="Search Pokémon" value={pointsSearchName} onChange={(e) => { setPointsSearchName(e.target.value.toLowerCase()); setSuggestionsVisible(true); }} />
+                          {suggestionsVisible && pointsSearchName && (
+                            <div className="points-suggestions suggestions-dropdown">
+                              {pokemonList.filter(p => {
+                                const gen = lobbyGenFilter || 0;
+                                if (gen > 0 && p.id > genLimits[gen]) return false;
+                                const name = p.name.toLowerCase();
+                                if (hideLegendaries && legendaryMap[name]) return false;
+                                return name.includes(pointsSearchName);
+                              }).slice(0, 10).map(p => (
+                                <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
+                                  // Add to selected Pokemon list if not already there
+                                  if (!selectedPokemonForPoints.find(sp => sp.id === p.id)) {
+                                    setSelectedPokemonForPoints([...selectedPokemonForPoints, p]);
+                                  }
+                                  setPointsSearchName('');
+                                  setSuggestionsVisible(false);
+                                }}>
+                                  <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
+                                  <span>{p.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                    </div>
+
+                    {/* Selected Pokemon Area */}
+                    {selectedPokemonForPoints.length > 0 && (
+                      <div className="selected-pokemon-area">
+                        <div className="selected-pokemon-header">
+                          <strong>Selected Pokémon ({selectedPokemonForPoints.length})</strong>
+                          <button className="gen-button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => setSelectedPokemonForPoints([])}>Clear All</button>
+                        </div>
+                        <div className="selected-pokemon-list">
+                          {selectedPokemonForPoints.map(p => (
+                            <div key={p.id} className="selected-pokemon-item">
+                              <img src={p.img} alt={p.name} style={{ width: '24px', height: '24px' }} />
+                              <span>{p.name}</span>
+                              <button className="remove-btn" onClick={() => setSelectedPokemonForPoints(selectedPokemonForPoints.filter(sp => sp.id !== p.id))}>×</button>
                             </div>
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {/* Points Value Selector and Apply Button */}
+                    <div className="points-apply-controls">
+                      <select className="points-select" value={pointsValueSelected} onChange={(e) => setPointsValueSelected(Number(e.target.value))}>
+                        <option key={0} value={0}>banned</option>
+                        {Array.from({length:20}, (_,i) => i+1).map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <button className="set-button" onClick={() => {
+                        if (selectedPokemonForPoints.length === 0) return alert('Add Pokémon to the list first');
+                        
+                        // Apply points to all selected Pokemon
+                        const promises = selectedPokemonForPoints.map(p => {
+                          return new Promise((resolve) => {
+                            socket.emit('set_points', { code: lobbyCode, name: p.name, value: pointsValueSelected }, (resp) => {
+                              resolve(resp);
+                            });
+                          });
+                        });
+
+                        Promise.all(promises).then((responses) => {
+                          const failed = responses.filter(r => !r || !r.ok);
+                          if (failed.length > 0) {
+                            alert(`Failed to set points for ${failed.length} Pokémon`);
+                          } else {
+                            // Get the latest pointsMap from the last response
+                            const lastResp = responses[responses.length - 1];
+                            if (lastResp && lastResp.pointsMap) {
+                              setPointsMap(lastResp.pointsMap);
+                            }
+                            alert(`Points set to ${pointsValueSelected} for ${selectedPokemonForPoints.length} Pokémon`);
+                            setSelectedPokemonForPoints([]);
+                          }
+                        });
+                      }}>Apply to All</button>
                     </div>
-                  )}
+
+                    <div className="points-import-export">
+                      <button className="export-button" onClick={() => exportPoints()}>Export Settings</button>
+                      <input id="points-import-input" type="file" accept=".txt,.json,text/plain" className="hidden-file-input" onChange={(e) => { if (e.target.files && e.target.files[0]) handleImportPointsFile(e.target.files[0]); e.target.value = ''; }} />
+                      <button className="import-button" onClick={() => document.getElementById('points-import-input').click()}>Import Settings</button>
+                    </div>
+                  </div>
+                )}
+                </div>
+
+                {/* Points Table - Always Visible */}
+                <div className="points-section-full-width">
+                  <div className="points-title"><strong>Points Table</strong></div>
+                  <div className="PointsGrid">
+                    {[0, ...Array.from({length:20}, (_,i) => i+1)].map((val) => (
+                      <div key={val} className="PointsTile">
+                        <div className="points-header">{val === 0 ? 'Banned' : `Points ${val}`}</div>
+                        <div className="points-list">
+                          {pokemonList.filter(p => {
+                              const pm = pointsMap[p.name];
+                              const pmNum = pm == null ? null : Number(pm);
+                              if (val === 0) return pmNum === 0;
+                              const effective = (pmNum == null) ? 1 : pmNum;
+                              return effective === val;
+                            }).filter(p => {
+                              // For the Banned column (val === 0) always show banned entries
+                              if (val === 0) return true;
+                              return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
+                            }).map(p => (
+                            <div key={p.id} className="points-item-row">
+                              <img src={p.img} alt={p.name} className="points-sprite" />
+                              <span className="points-name">{p.name}</span>
+                              { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -3430,7 +3581,10 @@ function App() {
                   {draftSuggestionsVisible && searchTerm && (
                     <div className="suggestions-dropdown" style={{ position: 'absolute', top: '36px', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto' }}>
                       {(draftPokemonList.length > 0 ? draftPokemonList : pokemonList).filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0,8).map(p => (
-                        <div key={p.id} className="suggestion-item" style={{ padding: '6px 8px', cursor: 'pointer' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>{p.name}</div>
+                        <div key={p.id} className="suggestion-item" style={{ padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
+                          <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
+                          <span>{p.name}</span>
+                        </div>
                       ))}
                     </div>
                   )}
