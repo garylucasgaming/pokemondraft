@@ -2628,10 +2628,26 @@ function App() {
       if (data && data.currentTurn) setCurrentTurn(data.currentTurn);
     });
     s.on('draft_started', (data) => {
+      console.log('draft_started, current lobbySettings:', lobbySettings);
       if (data && data.code) {
         setLobbyCode(data.code);
         if (data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
         if (data.draftOrder) setLobbyDraftOrder(data.draftOrder || []);
+        
+        // If host, cache current settings for draft_complete fallback
+        if (socket && socket.id === hostId) {
+          try {
+            const settingsCache = {
+              allowTrading: lobbySettings.allowTrading,
+              maxTradeLimit: lobbySettings.maxTradeLimit,
+              unlimitedTrades: lobbySettings.unlimitedTrades,
+              lobbyCode: data.code
+            };
+            localStorage.setItem('hostDraftSettings', JSON.stringify(settingsCache));
+          } catch (err) {
+            console.warn('Failed to cache host settings:', err);
+          }
+        }
         // compute allowed pokemon based on lobby gen filter and other visible filters
         const gen = lobbyGenFilter || 0;
         const allowed = pokemonList.filter((p) => {
@@ -2776,8 +2792,33 @@ function App() {
         setLobbySettings(data.settings);
       }
       
-      // Check if trading is enabled - use server data if available, fallback to local settings
-      const tradingEnabled = data.settings?.allowTrading ?? lobbySettings.allowTrading;
+      // Determine trading status: server > cached host settings > local state
+      let tradingEnabled = data.settings?.allowTrading ?? lobbySettings.allowTrading;
+      
+      // If server didn't provide settings and we're the host, use cached settings
+      if (!data.settings && socket && socket.id === hostId) {
+        try {
+          const cachedStr = localStorage.getItem('hostDraftSettings');
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr);
+            // Verify cache is for current lobby
+            if (cached.lobbyCode === lobbyCode) {
+              tradingEnabled = cached.allowTrading;
+              console.log('Using cached host settings:', cached);
+              // Update local state with cached values
+              setLobbySettings(prev => ({
+                ...prev,
+                allowTrading: cached.allowTrading,
+                maxTradeLimit: cached.maxTradeLimit,
+                unlimitedTrades: cached.unlimitedTrades
+              }));
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to restore cached settings:', err);
+        }
+      }
+      
       console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from local:', lobbySettings.allowTrading);
       
       if (tradingEnabled) {
@@ -3049,6 +3090,15 @@ function App() {
                                   socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, allowTrading: newValue, genFilter: lobbyGenFilter } }, (resp) => {
                                     if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                   });
+                                  // Cache updated settings for draft_complete fallback
+                                  try {
+                                    const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
+                                    cached.allowTrading = newValue;
+                                    cached.lobbyCode = lobbyCode;
+                                    localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
+                                  } catch (err) {
+                                    console.warn('Failed to cache setting update:', err);
+                                  }
                                 }
                               }}
                             />
@@ -3073,6 +3123,15 @@ function App() {
                                     socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, maxTradeLimit: newLimit, genFilter: lobbyGenFilter } }, (resp) => {
                                       if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                     });
+                                    // Cache updated settings
+                                    try {
+                                      const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
+                                      cached.maxTradeLimit = newLimit;
+                                      cached.lobbyCode = lobbyCode;
+                                      localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
+                                    } catch (err) {
+                                      console.warn('Failed to cache setting update:', err);
+                                    }
                                   }
                                 }} 
                                 className="input-full"
@@ -3091,6 +3150,15 @@ function App() {
                                     setLobbySettings((s) => ({...s, unlimitedTrades: newValue}));
                                     if (socket && lobbyCode && socket.id === hostId) {
                                       socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                        // Cache updated settings
+                                        try {
+                                          const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
+                                          cached.unlimitedTrades = newValue;
+                                          cached.lobbyCode = lobbyCode;
+                                          localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
+                                        } catch (err) {
+                                          console.warn('Failed to cache setting update:', err);
+                                        }
                                         if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                       });
                                     }
