@@ -52,6 +52,8 @@ io.on('connection', (socket) => {
       draftStarted: false,
       currentTurn: null,
       draftOrder: [],
+      snakeDraftDirection: 1, // 1 for forward, -1 for backward
+      currentRound: 0,
       tradesCompleted: {},
       playersFinishedTrading: [],
       pendingTrades: new Map()
@@ -245,6 +247,8 @@ io.on('connection', (socket) => {
     }
     lobby.draftOrder = userIds;
     lobby.currentTurn = lobby.draftOrder[0];
+    lobby.snakeDraftDirection = 1; // Start going forward
+    lobby.currentRound = 0;
     
     callback({ ok: true });
     io.to(code).emit('draft_started', {
@@ -296,9 +300,24 @@ io.on('connection', (socket) => {
     lobby.selections[socket.id].push(pokemon);
     lobby.pointsRemaining[socket.id] = remaining - cost;
     
-    // Move to next turn - skip disconnected players
+    // Snake draft turn advancement
     const currentIndex = lobby.draftOrder.indexOf(lobby.currentTurn);
-    let nextIndex = (currentIndex + 1) % lobby.draftOrder.length;
+    const direction = lobby.snakeDraftDirection || 1;
+    let nextIndex = currentIndex + direction;
+    
+    // Check if we've reached the end and need to reverse direction
+    if (nextIndex >= lobby.draftOrder.length) {
+      // Hit the end going forward, reverse direction
+      lobby.snakeDraftDirection = -1;
+      nextIndex = lobby.draftOrder.length - 1; // Stay at last player
+      lobby.currentRound++;
+    } else if (nextIndex < 0) {
+      // Hit the start going backward, reverse direction
+      lobby.snakeDraftDirection = 1;
+      nextIndex = 0; // Stay at first player
+      lobby.currentRound++;
+    }
+    
     let attempts = 0;
     const maxAttempts = lobby.draftOrder.length;
     
@@ -310,11 +329,19 @@ io.on('connection', (socket) => {
         lobby.currentTurn = nextPlayerId;
         break;
       }
-      nextIndex = (nextIndex + 1) % lobby.draftOrder.length;
+      // Move in the current direction to find next active player
+      nextIndex = nextIndex + (lobby.snakeDraftDirection || 1);
+      if (nextIndex >= lobby.draftOrder.length) {
+        nextIndex = lobby.draftOrder.length - 1;
+        lobby.snakeDraftDirection = -1;
+      } else if (nextIndex < 0) {
+        nextIndex = 0;
+        lobby.snakeDraftDirection = 1;
+      }
       attempts++;
     }
     
-    console.log(`Turn moved from index ${currentIndex} to ${nextIndex}, currentTurn: ${lobby.currentTurn}`);
+    console.log(`Snake draft: Round ${lobby.currentRound}, Direction: ${lobby.snakeDraftDirection === 1 ? 'forward' : 'backward'}, moved from index ${currentIndex} to ${nextIndex}, currentTurn: ${lobby.currentTurn}`);
     
     // Check if draft is complete (all players have reached team size limit)
     const teamSizeLimit = lobby.settings.teamSizeLimit || 10;
@@ -498,13 +525,13 @@ io.on('connection', (socket) => {
     io.to(trade.from).emit('trade_declined');
   });
 
-  socket.on('trade_for_unpicked', ({ code, playerId, oldPokemon, newPokemon }, callback) => {
+  socket.on('trade_for_unpicked', ({ code, playerId, oldPokemon, newPokemon, newPokemonData }, callback) => {
     const lobby = lobbies.get(code);
     if (!lobby) {
       return callback?.({ ok: false, error: 'Lobby not found' });
     }
     
-    console.log(`Unpicked trade in ${code}: ${playerId} swapping ${oldPokemon} for ${newPokemon}`);
+    console.log(`Unpicked trade in ${code}: ${playerId} swapping ${oldPokemon} for ${newPokemon}`, newPokemonData ? 'with full data' : 'name only');
     
     // Initialize trading state if needed
     if (!lobby.tradesCompleted) {
@@ -533,24 +560,31 @@ io.on('connection', (socket) => {
     const pokemonIndex = playerSelections.findIndex(p => p.name === oldPokemon);
     
     if (pokemonIndex !== -1) {
-      // Keep the same structure but update the name
-      // The client will need the name to fetch the full Pokemon data
-      const oldPokemonData = playerSelections[pokemonIndex];
+      // Use the full Pokemon data if provided, otherwise create minimal object
+      let newPokemonObj;
+      if (newPokemonData && newPokemonData.id) {
+        // Client sent full Pokemon data, use it
+        newPokemonObj = {
+          id: newPokemonData.id,
+          name: newPokemonData.name,
+          img: newPokemonData.img,
+          abilities: newPokemonData.abilities,
+          moves: newPokemonData.moves,
+          stats: newPokemonData.stats
+        };
+      } else {
+        // Fallback to minimal object (client will reconstruct)
+        const oldPokemonData = playerSelections[pokemonIndex];
+        newPokemonObj = {
+          name: newPokemon,
+          id: undefined,
+          img: undefined,
+          ...oldPokemonData,
+          name: newPokemon
+        };
+      }
       
-      // Create new Pokemon object with updated name but keep other properties
-      // We send the name and the client should have the full Pokemon list to reconstruct
-      const newPokemonData = {
-        name: newPokemon,
-        // Keep id as undefined so client knows to look it up
-        id: undefined,
-        img: undefined,
-        // Preserve any other metadata that might exist
-        ...oldPokemonData,
-        // Override with new name to ensure it's updated
-        name: newPokemon
-      };
-      
-      playerSelections[pokemonIndex] = newPokemonData;
+      playerSelections[pokemonIndex] = newPokemonObj;
       lobby.selections[playerId] = playerSelections;
       
       // Increment trade count

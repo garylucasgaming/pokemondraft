@@ -2570,7 +2570,10 @@ function App() {
   const confirmUnpickedTrade = (newPokemonName) => {
     if (!showUnpickedModal || !socket) return;
     
-    console.log('Sending unpicked trade:', showUnpickedModal, '->', newPokemonName);
+    // Find the full Pokemon object from pokemonList
+    const newPokemon = pokemonList.find(p => p.name === newPokemonName);
+    
+    console.log('Sending unpicked trade:', showUnpickedModal, '->', newPokemonName, 'Full Pokemon:', newPokemon);
     
     // Set a timeout to close modal even if server doesn't respond
     const timeout = setTimeout(() => {
@@ -2583,7 +2586,8 @@ function App() {
       code: lobbyCode,
       playerId: showUnpickedModal.ownerId,
       oldPokemon: showUnpickedModal.pokemonName,
-      newPokemon: newPokemonName
+      newPokemon: newPokemonName,
+      newPokemonData: newPokemon // Send full Pokemon data
     }, (response) => {
       clearTimeout(timeout);
       console.log('Unpicked trade response:', response);
@@ -3117,19 +3121,40 @@ function App() {
       if (data.updatedSelections && data.playerId && data.newPokemonName !== undefined) {
         const updatedSelections = { ...data.updatedSelections };
         
-        // Find the new Pokemon from our pokemonList
-        const newPokemon = pokemonList.find(p => p.name === data.newPokemonName);
+        // Try to find the new Pokemon from multiple sources
+        // 1. Try pokemonList first
+        let newPokemon = pokemonList.find(p => p.name === data.newPokemonName);
+        
+        // 2. If not found and we're in draft, try draftPokemonList
+        if (!newPokemon && draftPokemonList && draftPokemonList.length > 0) {
+          newPokemon = draftPokemonList.find(p => p.name === data.newPokemonName);
+        }
+        
+        // 3. If still not found, try to find it in finalTeams selections (in case it was traded)
+        if (!newPokemon && finalTeams?.selections) {
+          for (const userId in finalTeams.selections) {
+            const found = finalTeams.selections[userId].find(p => p && p.name === data.newPokemonName);
+            if (found) {
+              newPokemon = found;
+              break;
+            }
+          }
+        }
         
         if (newPokemon && updatedSelections[data.playerId]) {
           // Update the Pokemon at the correct index with full data
           if (data.pokemonIndex !== undefined) {
             updatedSelections[data.playerId][data.pokemonIndex] = {
-              ...newPokemon,
               id: newPokemon.id,
               name: newPokemon.name,
-              img: newPokemon.img
+              img: newPokemon.img,
+              abilities: newPokemon.abilities,
+              moves: newPokemon.moves,
+              stats: newPokemon.stats
             };
           }
+        } else {
+          console.warn('Could not find Pokemon data for:', data.newPokemonName);
         }
         
         // Update final teams with reconstructed data
@@ -3874,29 +3899,18 @@ function App() {
                         if (idx < myTeam.length) {
                           const p = myTeam[idx];
                           return {
-                            slotIndex: idx,
-                            pokemon: p.name,
-                            pokemonId: p.id,
-                            pokemonName: p.name,
-                            sprite: p.img,
-                            isCaptain: idx === 0,
+                            slotNumber: idx + 1,
+                            pokemon: p,
                             ability: '',
-                            nature: 'hardy',
+                            nature: 'Hardy',
                             heldItem: '',
+                            teraType: '',
                             moves: ['', '', '', ''],
-                            stats: {
-                              hp: { base: 0, iv: 31, ev: 0 },
-                              attack: { base: 0, iv: 31, ev: 0 },
-                              defense: { base: 0, iv: 31, ev: 0 },
-                              specialAttack: { base: 0, iv: 31, ev: 0 },
-                              specialDefense: { base: 0, iv: 31, ev: 0 },
-                              speed: { base: 0, iv: 31, ev: 0 }
-                            },
                             ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
                             evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 }
                           };
                         }
-                        return createEmptySlot(idx);
+                        return null;
                       });
                       
                       const teamToSave = {
