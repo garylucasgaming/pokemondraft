@@ -894,9 +894,18 @@ function App() {
       const processedSlots = await Promise.all(team.data.slots.map(async (slot, idx) => {
         // Check if slot has pokemon data
         if (slot && (slot.pokemon || slot.pokemonName)) {
-          // Get the pokemon name and ID
-          const pokemonName = (slot.pokemonName || slot.pokemon || '').toLowerCase();
-          const pokemonId = slot.pokemonId || 0;
+          // Get the pokemon name and ID - handle both old format (string) and new format (object)
+          let pokemonName, pokemonId;
+          
+          if (typeof slot.pokemon === 'object' && slot.pokemon !== null) {
+            // New format - pokemon is an object
+            pokemonName = (slot.pokemon.name || '').toLowerCase();
+            pokemonId = slot.pokemon.id || 0;
+          } else {
+            // Old format - pokemon is a string or pokemonName exists
+            pokemonName = (slot.pokemonName || slot.pokemon || '').toLowerCase();
+            pokemonId = slot.pokemonId || 0;
+          }
           
           // Find the full pokemon data from pokemon_data.json
           const fullPokemonData = allPokemon.find(p => 
