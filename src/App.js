@@ -2716,7 +2716,12 @@ function App() {
                     <span className="LobbyCode">{lobbyCode}</span>
                     <button className="gen-button ml-8" onClick={copyLobbyCode}>Copy</button>
                     {socket && hostId && socket.id === hostId && (
-                      <button className="start-draft-button ml-8" onClick={startDraft}>Start Draft</button>
+                      <>
+                        <button className="start-draft-button ml-8" onClick={startDraft}>Start Draft</button>
+                        <button className="export-button ml-8" onClick={() => exportPoints()}>Export Settings</button>
+                        <input id="points-import-input" type="file" accept=".txt,.json,text/plain" className="hidden-file-input" onChange={(e) => { if (e.target.files && e.target.files[0]) handleImportPointsFile(e.target.files[0]); e.target.value = ''; }} />
+                        <button className="import-button ml-8" onClick={() => document.getElementById('points-import-input').click()}>Import Settings</button>
+                      </>
                     )}
                     {exportMessage && (<span className="copy-confirm ml-8">{exportMessage}</span>)}
                   </div>
@@ -2812,7 +2817,7 @@ function App() {
                                 }
                               }}
                             />
-                            {' '}Allow Trading After Draft
+                            {' '}Allow Trading
                           </label>
                         </div>
                       </div>
@@ -2958,12 +2963,6 @@ function App() {
                           }
                         });
                       }}>Apply to All</button>
-                    </div>
-
-                    <div className="points-import-export">
-                      <button className="export-button" onClick={() => exportPoints()}>Export Settings</button>
-                      <input id="points-import-input" type="file" accept=".txt,.json,text/plain" className="hidden-file-input" onChange={(e) => { if (e.target.files && e.target.files[0]) handleImportPointsFile(e.target.files[0]); e.target.value = ''; }} />
-                      <button className="import-button" onClick={() => document.getElementById('points-import-input').click()}>Import Settings</button>
                     </div>
                   </div>
                 )}

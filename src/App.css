@@ -256,7 +256,7 @@ body {
 
 .start-draft-button {
   padding: 10px 20px;
-  background: #27ae60;
+  background: #bf5c3c;
   color: white;
   border: none;
   border-radius: 8px;
@@ -328,6 +328,8 @@ body {
 .LobbyControlsRow { 
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -596,13 +598,15 @@ body {
 
 /* Ban Legendaries button style (host-only action) */
 .ban-legendaries-button {
-  padding: 6px 10px;
+  padding: 6px 10px !important;
   background: #c53030; /* red */
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 14px;
+  min-width: 140px;
 }
 
 /* Footer styles */
@@ -693,13 +697,15 @@ body {
 
 /* Unban All button style */
 .unban-all-button {
-  padding: 6px 10px;
+  padding: 6px 10px !important;
   background: #16a34a; /* green */
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 14px;
+  min-width: 140px;
 }
 .unban-all-button:hover { background: #15803d; }
 
