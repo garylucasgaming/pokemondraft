@@ -122,8 +122,10 @@ function App() {
   const [filterGeneration, setFilterGeneration] = useState(0);
   const [filterPointsMin, setFilterPointsMin] = useState('');
   const [filterPointsMax, setFilterPointsMax] = useState('');
-  const [filterAbility, setFilterAbility] = useState('');
-  const [filterMove, setFilterMove] = useState('');
+  const [filterAbility, setFilterAbility] = useState(''); // Applied filter
+  const [abilityInput, setAbilityInput] = useState(''); // Input field value
+  const [filterMove, setFilterMove] = useState(''); // Applied filter
+  const [moveInput, setMoveInput] = useState(''); // Input field value
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [abilitySuggestions, setAbilitySuggestions] = useState([]);
   const [showAbilitySuggestions, setShowAbilitySuggestions] = useState(false);
@@ -1699,7 +1701,9 @@ function App() {
       
       // Ability filter
       if (filterAbility && filterAbility.trim()) {
-        if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) return false;
+        if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
+          return false;
+        }
         const hasAbility = p.abilities.some(ability => 
           ability && ability.toLowerCase().includes(filterAbility.toLowerCase())
         );
@@ -1739,7 +1743,8 @@ function App() {
     const allAbilities = pokemonList
       .flatMap(p => p.abilities || [])
       .filter(ability => ability && ability.trim());
-    return [...new Set(allAbilities)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    const unique = [...new Set(allAbilities)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    return unique;
   };
 
   // Get unique moves from pokemon list for autocomplete
@@ -1787,6 +1792,7 @@ function App() {
     setFilterPointsMin('');
     setFilterPointsMax('');
     setFilterAbility('');
+    setAbilityInput('');
     setFilterMove('');
     setAbilitySuggestions([]);
     setShowAbilitySuggestions(false);
@@ -2973,7 +2979,36 @@ function App() {
                   <div className="points-title"><strong>Points Table</strong></div>
                   <div className="PointsGrid">
                     {[0, ...Array.from({length:20}, (_,i) => i+1)].map((val) => (
-                      <div key={val} className="PointsTile">
+                      <div 
+                        key={val} 
+                        className="PointsTile"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add('drag-over');
+                        }}
+                        onDragLeave={(e) => {
+                          e.currentTarget.classList.remove('drag-over');
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('drag-over');
+                          
+                          // Only allow host to drag and drop
+                          if (!socket || !hostId || socket.id !== hostId) return;
+                          
+                          const pokemonName = e.dataTransfer.getData('pokemon-name');
+                          if (pokemonName) {
+                            console.log(`Dropping ${pokemonName} into column ${val}`);
+                            socket.emit('set_points', { code: lobbyCode, name: pokemonName, value: val }, (resp) => {
+                              if (!resp || !resp.ok) {
+                                alert(resp && resp.error ? resp.error : 'Failed to set points');
+                              } else {
+                                setPointsMap(resp.pointsMap || {});
+                              }
+                            });
+                          }
+                        }}
+                      >
                         <div className="points-header">{val === 0 ? 'Banned' : `Points ${val}`}</div>
                         <div className="points-list">
                           {pokemonList.filter(p => {
@@ -2987,7 +3022,22 @@ function App() {
                               if (val === 0) return true;
                               return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
                             }).map(p => (
-                            <div key={p.id} className="points-item-row">
+                            <div 
+                              key={p.id} 
+                              className="points-item-row"
+                              draggable={socket && hostId && socket.id === hostId}
+                              onDragStart={(e) => {
+                                if (socket && hostId && socket.id === hostId) {
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData('pokemon-name', p.name);
+                                  e.currentTarget.classList.add('dragging');
+                                }
+                              }}
+                              onDragEnd={(e) => {
+                                e.currentTarget.classList.remove('dragging');
+                              }}
+                              style={{ cursor: (socket && hostId && socket.id === hostId) ? 'grab' : 'default' }}
+                            >
                               <img src={p.img} alt={p.name} className="points-sprite" />
                               <span className="points-name">{p.name}</span>
                               { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
@@ -3446,16 +3496,25 @@ function App() {
                       <input 
                         type="text" 
                         placeholder="Search by ability" 
-                        value={filterAbility} 
+                        value={abilityInput} 
                         onChange={(e) => {
-                          setFilterAbility(e.target.value);
+                          setAbilityInput(e.target.value);
                           updateAbilitySuggestions(e.target.value);
                         }}
                         onFocus={() => {
-                          if (filterAbility) updateAbilitySuggestions(filterAbility);
+                          if (abilityInput) updateAbilitySuggestions(abilityInput);
                         }}
                         onBlur={() => {
                           setTimeout(() => setShowAbilitySuggestions(false), 200);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && abilityInput.trim()) {
+                            // Apply filter on Enter key
+                            setFilterAbility(abilityInput);
+                            setShowAbilitySuggestions(false);
+                          } else if (e.key === 'Escape') {
+                            setShowAbilitySuggestions(false);
+                          }
                         }}
                         className="filter-input"
                       />
@@ -3485,6 +3544,7 @@ function App() {
                               }}
                               onMouseDown={(e) => {
                                 e.preventDefault();
+                                setAbilityInput(ability);
                                 setFilterAbility(ability);
                                 setShowAbilitySuggestions(false);
                               }}
