@@ -892,26 +892,52 @@ function App() {
       const loadedData = {
         playerName: team.data.playerName || team.playerName || 'Player',
         slots: team.data.slots.map((slot, idx) => {
-          // If slot already has pokemon object, ensure it has all required properties
-          if (slot && slot.pokemon) {
-            // Ensure pokemon object has all required properties
-            const pokemon = {
-              id: slot.pokemon.id || 0,
-              name: slot.pokemon.name || '',
-              img: slot.pokemon.img || '',
-              baseStats: slot.pokemon.baseStats || {
-                hp: 0, attack: 0, defense: 0, 
-                specialAttack: 0, specialDefense: 0, speed: 0
-              },
-              abilities: slot.pokemon.abilities || [],
-              moves: slot.pokemon.moves || [],
-              types: slot.pokemon.types || []
-            };
+          // Check if slot has pokemon data
+          if (slot && (slot.pokemon || slot.pokemonName)) {
+            // Handle old format where pokemon is a string or just pokemonName exists
+            let pokemonObj;
+            
+            if (typeof slot.pokemon === 'object' && slot.pokemon !== null) {
+              // New format - pokemon is already an object
+              pokemonObj = {
+                id: slot.pokemon.id || 0,
+                name: slot.pokemon.name || '',
+                img: slot.pokemon.img || '',
+                baseStats: slot.pokemon.baseStats || {
+                  hp: 0, attack: 0, defense: 0, 
+                  specialAttack: 0, specialDefense: 0, speed: 0
+                },
+                abilities: slot.pokemon.abilities || [],
+                moves: slot.pokemon.moves || [],
+                types: slot.pokemon.types || []
+              };
+            } else {
+              // Old format - reconstruct pokemon object from flat structure
+              pokemonObj = {
+                id: slot.pokemonId || 0,
+                name: slot.pokemonName || slot.pokemon || '',
+                img: slot.sprite || '',
+                baseStats: slot.stats ? {
+                  hp: slot.stats.hp?.base || 0,
+                  attack: slot.stats.attack?.base || 0,
+                  defense: slot.stats.defense?.base || 0,
+                  specialAttack: slot.stats.specialAttack?.base || 0,
+                  specialDefense: slot.stats.specialDefense?.base || 0,
+                  speed: slot.stats.speed?.base || 0
+                } : {
+                  hp: 0, attack: 0, defense: 0, 
+                  specialAttack: 0, specialDefense: 0, speed: 0
+                },
+                abilities: [],
+                moves: [],
+                types: []
+              };
+            }
             
             // Build the slot with proper defaults
             const loadedSlot = {
-              slotNumber: slot.slotNumber || idx + 1,
-              pokemon: pokemon,
+              slotNumber: slot.slotNumber || slot.slotIndex + 1 || idx + 1,
+              pokemon: pokemonObj,
               heldItem: slot.heldItem || '',
               ability: slot.ability || '',
               nature: slot.nature || 'hardy',
