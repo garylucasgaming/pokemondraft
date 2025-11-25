@@ -1,6 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CreditsPage from './pages/Credits';
 import ContactPage from './pages/Contact';
 import PrivacyPage from './pages/Privacy';
@@ -89,7 +89,13 @@ function App() {
   const [showTeamSelector, setShowTeamSelector] = useState(false);
   // lobby state
   const [lobbyCode, setLobbyCode] = useState('');
+  const lobbyCodeRef = useRef('');
   const [lobbyUsers, setLobbyUsers] = useState([]);
+  
+  // Sync ref with state for use in event handler closures
+  useEffect(() => {
+    lobbyCodeRef.current = lobbyCode;
+  }, [lobbyCode]);
   const [socket, setSocket] = useState(null);
   const [remoteSelections, setRemoteSelections] = useState({});
   // optimistic local picks (keyed by socket id)
@@ -2634,21 +2640,19 @@ function App() {
         if (data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
         if (data.draftOrder) setLobbyDraftOrder(data.draftOrder || []);
         
-        // If host, cache current settings for draft_complete fallback
-        if (s && s.id === hostId) {
-          try {
-            const settingsCache = {
-              allowTrading: lobbySettings.allowTrading,
-              maxTradeLimit: lobbySettings.maxTradeLimit,
-              unlimitedTrades: lobbySettings.unlimitedTrades,
-              lobbyCode: data.code,
-              hostSocketId: s.id // Store host's socket ID for verification
-            };
-            localStorage.setItem('hostDraftSettings', JSON.stringify(settingsCache));
-            console.log('Cached host settings:', settingsCache);
-          } catch (err) {
-            console.warn('Failed to cache host settings:', err);
-          }
+        // Cache current settings for ALL players (not just host) for draft_complete fallback
+        try {
+          const settingsCache = {
+            allowTrading: lobbySettings.allowTrading,
+            maxTradeLimit: lobbySettings.maxTradeLimit,
+            unlimitedTrades: lobbySettings.unlimitedTrades,
+            lobbyCode: data.code,
+            socketId: s.id // Store current socket ID for verification
+          };
+          localStorage.setItem('draftSettings_' + data.code, JSON.stringify(settingsCache));
+          console.log('Cached draft settings for all players:', settingsCache);
+        } catch (err) {
+          console.warn('Failed to cache draft settings:', err);
         }
         // compute allowed pokemon based on lobby gen filter and other visible filters
         const gen = lobbyGenFilter || 0;
@@ -2805,30 +2809,28 @@ function App() {
         isHost: s?.id === hostId
       });
       
-      // If server didn't provide settings, try to use cached settings
-      // Check cache first to see if current socket was the host
+      // If server didn't provide settings, try to use cached settings (for ALL players)
       if (!data.settings && s) {
-        console.log('Attempting to read cached host settings...');
+        console.log('Attempting to read cached draft settings...');
         try {
-          const cachedStr = localStorage.getItem('hostDraftSettings');
+          // Use ref to get current lobby code (state is stale in closure)
+          const code = lobbyCodeRef.current;
+          console.log('Using lobby code from ref:', code);
+          const cachedStr = code ? localStorage.getItem('draftSettings_' + code) : null;
           console.log('Cache raw value:', cachedStr);
           if (cachedStr) {
             const cached = JSON.parse(cachedStr);
             console.log('Parsed cache:', cached, 'Current socket ID:', s.id);
-            // Verify current socket is the host who cached these settings
-            if (cached.hostSocketId === s.id) {
-              tradingEnabled = cached.allowTrading;
-              console.log('✓ Using cached host settings:', cached);
-              // Update local state with cached values
-              setLobbySettings(prev => ({
-                ...prev,
-                allowTrading: cached.allowTrading,
-                maxTradeLimit: cached.maxTradeLimit,
-                unlimitedTrades: cached.unlimitedTrades
-              }));
-            } else {
-              console.log('Socket ID mismatch:', cached.hostSocketId, 'vs', s.id);
-            }
+            // Use cached settings (no need to verify socket ID since all players cache same settings)
+            tradingEnabled = cached.allowTrading;
+            console.log('✓ Using cached draft settings:', cached);
+            // Update local state with cached values
+            setLobbySettings(prev => ({
+              ...prev,
+              allowTrading: cached.allowTrading,
+              maxTradeLimit: cached.maxTradeLimit,
+              unlimitedTrades: cached.unlimitedTrades
+            }));
           } else {
             console.log('No cache found in localStorage');
           }
