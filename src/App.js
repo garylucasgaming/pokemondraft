@@ -158,6 +158,7 @@ function App() {
   const [playersFinishedTrading, setPlayersFinishedTrading] = useState([]);
   const [tradesCompleted, setTradesCompleted] = useState({}); // {userId: count}
   const [showUnpickedModal, setShowUnpickedModal] = useState(null); // {pokemonName, ownerId}
+  const [unpickedSearchQuery, setUnpickedSearchQuery] = useState('');
 
   // Team builder constants
   const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
@@ -2390,12 +2391,31 @@ function App() {
   const confirmOfferTrade = () => {
     if (!pendingTradeOffer || !socket) return;
     
+    console.log('Sending trade offer:', pendingTradeOffer);
+    
+    // Set a timeout to close modal even if server doesn't respond
+    const timeout = setTimeout(() => {
+      console.log('Trade offer sent (no response from server, assuming success)');
+      setPendingTradeOffer(null);
+      setSelectedForTrade([]);
+    }, 1000);
+    
     socket.emit('offer_trade', {
       code: lobbyCode,
       from: pendingTradeOffer.from,
       to: pendingTradeOffer.to,
       pokemon1: pendingTradeOffer.myPokemon,
       pokemon2: pendingTradeOffer.theirPokemon
+    }, (response) => {
+      clearTimeout(timeout);
+      console.log('Trade offer response:', response);
+      if (response && response.ok) {
+        // Clear the modal and selections after successful send
+        setPendingTradeOffer(null);
+        setSelectedForTrade([]);
+      } else if (response && response.error) {
+        alert(response.error);
+      }
     });
   };
   
@@ -2449,11 +2469,29 @@ function App() {
   const confirmUnpickedTrade = (newPokemonName) => {
     if (!showUnpickedModal || !socket) return;
     
+    console.log('Sending unpicked trade:', showUnpickedModal, '->', newPokemonName);
+    
+    // Set a timeout to close modal even if server doesn't respond
+    const timeout = setTimeout(() => {
+      console.log('Unpicked trade sent (no response from server, assuming success)');
+      setShowUnpickedModal(null);
+      setUnpickedSearchQuery('');
+    }, 1000);
+    
     socket.emit('trade_for_unpicked', {
       code: lobbyCode,
       playerId: showUnpickedModal.ownerId,
       oldPokemon: showUnpickedModal.pokemonName,
       newPokemon: newPokemonName
+    }, (response) => {
+      clearTimeout(timeout);
+      console.log('Unpicked trade response:', response);
+      if (response && response.ok) {
+        setShowUnpickedModal(null);
+        setUnpickedSearchQuery('');
+      } else if (response && response.error) {
+        alert(response.error);
+      }
     });
   };
   
@@ -3574,10 +3612,31 @@ function App() {
               // Trading Phase UI
               <div className="trading-container">
                 <h2 style={{ textAlign: 'center', color: '#ffd700', marginBottom: 20 }}>🔄 Trading Phase Has Started!</h2>
-                <p style={{ textAlign: 'center', marginBottom: 20 }}>
+                <p style={{ textAlign: 'center', marginBottom: 10 }}>
                   Select 1 Pokémon from your team and 1 from another player's team to offer a trade.
-                  {!lobbySettings.unlimitedTrades && ` (Max ${lobbySettings.maxTradeLimit} trades per player)`}
                 </p>
+                
+                {/* Trade Limit Tracker */}
+                <div style={{ textAlign: 'center', marginBottom: 20, fontSize: '1.1em', fontWeight: 'bold' }}>
+                  {lobbySettings.unlimitedTrades ? (
+                    <span>Trades Allowed: <span style={{ color: '#ffd700' }}>Unlimited</span></span>
+                  ) : (
+                    <span>Your Trades: <span style={{ color: (tradesCompleted[socket?.id] || 0) >= lobbySettings.maxTradeLimit ? '#ef4444' : '#10b981' }}>{tradesCompleted[socket?.id] || 0}</span> / {lobbySettings.maxTradeLimit}</span>
+                  )}
+                </div>
+                
+                {/* Trade action buttons */}
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  {selectedForTrade.length === 2 && (
+                    <button className="gen-button" onClick={offerTrade}>Offer Trade</button>
+                  )}
+                  {selectedForTrade.length > 0 && (
+                    <button className="gen-button ml-8" onClick={() => setSelectedForTrade([])}>Clear Selection</button>
+                  )}
+                  {!playersFinishedTrading.includes(socket?.id) && (
+                    <button className="export-button ml-8" onClick={finishTrading}>Finished Trading</button>
+                  )}
+                </div>
                 
                 {/* Display all teams with selectable Pokemon */}
                 <div className="trading-teams-grid">
@@ -3629,19 +3688,6 @@ function App() {
                       </div>
                     );
                   })}
-                </div>
-                
-                {/* Trade action buttons */}
-                <div style={{ textAlign: 'center', marginTop: 30 }}>
-                  {selectedForTrade.length === 2 && (
-                    <button className="gen-button" onClick={offerTrade}>Offer Trade</button>
-                  )}
-                  {selectedForTrade.length > 0 && (
-                    <button className="gen-button ml-8" onClick={() => setSelectedForTrade([])}>Clear Selection</button>
-                  )}
-                  {!playersFinishedTrading.includes(socket?.id) && (
-                    <button className="export-button ml-8" onClick={finishTrading}>Finished Trading</button>
-                  )}
                 </div>
               </div>
             ) : (
@@ -4183,10 +4229,31 @@ function App() {
           <div className="trade-modal unpicked-modal">
             <h3>Trade for Unpicked Pokémon</h3>
             <p>Select a Pokémon to replace <strong>{showUnpickedModal.pokemonName}</strong></p>
+            <div className="search-container">
+              <input 
+                type="text" 
+                placeholder="Search Pokémon..."
+                value={unpickedSearchQuery}
+                onChange={(e) => setUnpickedSearchQuery(e.target.value)}
+                className="pokemon-search-input"
+                autoFocus
+              />
+            </div>
             <div className="unpicked-pokemon-list">
               {(() => {
                 const allPicked = Object.values(finalTeams?.selections || {}).flat().map(p => p.name);
-                const unpicked = pokemonList.filter(p => !allPicked.includes(p.name) && getCost(p) > 0);
+                let unpicked = pokemonList.filter(p => !allPicked.includes(p.name) && getCost(p) > 0);
+                
+                // Filter by search query
+                if (unpickedSearchQuery.trim()) {
+                  const query = unpickedSearchQuery.toLowerCase();
+                  unpicked = unpicked.filter(p => p.name.toLowerCase().includes(query));
+                }
+                
+                if (unpicked.length === 0) {
+                  return <p className="no-results">No Pokémon found</p>;
+                }
+                
                 return unpicked.map(p => (
                   <div 
                     key={p.id} 
