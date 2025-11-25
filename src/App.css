@@ -1211,6 +1211,18 @@ body {
   padding: 15px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   border: 2px solid #e5e7eb;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.team-builder-slot:hover {
+  border-color: #1d8ca8;
+  box-shadow: 0 4px 12px rgba(29,140,168,0.2);
+}
+
+.team-builder-slot.selected-for-export {
+  border: 3px solid #10b981;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+  background: #f0fdf4;
 }
 
 .team-builder-slot.empty {

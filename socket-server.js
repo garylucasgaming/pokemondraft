@@ -533,13 +533,21 @@ io.on('connection', (socket) => {
     const pokemonIndex = playerSelections.findIndex(p => p.name === oldPokemon);
     
     if (pokemonIndex !== -1) {
-      // Find the new Pokemon data (we need to construct a valid selection object)
-      // For now, we'll create a minimal object with the new name
+      // Keep the same structure but update the name
+      // The client will need the name to fetch the full Pokemon data
       const oldPokemonData = playerSelections[pokemonIndex];
+      
+      // Create new Pokemon object with updated name but keep other properties
+      // We send the name and the client should have the full Pokemon list to reconstruct
       const newPokemonData = {
-        ...oldPokemonData,
         name: newPokemon,
-        id: undefined // Let the client reconstruct the full data
+        // Keep id as undefined so client knows to look it up
+        id: undefined,
+        img: undefined,
+        // Preserve any other metadata that might exist
+        ...oldPokemonData,
+        // Override with new name to ensure it's updated
+        name: newPokemon
       };
       
       playerSelections[pokemonIndex] = newPokemonData;
@@ -548,10 +556,13 @@ io.on('connection', (socket) => {
       // Increment trade count
       lobby.tradesCompleted[playerId] = (lobby.tradesCompleted[playerId] || 0) + 1;
       
-      // Notify all players
+      // Notify all players with full selection data
       io.to(code).emit('unpicked_trade_completed', {
         updatedSelections: lobby.selections,
-        tradesCompleted: lobby.tradesCompleted
+        tradesCompleted: lobby.tradesCompleted,
+        playerId: playerId,
+        newPokemonName: newPokemon,
+        pokemonIndex: pokemonIndex
       });
       
       callback?.({ ok: true });

@@ -87,6 +87,7 @@ function App() {
   const [teamBuilderData, setTeamBuilderData] = useState(null);
   const [teamBuilderLoaded, setTeamBuilderLoaded] = useState(false);
   const [showTeamSelector, setShowTeamSelector] = useState(false);
+  const [selectedForExport, setSelectedForExport] = useState([]); // Array of slot indices
   // lobby state
   const [lobbyCode, setLobbyCode] = useState('');
   const lobbyCodeRef = useRef('');
@@ -879,6 +880,96 @@ function App() {
       console.error('Failed to save team:', err);
       alert('Failed to save team');
     }
+  };
+  
+  const togglePokemonSelection = (slotIndex) => {
+    setSelectedForExport(prev => {
+      if (prev.includes(slotIndex)) {
+        return prev.filter(idx => idx !== slotIndex);
+      } else {
+        if (prev.length >= 6) {
+          alert('You can only select up to 6 Pokémon for export');
+          return prev;
+        }
+        return [...prev, slotIndex];
+      }
+    });
+  };
+
+  const exportToShowdown = () => {
+    if (!teamBuilderData || selectedForExport.length === 0) {
+      alert('Please select at least one Pokémon to export');
+      return;
+    }
+
+    const exportText = selectedForExport.map(slotIndex => {
+      const slot = teamBuilderData.slots[slotIndex];
+      if (!slot || !slot.pokemon) return '';
+
+      let lines = [];
+      
+      // Pokemon name @ held item
+      const heldItem = slot.heldItem || '';
+      lines.push(`${slot.pokemon.name}${heldItem ? ' @ ' + heldItem : ''}`);
+      
+      // Ability
+      if (slot.ability) {
+        lines.push(`Ability: ${slot.ability}`);
+      }
+      
+      // Tera Type
+      if (slot.teraType) {
+        const teraTypeCapitalized = slot.teraType.charAt(0).toUpperCase() + slot.teraType.slice(1);
+        lines.push(`Tera Type: ${teraTypeCapitalized}`);
+      }
+      
+      // EVs
+      const evs = [];
+      if (slot.evs.hp > 0) evs.push(`${slot.evs.hp} HP`);
+      if (slot.evs.attack > 0) evs.push(`${slot.evs.attack} Atk`);
+      if (slot.evs.defense > 0) evs.push(`${slot.evs.defense} Def`);
+      if (slot.evs.specialAttack > 0) evs.push(`${slot.evs.specialAttack} SpA`);
+      if (slot.evs.specialDefense > 0) evs.push(`${slot.evs.specialDefense} SpD`);
+      if (slot.evs.speed > 0) evs.push(`${slot.evs.speed} Spe`);
+      if (evs.length > 0) {
+        lines.push(`EVs: ${evs.join(' / ')}`);
+      }
+      
+      // Nature
+      if (slot.nature && slot.nature !== 'Hardy') {
+        lines.push(`${slot.nature} Nature`);
+      }
+      
+      // IVs (only if not all 31)
+      const ivs = [];
+      if (slot.ivs.hp < 31) ivs.push(`${slot.ivs.hp} HP`);
+      if (slot.ivs.attack < 31) ivs.push(`${slot.ivs.attack} Atk`);
+      if (slot.ivs.defense < 31) ivs.push(`${slot.ivs.defense} Def`);
+      if (slot.ivs.specialAttack < 31) ivs.push(`${slot.ivs.specialAttack} SpA`);
+      if (slot.ivs.specialDefense < 31) ivs.push(`${slot.ivs.specialDefense} SpD`);
+      if (slot.ivs.speed < 31) ivs.push(`${slot.ivs.speed} Spe`);
+      if (ivs.length > 0) {
+        lines.push(`IVs: ${ivs.join(' / ')}`);
+      }
+      
+      // Moves
+      slot.moves.forEach(move => {
+        if (move) {
+          lines.push(`- ${move}`);
+        }
+      });
+      
+      return lines.join('\n');
+    }).filter(text => text).join('\n\n');
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(exportText).then(() => {
+      setExportMessage('✅ Copied to clipboard!');
+      setTimeout(() => setExportMessage(''), 3000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard. Please try again.');
+    });
   };
   
   const loadSavedTeams = () => {
@@ -3021,13 +3112,39 @@ function App() {
     
     s.on('unpicked_trade_completed', (data) => {
       console.log('Unpicked trade completed:', data);
-      // Update final teams with the new selection
-      if (data.updatedSelections) {
+      
+      // Reconstruct the Pokemon data from our local list
+      if (data.updatedSelections && data.playerId && data.newPokemonName !== undefined) {
+        const updatedSelections = { ...data.updatedSelections };
+        
+        // Find the new Pokemon from our pokemonList
+        const newPokemon = pokemonList.find(p => p.name === data.newPokemonName);
+        
+        if (newPokemon && updatedSelections[data.playerId]) {
+          // Update the Pokemon at the correct index with full data
+          if (data.pokemonIndex !== undefined) {
+            updatedSelections[data.playerId][data.pokemonIndex] = {
+              ...newPokemon,
+              id: newPokemon.id,
+              name: newPokemon.name,
+              img: newPokemon.img
+            };
+          }
+        }
+        
+        // Update final teams with reconstructed data
+        setFinalTeams(prev => ({
+          ...prev,
+          selections: updatedSelections
+        }));
+      } else if (data.updatedSelections) {
+        // Fallback: use server data as-is
         setFinalTeams(prev => ({
           ...prev,
           selections: data.updatedSelections
         }));
       }
+      
       // Update trade count
       if (data.tradesCompleted) {
         setTradesCompleted(data.tradesCompleted);
@@ -4298,10 +4415,18 @@ function App() {
           <div className="team-builder-header">
             <div>
               <h2>Team Builder - {teamBuilderData.playerName}</h2>
+              {selectedForExport.length > 0 && (
+                <p style={{ margin: '5px 0 0 0', color: '#10b981', fontWeight: 600 }}>
+                  {selectedForExport.length} Pokémon selected for export
+                </p>
+              )}
             </div>
             <div className="team-builder-header-buttons">
               <button className="gen-button" onClick={saveTeamToStorage}>Save Team</button>
               <button className="gen-button ml-8" onClick={() => setShowTeamSelector(true)}>Load Team</button>
+              {selectedForExport.length > 0 && (
+                <button className="export-button ml-8" onClick={exportToShowdown}>Export to Showdown</button>
+              )}
               <button className="gen-button ml-8" onClick={() => setView('lobby')}>Back to Lobby</button>
               {exportMessage && <span className="ml-8" style={{ color: '#16a34a', fontWeight: 600 }}>{exportMessage}</span>}
             </div>
@@ -4314,12 +4439,44 @@ function App() {
                 <button className="gen-button" onClick={() => setShowTeamSelector(true)}>Load a Team</button>
               </div>
             ) : (
-              teamBuilderData.slots.filter(slot => slot.pokemon).map((slot, idx) => {
+              <>
+                <div style={{ width: '100%', textAlign: 'center', marginBottom: '15px', padding: '10px', background: '#f0f9ff', borderRadius: '8px' }}>
+                  <p style={{ margin: 0, color: '#1e40af', fontSize: '14px' }}>
+                    💡 Click on Pokémon cards to select up to 6 for Showdown export
+                  </p>
+                </div>
+                {teamBuilderData.slots.filter(slot => slot.pokemon).map((slot, idx) => {
                 const totalEVs = getTotalEVs(slot);
                 const remainingEVs = MAX_EVS - totalEVs;
+                const isSelected = selectedForExport.includes(idx);
 
                 return (
-                  <div key={idx} className="team-builder-slot">
+                  <div 
+                    key={idx} 
+                    className={`team-builder-slot ${isSelected ? 'selected-for-export' : ''}`}
+                    onClick={(e) => {
+                      // Only toggle selection if clicking on the slot itself, not inputs/selects
+                      if (e.target.closest('select, input')) return;
+                      togglePokemonSelection(idx);
+                    }}
+                    style={{ cursor: 'pointer', position: 'relative' }}
+                  >
+                    {isSelected && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: '#10b981',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        zIndex: 10
+                      }}>
+                        SELECTED
+                      </div>
+                    )}
                     <div className="slot-number">Slot {slot.slotNumber}</div>
                     <div className="pokemon-builder-card">
                       <img src={slot.pokemon.img} alt={slot.pokemon.name} className="pokemon-img" />
@@ -4442,7 +4599,8 @@ function App() {
                   </div>
                 </div>
               );
-            })
+            })}
+            </>
             )}
           </div>
         </div>
