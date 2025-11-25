@@ -4747,7 +4747,7 @@ function App() {
                         </div>
                         <div className="team-selector-card-body">
                           <div className="saved-team-grid">
-                            {team.data.slots.filter(s => s.pokemon || s.pokemonName).slice(0, 6).map((slot, idx) => {
+                            {team.data.slots.filter(s => s && (s.pokemon || s.pokemonName)).slice(0, 6).map((slot, idx) => {
                               // Handle both old format (slot.sprite) and new format (slot.pokemon.img)
                               const imgSrc = slot.pokemon && typeof slot.pokemon === 'object' 
                                 ? slot.pokemon.img 
