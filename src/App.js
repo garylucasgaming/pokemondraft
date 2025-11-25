@@ -944,6 +944,12 @@ function App() {
       setTeamBuilderLoaded(true);
       setShowTeamSelector(false);
       
+      console.log('Team loaded:', {
+        loadedData,
+        teamBuilderLoaded: true,
+        showTeamSelector: false
+      });
+      
       // Force a small delay to ensure state updates properly
       setTimeout(() => {
         setExportMessage('Team loaded successfully!');
