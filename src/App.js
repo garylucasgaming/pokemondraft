@@ -124,6 +124,10 @@ function App() {
   const [filterAbility, setFilterAbility] = useState('');
   const [filterMove, setFilterMove] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [abilitySuggestions, setAbilitySuggestions] = useState([]);
+  const [showAbilitySuggestions, setShowAbilitySuggestions] = useState(false);
+  const [moveSuggestions, setMoveSuggestions] = useState([]);
+  const [showMoveSuggestions, setShowMoveSuggestions] = useState(false);
   
   // Trading state
   const [tradingPhaseActive, setTradingPhaseActive] = useState(false);
@@ -570,6 +574,31 @@ function App() {
       ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
       evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
       isCaptain: false
+    };
+  };
+  
+  const createEmptySlot = (idx) => {
+    return {
+      slotIndex: idx,
+      pokemon: null,
+      pokemonId: null,
+      pokemonName: '',
+      sprite: '',
+      isCaptain: false,
+      ability: '',
+      nature: 'hardy',
+      heldItem: '',
+      moves: ['', '', '', ''],
+      stats: {
+        hp: { base: 0, iv: 31, ev: 0 },
+        attack: { base: 0, iv: 31, ev: 0 },
+        defense: { base: 0, iv: 31, ev: 0 },
+        specialAttack: { base: 0, iv: 31, ev: 0 },
+        specialDefense: { base: 0, iv: 31, ev: 0 },
+        speed: { base: 0, iv: 31, ev: 0 }
+      },
+      ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+      evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 }
     };
   };
   
@@ -1535,10 +1564,13 @@ function App() {
       if (pointsMap && Number(pointsMap[name]) === 0) return false;
       
       // Advanced filters
-      // Type filter
+      // Type filter - Pokemon must have ALL selected types (AND logic)
       if (filterTypes.length > 0) {
-        const hasMatchingType = p.types && p.types.some(type => filterTypes.includes(type));
-        if (!hasMatchingType) return false;
+        if (!p.types || !Array.isArray(p.types)) return false;
+        const hasAllTypes = filterTypes.every(selectedType => 
+          p.types.some(pokemonType => pokemonType === selectedType)
+        );
+        if (!hasAllTypes) return false;
       }
       
       // Generation filter (from advanced filters, distinct from lobbyGenFilter)
@@ -1552,17 +1584,19 @@ function App() {
       if (filterPointsMax !== '' && cost > Number(filterPointsMax)) return false;
       
       // Ability filter
-      if (filterAbility && p.abilities) {
+      if (filterAbility && filterAbility.trim()) {
+        if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) return false;
         const hasAbility = p.abilities.some(ability => 
-          ability.toLowerCase().includes(filterAbility.toLowerCase())
+          ability && ability.toLowerCase().includes(filterAbility.toLowerCase())
         );
         if (!hasAbility) return false;
       }
       
       // Move filter
-      if (filterMove && p.moves) {
+      if (filterMove && filterMove.trim()) {
+        if (!p.moves || !Array.isArray(p.moves) || p.moves.length === 0) return false;
         const hasMove = p.moves.some(move => 
-          move.toLowerCase().includes(filterMove.toLowerCase())
+          move && move.toLowerCase().includes(filterMove.toLowerCase())
         );
         if (!hasMove) return false;
       }
@@ -1580,11 +1614,70 @@ function App() {
       case 'cost-desc':
         sorted.sort((a, b) => getCost(b) - getCost(a) || a.id - b.id);
         break;
-      case 'id':
       default:
-        sorted.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+        // ID (default)
     }
     return sorted;
+  };
+
+  // Get unique abilities from pokemon list for autocomplete
+  const getUniqueAbilities = () => {
+    const allAbilities = pokemonList
+      .flatMap(p => p.abilities || [])
+      .filter(ability => ability && ability.trim());
+    return [...new Set(allAbilities)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  };
+
+  // Get unique moves from pokemon list for autocomplete
+  const getUniqueMoves = () => {
+    const allMoves = pokemonList
+      .flatMap(p => p.moves || [])
+      .filter(move => move && move.trim());
+    return [...new Set(allMoves)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  };
+
+  // Update ability suggestions
+  const updateAbilitySuggestions = (input) => {
+    if (!input || input.trim() === '') {
+      setAbilitySuggestions([]);
+      setShowAbilitySuggestions(false);
+      return;
+    }
+    const uniqueAbilities = getUniqueAbilities();
+    const filtered = uniqueAbilities.filter(ability => 
+      ability.toLowerCase().includes(input.toLowerCase())
+    ).slice(0, 10);
+    setAbilitySuggestions(filtered);
+    setShowAbilitySuggestions(filtered.length > 0);
+  };
+
+  // Update move suggestions
+  const updateMoveSuggestions = (input) => {
+    if (!input || input.trim() === '') {
+      setMoveSuggestions([]);
+      setShowMoveSuggestions(false);
+      return;
+    }
+    const uniqueMoves = getUniqueMoves();
+    const filtered = uniqueMoves.filter(move => 
+      move.toLowerCase().includes(input.toLowerCase())
+    ).slice(0, 10);
+    setMoveSuggestions(filtered);
+    setShowMoveSuggestions(filtered.length > 0);
+  };
+
+  // Reset all filters to default
+  const resetAllFilters = () => {
+    setFilterTypes([]);
+    setFilterGeneration(0);
+    setFilterPointsMin('');
+    setFilterPointsMax('');
+    setFilterAbility('');
+    setFilterMove('');
+    setAbilitySuggestions([]);
+    setShowAbilitySuggestions(false);
+    setMoveSuggestions([]);
+    setShowMoveSuggestions(false);
   };
 
   const removePokemon = (id) => {
@@ -2449,6 +2542,25 @@ function App() {
     <div className="App">
       <div className= "TitleSection">
         <h1>Welcome to Pokemon Draft!</h1>
+        
+        {/* Navigation Panel */}
+        <div className="navigation-panel">
+          <button className="nav-button" onClick={() => {
+            // Initialize team builder with empty team
+            const emptyTeam = {
+              playerName: PokemonName || 'Player',
+              slots: Array(12).fill(null).map((_, idx) => createEmptySlot(idx))
+            };
+            setTeamBuilderData(emptyTeam);
+            setTeamBuilderLoaded(true);
+            setView('teambuilder');
+          }}>Team Builder</button>
+          <button className="nav-button" onClick={() => {
+            const drafts = readOngoingDraftsFromCookies();
+            setOngoingDrafts(drafts);
+            setView('ongoingdrafts');
+          }}>Ongoing Drafts</button>
+        </div>
       </div>
 
       {view === 'lobby' && (
@@ -2468,24 +2580,6 @@ function App() {
                   <input placeholder="Enter lobby code" id="join-code" className="JoinCodeInput" />
                   <button className="gen-button ml-8" onClick={pasteLobbyCodeFromClipboard}>Paste</button>
                   <button className="join-lobby-button ml-8" onClick={() => joinLobby(document.getElementById('join-code').value)}>Join Lobby</button>
-                </div>
-                
-                <div className="control-group">
-                  <button className="gen-button" onClick={() => {
-                    // Initialize team builder with empty team
-                    const emptyTeam = {
-                      playerName: PokemonName || 'Player',
-                      slots: Array(12).fill(null).map((_, idx) => createEmptySlot(idx))
-                    };
-                    setTeamBuilderData(emptyTeam);
-                    setTeamBuilderLoaded(true);
-                    setView('teambuilder');
-                  }}>Team Builder</button>
-                  <button className="gen-button ml-8" onClick={() => {
-                    const drafts = readOngoingDraftsFromCookies();
-                    setOngoingDrafts(drafts);
-                    setView('ongoingdrafts');
-                  }}>Ongoing Drafts</button>
                 </div>
               </div>
             )}
@@ -3114,19 +3208,25 @@ function App() {
                     {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
                   </button>
                   {(filterTypes.length > 0 || filterGeneration > 0 || filterPointsMin || filterPointsMax || filterAbility || filterMove) && (
-                    <button 
-                      className="gen-button ml-8" 
-                      onClick={() => {
-                        setFilterTypes([]);
-                        setFilterGeneration(0);
-                        setFilterPointsMin('');
-                        setFilterPointsMax('');
-                        setFilterAbility('');
-                        setFilterMove('');
-                      }}
-                    >
-                      Clear All Filters
-                    </button>
+                    <>
+                      <button 
+                        className="gen-button ml-8" 
+                        onClick={resetAllFilters}
+                      >
+                        Reset Filters
+                      </button>
+                      <span style={{ marginLeft: '12px', fontSize: '14px', color: '#666' }}>
+                        {(() => {
+                          const activeFilters = [];
+                          if (filterTypes.length > 0) activeFilters.push(`${filterTypes.length} type(s)`);
+                          if (filterGeneration > 0) activeFilters.push(`Gen ${filterGeneration}`);
+                          if (filterPointsMin || filterPointsMax) activeFilters.push('Points range');
+                          if (filterAbility) activeFilters.push('Ability');
+                          if (filterMove) activeFilters.push('Move');
+                          return `Active: ${activeFilters.join(', ')}`;
+                        })()}
+                      </span>
+                    </>
                   )}
                 </div>
                 
@@ -3191,27 +3291,127 @@ function App() {
                     </div>
                     
                     {/* Ability Filter */}
-                    <div className="filter-section">
+                    <div className="filter-section" style={{ position: 'relative' }}>
                       <label className="filter-label">Ability:</label>
                       <input 
                         type="text" 
                         placeholder="Search by ability" 
                         value={filterAbility} 
-                        onChange={(e) => setFilterAbility(e.target.value)}
+                        onChange={(e) => {
+                          setFilterAbility(e.target.value);
+                          updateAbilitySuggestions(e.target.value);
+                        }}
+                        onFocus={() => {
+                          if (filterAbility) updateAbilitySuggestions(filterAbility);
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowAbilitySuggestions(false), 200);
+                        }}
                         className="filter-input"
                       />
+                      {showAbilitySuggestions && abilitySuggestions.length > 0 && (
+                        <div className="suggestions-dropdown" style={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          zIndex: 1000, 
+                          background: '#fff', 
+                          border: '1px solid #ccc', 
+                          maxHeight: '200px', 
+                          overflowY: 'auto',
+                          marginTop: '2px',
+                          borderRadius: '4px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}>
+                          {abilitySuggestions.map((ability, idx) => (
+                            <div 
+                              key={idx}
+                              className="suggestion-item" 
+                              style={{ 
+                                padding: '8px 12px', 
+                                cursor: 'pointer',
+                                borderBottom: idx < abilitySuggestions.length - 1 ? '1px solid #eee' : 'none'
+                              }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setFilterAbility(ability);
+                                setShowAbilitySuggestions(false);
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = '#f0f0f0';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = '#fff';
+                              }}
+                            >
+                              {ability}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     
                     {/* Move Filter */}
-                    <div className="filter-section">
+                    <div className="filter-section" style={{ position: 'relative' }}>
                       <label className="filter-label">Move:</label>
                       <input 
                         type="text" 
                         placeholder="Search by move" 
                         value={filterMove} 
-                        onChange={(e) => setFilterMove(e.target.value)}
+                        onChange={(e) => {
+                          setFilterMove(e.target.value);
+                          updateMoveSuggestions(e.target.value);
+                        }}
+                        onFocus={() => {
+                          if (filterMove) updateMoveSuggestions(filterMove);
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowMoveSuggestions(false), 200);
+                        }}
                         className="filter-input"
                       />
+                      {showMoveSuggestions && moveSuggestions.length > 0 && (
+                        <div className="suggestions-dropdown" style={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          zIndex: 1000, 
+                          background: '#fff', 
+                          border: '1px solid #ccc', 
+                          maxHeight: '200px', 
+                          overflowY: 'auto',
+                          marginTop: '2px',
+                          borderRadius: '4px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}>
+                          {moveSuggestions.map((move, idx) => (
+                            <div 
+                              key={idx}
+                              className="suggestion-item" 
+                              style={{ 
+                                padding: '8px 12px', 
+                                cursor: 'pointer',
+                                borderBottom: idx < moveSuggestions.length - 1 ? '1px solid #eee' : 'none'
+                              }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setFilterMove(move);
+                                setShowMoveSuggestions(false);
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = '#f0f0f0';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = '#fff';
+                              }}
+                            >
+                              {move}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
