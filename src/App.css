@@ -1889,3 +1889,22 @@ body {
     transform: rotate(90deg);
   }
 }
+
+/* Viewed Ongoing Team Display */
+.viewed-ongoing-team {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border: 2px solid #1d8ca8;
+  border-radius: 8px;
+}
+
+.viewed-ongoing-team h5 {
+  margin: 0 0 15px 0;
+  color: #1d8ca8;
+  font-size: 18px;
+}
+
+.saved-team-list {
+  margin-bottom: 15px;
+}

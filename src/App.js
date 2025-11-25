@@ -3781,11 +3781,27 @@ function App() {
                     }}>Rejoin</button>
                     <button className="gen-button ml-8" onClick={() => {
                       const currentUsername = PokemonName?.trim();
+                      console.log('View Team clicked:', {
+                        currentUsername,
+                        hasPlayerData: !!d.playerData,
+                        playerDataKeys: d.playerData ? Object.keys(d.playerData) : [],
+                        hasUserData: d.playerData && d.playerData[currentUsername],
+                        selectedPokemon: d.playerData?.[currentUsername]?.selectedPokemon
+                      });
+                      
                       if (d.playerData && d.playerData[currentUsername]) {
+                        const team = d.playerData[currentUsername].selectedPokemon || [];
+                        console.log('Setting viewedOngoingTeam:', {
+                          name: d.draftName || `Team Lobby#: ${code}`,
+                          lobbyCode: code,
+                          teamLength: team.length,
+                          team
+                        });
+                        
                         setViewedOngoingTeam({
                           name: d.draftName || `Team Lobby#: ${code}`,
                           lobbyCode: code,
-                          team: d.playerData[currentUsername].selectedPokemon || []
+                          team: team
                         });
                       } else {
                         alert('No team found for your username in this draft');
@@ -4383,6 +4399,31 @@ function App() {
         </div>
       )}
 
+      {/* Helper function to find Pokemon from any available source */}
+      {(() => {
+        const findPokemonByName = (name) => {
+          if (!name) return null;
+          // Try pokemonList first
+          let p = pokemonList.find(pk => pk.name === name);
+          if (p) return p;
+          // Try draftPokemonList
+          if (draftPokemonList && draftPokemonList.length > 0) {
+            p = draftPokemonList.find(pk => pk.name === name);
+            if (p) return p;
+          }
+          // Try finalTeams selections
+          if (finalTeams && finalTeams.selections) {
+            for (const userId in finalTeams.selections) {
+              const found = finalTeams.selections[userId].find(pk => pk?.name === name);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        window._findPokemonByName = findPokemonByName; // Make accessible to modals
+        return null;
+      })()}
+
       {/* Trade Offer Modal (Initiator) */}
       {pendingTradeOffer && (
         <div className="modal-overlay">
@@ -4393,7 +4434,7 @@ function App() {
                 <h4>Your Pokémon</h4>
                 <div className="trade-pokemon-preview">
                   {(() => {
-                    const p = pokemonList.find(pk => pk.name === pendingTradeOffer.myPokemon);
+                    const p = window._findPokemonByName?.(pendingTradeOffer.myPokemon);
                     return (
                       <div className="trading-pokemon-card">
                         {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
@@ -4408,7 +4449,7 @@ function App() {
                 <h4>Their Pokémon</h4>
                 <div className="trade-pokemon-preview">
                   {(() => {
-                    const p = pokemonList.find(pk => pk.name === pendingTradeOffer.theirPokemon);
+                    const p = window._findPokemonByName?.(pendingTradeOffer.theirPokemon);
                     return (
                       <div className="trading-pokemon-card">
                         {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
@@ -4438,7 +4479,7 @@ function App() {
                 <h4>They Offer</h4>
                 <div className="trade-pokemon-preview">
                   {(() => {
-                    const p = pokemonList.find(pk => pk.name === incomingTradeOffer.pokemon1);
+                    const p = window._findPokemonByName?.(incomingTradeOffer.pokemon1);
                     return (
                       <div className="trading-pokemon-card">
                         {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
@@ -4453,7 +4494,7 @@ function App() {
                 <h4>You Give</h4>
                 <div className="trade-pokemon-preview">
                   {(() => {
-                    const p = pokemonList.find(pk => pk.name === incomingTradeOffer.pokemon2);
+                    const p = window._findPokemonByName?.(incomingTradeOffer.pokemon2);
                     return (
                       <div className="trading-pokemon-card">
                         {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
