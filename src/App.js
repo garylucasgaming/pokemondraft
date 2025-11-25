@@ -79,8 +79,13 @@ function App() {
   const [leaveDraftConfirmVisible, setLeaveDraftConfirmVisible] = useState(false);
   const [draftComplete, setDraftComplete] = useState(false);
   const [finalTeams, setFinalTeams] = useState(null);
-  // app view: 'lobby' (main) or 'draft' (the drafting page)
+  // app view: 'lobby' (main), 'draft' (the drafting page), or 'teambuilder' (team builder page)
   const [view, setView] = useState('lobby');
+  // Team builder state
+  const [itemsList, setItemsList] = useState([]);
+  const [naturesList, setNaturesList] = useState([]);
+  const [teamBuilderData, setTeamBuilderData] = useState(null);
+  const [teamBuilderLoaded, setTeamBuilderLoaded] = useState(false);
   // lobby state
   const [lobbyCode, setLobbyCode] = useState('');
   const [lobbyUsers, setLobbyUsers] = useState([]);
@@ -103,6 +108,12 @@ function App() {
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [localPlayerName, setLocalPlayerName] = useState('');
   const [draftSuggestionsVisible, setDraftSuggestionsVisible] = useState(false);
+
+  // Team builder constants
+  const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
+  const MAX_EVS = 510;
+  const MAX_SINGLE_EV = 255;
+  const MAX_IV = 31;
 
   // Validation constants
   const CURRENT_SCHEMA_VERSION = 1;
@@ -493,6 +504,256 @@ function App() {
   };
   
   // clearSavedTeamsCookies removed - use clearOngoingDraftsCookie directly
+
+  // ========== TEAM BUILDER FUNCTIONS ==========
+  
+  const fetchItemsList = async () => {
+    try {
+      const response = await axios.get('https://pokeapi.co/api/v2/item?limit=2000');
+      const items = response.data.results || [];
+      // Filter to only include holdable items (this is a simplified filter)
+      // In a full implementation, you'd need to check each item's attributes
+      // For now, we'll just use all items and let the user choose
+      setItemsList(items.map(item => item.name));
+    } catch (err) {
+      console.error('Failed to fetch items list:', err);
+      setItemsList([]);
+    }
+  };
+  
+  const fetchNaturesList = async () => {
+    try {
+      const response = await axios.get('https://pokeapi.co/api/v2/nature?limit=100');
+      const natures = response.data.results || [];
+      setNaturesList(natures.map(nature => nature.name));
+    } catch (err) {
+      console.error('Failed to fetch natures list:', err);
+      setNaturesList([]);
+    }
+  };
+  
+  const createEmptyPokemonSlot = (slotNumber) => {
+    return {
+      slotNumber,
+      pokemon: null, // { id, name, img, baseStats: {...} }
+      heldItem: '',
+      ability: '',
+      nature: 'hardy',
+      moves: ['', '', '', ''],
+      ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+      evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+      isCaptain: false
+    };
+  };
+  
+  const saveTeamBuilderData = (data) => {
+    try {
+      localStorage.setItem(TEAM_BUILDER_STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      console.error('Failed to save team builder data:', err);
+    }
+  };
+  
+  const loadTeamBuilderData = () => {
+    try {
+      const raw = localStorage.getItem(TEAM_BUILDER_STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error('Failed to load team builder data:', err);
+      return null;
+    }
+  };
+  
+  const loadTeamIntoBuilder = async (lobbyCode) => {
+    try {
+      const currentUsername = PokemonName?.trim();
+      if (!currentUsername) {
+        alert('Please set your username first');
+        return;
+      }
+      
+      const ongoingDrafts = readOngoingDraftsFromCookies();
+      const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === lobbyCode);
+      
+      if (!draft || !draft.playerData || !draft.playerData[currentUsername]) {
+        alert('Team not found in ongoing drafts');
+        return;
+      }
+      
+      const playerData = draft.playerData[currentUsername];
+      const selectedPokemon = playerData.selectedPokemon || [];
+      
+      if (selectedPokemon.length === 0) {
+        alert('No Pokemon in this team');
+        return;
+      }
+      
+      // Create team builder structure
+      const teamData = {
+        playerName: currentUsername,
+        lobbyCode: lobbyCode,
+        slots: []
+      };
+      
+      // Create 12 slots
+      for (let i = 0; i < 12; i++) {
+        const slot = createEmptyPokemonSlot(i + 1);
+        
+        if (i < selectedPokemon.length) {
+          const pkmn = selectedPokemon[i];
+          // Fetch detailed Pokemon data including base stats, abilities, and moves
+          try {
+            const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pkmn.id || pkmn.name.toLowerCase()}`);
+            const speciesResponse = await axios.get(response.data.species.url);
+            
+            slot.pokemon = {
+              id: response.data.id,
+              name: response.data.name,
+              img: pkmn.img || response.data.sprites.front_default,
+              baseStats: {
+                hp: response.data.stats.find(s => s.stat.name === 'hp')?.base_stat || 0,
+                attack: response.data.stats.find(s => s.stat.name === 'attack')?.base_stat || 0,
+                defense: response.data.stats.find(s => s.stat.name === 'defense')?.base_stat || 0,
+                specialAttack: response.data.stats.find(s => s.stat.name === 'special-attack')?.base_stat || 0,
+                specialDefense: response.data.stats.find(s => s.stat.name === 'special-defense')?.base_stat || 0,
+                speed: response.data.stats.find(s => s.stat.name === 'speed')?.base_stat || 0
+              },
+              abilities: response.data.abilities.map(a => a.ability.name),
+              moves: response.data.moves.map(m => m.move.name)
+            };
+            
+            // Set default ability (first one)
+            if (slot.pokemon.abilities.length > 0) {
+              slot.ability = slot.pokemon.abilities[0];
+            }
+          } catch (err) {
+            console.error(`Failed to fetch detailed data for ${pkmn.name}:`, err);
+            // Use basic data
+            slot.pokemon = {
+              id: pkmn.id,
+              name: pkmn.name,
+              img: pkmn.img,
+              baseStats: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+              abilities: [],
+              moves: []
+            };
+          }
+        }
+        
+        teamData.slots.push(slot);
+      }
+      
+      setTeamBuilderData(teamData);
+      saveTeamBuilderData(teamData);
+      setTeamBuilderLoaded(true);
+      setView('teambuilder');
+      
+    } catch (err) {
+      console.error('Failed to load team into builder:', err);
+      alert('Failed to load team into builder');
+    }
+  };
+  
+  const calculateStatTotal = (base, iv, ev, level = 100, nature = 'hardy', statName = 'hp') => {
+    // Pokemon stat calculation formula
+    // HP: floor(((2 * Base + IV + floor(EV / 4)) * Level) / 100) + Level + 10
+    // Other: floor((floor(((2 * Base + IV + floor(EV / 4)) * Level) / 100) + 5) * Nature)
+    
+    const evQuarter = Math.floor(ev / 4);
+    
+    if (statName === 'hp') {
+      return Math.floor(((2 * base + iv + evQuarter) * level) / 100) + level + 10;
+    } else {
+      let baseStat = Math.floor(((2 * base + iv + evQuarter) * level) / 100) + 5;
+      
+      // Apply nature modifier
+      const natureModifiers = getNatureModifiers(nature);
+      const modifier = natureModifiers[statName] || 1.0;
+      
+      return Math.floor(baseStat * modifier);
+    }
+  };
+  
+  const getNatureModifiers = (nature) => {
+    // Nature stat modifiers (1.1 for increased, 0.9 for decreased, 1.0 for neutral)
+    const natures = {
+      hardy: {},
+      lonely: { attack: 1.1, defense: 0.9 },
+      brave: { attack: 1.1, speed: 0.9 },
+      adamant: { attack: 1.1, specialAttack: 0.9 },
+      naughty: { attack: 1.1, specialDefense: 0.9 },
+      bold: { defense: 1.1, attack: 0.9 },
+      docile: {},
+      relaxed: { defense: 1.1, speed: 0.9 },
+      impish: { defense: 1.1, specialAttack: 0.9 },
+      lax: { defense: 1.1, specialDefense: 0.9 },
+      timid: { speed: 1.1, attack: 0.9 },
+      hasty: { speed: 1.1, defense: 0.9 },
+      serious: {},
+      jolly: { speed: 1.1, specialAttack: 0.9 },
+      naive: { speed: 1.1, specialDefense: 0.9 },
+      modest: { specialAttack: 1.1, attack: 0.9 },
+      mild: { specialAttack: 1.1, defense: 0.9 },
+      quiet: { specialAttack: 1.1, speed: 0.9 },
+      bashful: {},
+      rash: { specialAttack: 1.1, specialDefense: 0.9 },
+      calm: { specialDefense: 1.1, attack: 0.9 },
+      gentle: { specialDefense: 1.1, defense: 0.9 },
+      sassy: { specialDefense: 1.1, speed: 0.9 },
+      careful: { specialDefense: 1.1, specialAttack: 0.9 },
+      quirky: {}
+    };
+    
+    return natures[nature] || {};
+  };
+  
+  const updateTeamBuilderSlot = (slotIndex, field, value) => {
+    if (!teamBuilderData) return;
+    
+    const newData = { ...teamBuilderData };
+    const slot = { ...newData.slots[slotIndex] };
+    
+    if (field === 'heldItem' || field === 'ability' || field === 'nature' || field === 'isCaptain') {
+      slot[field] = value;
+    } else if (field.startsWith('move')) {
+      const moveIndex = parseInt(field.replace('move', '')) - 1;
+      slot.moves = [...slot.moves];
+      slot.moves[moveIndex] = value;
+    } else if (field.startsWith('iv')) {
+      const stat = field.replace('iv', '');
+      const statKey = stat.charAt(0).toLowerCase() + stat.slice(1);
+      slot.ivs = { ...slot.ivs };
+      slot.ivs[statKey] = Math.max(0, Math.min(MAX_IV, parseInt(value) || 0));
+    } else if (field.startsWith('ev')) {
+      const stat = field.replace('ev', '');
+      const statKey = stat.charAt(0).toLowerCase() + stat.slice(1);
+      
+      // Calculate current total EVs excluding this stat
+      const currentTotal = Object.keys(slot.evs).reduce((sum, key) => {
+        if (key === statKey) return sum;
+        return sum + (slot.evs[key] || 0);
+      }, 0);
+      
+      // Calculate max allowable for this stat
+      const maxAllowed = Math.min(MAX_SINGLE_EV, MAX_EVS - currentTotal);
+      const newValue = Math.max(0, Math.min(maxAllowed, parseInt(value) || 0));
+      
+      slot.evs = { ...slot.evs };
+      slot.evs[statKey] = newValue;
+    }
+    
+    newData.slots[slotIndex] = slot;
+    setTeamBuilderData(newData);
+    saveTeamBuilderData(newData);
+  };
+  
+  const getTotalEVs = (slot) => {
+    if (!slot || !slot.evs) return 0;
+    return Object.values(slot.evs).reduce((sum, val) => sum + (val || 0), 0);
+  };
+
+  // ========== END TEAM BUILDER FUNCTIONS ==========
 
   const addOngoingDraftToCookies = (code, otherPlayerNames = [], options = {}) => {
     // options: { settings, draftOrder, currentTurn, pointsRemaining, pointsMap }
@@ -1029,6 +1290,10 @@ function App() {
         setPokemonList(list);
       })
       .catch((err) => console.error('Failed to fetch pokemon list', err));
+    
+    // Fetch items and natures for team builder
+    fetchItemsList();
+    fetchNaturesList();
   }, []);
 
   // handle back/forward navigation for footer pages
@@ -2098,6 +2363,7 @@ function App() {
                   <div className="saved-team-actions">
                     <button className="gen-button" onClick={() => loadSavedTeam(s.key)}>Load</button>
                     <button className="gen-button ml-8" onClick={() => exportSavedTeam(s.key)}>Export</button>
+                    <button className="gen-button ml-8" onClick={() => loadTeamIntoBuilder(s.key)}>Team Builder</button>
                     {copiedTeamKey === s.key && (<span className="copy-confirm ml-8">Copied!</span>)}
                   </div>
                 </div>
@@ -2294,7 +2560,6 @@ function App() {
               <h3>Selected Pokémon ({localTeamForRender.length} / {lobbySettings && lobbySettings.teamSizeLimit ? lobbySettings.teamSizeLimit : 10})</h3>
             <div className="mb-8">
               <button className="export-button" onClick={exportRemoved}>Export Team</button>
-              <button className="export-button ml-8" onClick={saveTeamToCookie}>Save Team</button>
               <button className="gen-button ml-8" onClick={handleLeaveDraftButton}>Leave Draft</button>
               {exportMessage && (<div className="export-msg">{exportMessage}</div>)}
             </div>
@@ -2348,6 +2613,128 @@ function App() {
           )}
         </div>
       )}
+
+      {view === 'teambuilder' && teamBuilderData && (
+        <div className="TeamBuilderContainer">
+          <div className="team-builder-header">
+            <h2>Team Builder - {teamBuilderData.playerName}</h2>
+            <button className="gen-button" onClick={() => setView('lobby')}>Back to Lobby</button>
+          </div>
+
+          <div className="team-builder-horizontal">
+            {teamBuilderData.slots.map((slot, idx) => {
+              if (!slot.pokemon) {
+                return (
+                  <div key={idx} className="team-builder-slot empty">
+                    <div className="slot-number">Slot {slot.slotNumber}</div>
+                    <div className="empty-slot-placeholder">Empty</div>
+                  </div>
+                );
+              }
+
+              const totalEVs = getTotalEVs(slot);
+              const remainingEVs = MAX_EVS - totalEVs;
+
+              return (
+                <div key={idx} className="team-builder-slot">
+                  <div className="slot-number">Slot {slot.slotNumber}</div>
+                  <div className="pokemon-builder-card">
+                    <img src={slot.pokemon.img} alt={slot.pokemon.name} className="pokemon-img" />
+                    <div className="pokemon-name">{slot.pokemon.name}</div>
+
+                    <div className="builder-section">
+                      <label>Held Item:</label>
+                      <select value={slot.heldItem} onChange={(e) => updateTeamBuilderSlot(idx, 'heldItem', e.target.value)}>
+                        <option value="">None</option>
+                        {itemsList.map(item => <option key={item} value={item}>{item}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="builder-section">
+                      <label>Ability:</label>
+                      <select value={slot.ability} onChange={(e) => updateTeamBuilderSlot(idx, 'ability', e.target.value)}>
+                        <option value="">Select ability</option>
+                        {slot.pokemon.abilities && slot.pokemon.abilities.map(ability => 
+                          <option key={ability} value={ability}>{ability}</option>
+                        )}
+                      </select>
+                    </div>
+
+                    <div className="builder-section">
+                      <label>Nature:</label>
+                      <select value={slot.nature} onChange={(e) => updateTeamBuilderSlot(idx, 'nature', e.target.value)}>
+                        {naturesList.map(nature => <option key={nature} value={nature}>{nature}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="builder-section moves-section">
+                      <label>Moves:</label>
+                      {[1, 2, 3, 4].map(moveNum => (
+                        <div key={moveNum} className="move-row">
+                          <span className="move-label">Move {moveNum}:</span>
+                          <select value={slot.moves[moveNum - 1] || ''} onChange={(e) => updateTeamBuilderSlot(idx, `move${moveNum}`, e.target.value)}>
+                            <option value="">None</option>
+                            {slot.pokemon.moves && slot.pokemon.moves.map(move => 
+                              <option key={move} value={move}>{move}</option>
+                            )}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="builder-section stats-section">
+                      <label>Stats (Base | IV | EV = Total):</label>
+                      <div className="ev-tracker">EVs: {totalEVs} / {MAX_EVS} (Remaining: {remainingEVs})</div>
+                      {['hp', 'attack', 'defense', 'specialAttack', 'specialDefense', 'speed'].map(statKey => {
+                        const statDisplay = statKey === 'specialAttack' ? 'Sp. Atk' : 
+                                          statKey === 'specialDefense' ? 'Sp. Def' : 
+                                          statKey.charAt(0).toUpperCase() + statKey.slice(1);
+                        const base = slot.pokemon.baseStats[statKey] || 0;
+                        const iv = slot.ivs[statKey] || 0;
+                        const ev = slot.evs[statKey] || 0;
+                        const total = calculateStatTotal(base, iv, ev, 100, slot.nature, statKey);
+                        
+                        return (
+                          <div key={statKey} className="stat-row">
+                            <span className="stat-name">{statDisplay}:</span>
+                            <span className="stat-base">{base}</span>
+                            <input 
+                              type="number" 
+                              min="0" 
+                              max={MAX_IV} 
+                              value={iv} 
+                              onChange={(e) => updateTeamBuilderSlot(idx, `iv${statKey.charAt(0).toUpperCase() + statKey.slice(1)}`, e.target.value)}
+                              className="stat-input iv-input"
+                            />
+                            <input 
+                              type="number" 
+                              min="0" 
+                              max={Math.min(MAX_SINGLE_EV, remainingEVs + ev)} 
+                              value={ev} 
+                              onChange={(e) => updateTeamBuilderSlot(idx, `ev${statKey.charAt(0).toUpperCase() + statKey.slice(1)}`, e.target.value)}
+                              className="stat-input ev-input"
+                            />
+                            <span className="stat-total">= {total}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="builder-section">
+                      <label>Is Captain:</label>
+                      <select value={slot.isCaptain.toString()} onChange={(e) => updateTeamBuilderSlot(idx, 'isCaptain', e.target.value === 'true')}>
+                        <option value="false">False</option>
+                        <option value="true">True</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <footer className="AppFooter">
         <div className="footer-inner">
           <div className="footer-col">
