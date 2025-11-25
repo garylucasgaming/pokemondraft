@@ -97,6 +97,14 @@ function App() {
   const [optimisticSelections, setOptimisticSelections] = useState({});
   const [hostId, setHostId] = useState(null);
   const hostIdRef = useRef(null);
+  const [lobbySettings, setLobbySettings] = useState({ 
+    pointsLimit: 100, 
+    teamSizeLimit: 10,
+    allowTrading: false,
+    maxTradeLimit: 0,
+    unlimitedTrades: false
+  });
+  const lobbySettingsRef = useRef(lobbySettings);
   
   // Sync refs with state for use in event handler closures
   useEffect(() => {
@@ -111,14 +119,6 @@ function App() {
     lobbySettingsRef.current = lobbySettings;
   }, [lobbySettings]);
   
-  const [lobbySettings, setLobbySettings] = useState({ 
-    pointsLimit: 100, 
-    teamSizeLimit: 10,
-    allowTrading: false,
-    maxTradeLimit: 0,
-    unlimitedTrades: false
-  });
-  const lobbySettingsRef = useRef(lobbySettings);
   const [banList, setBanList] = useState([]);
   const [pointsMap, setPointsMap] = useState({});
   const [pointsRemaining, setPointsRemaining] = useState({});
