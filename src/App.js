@@ -883,9 +883,6 @@ function App() {
         return;
       }
       
-      console.log('Loading team:', team);
-      console.log('Team data slots:', team.data.slots);
-      
       // Ensure all slots have proper structure
       const loadedData = {
         playerName: team.data.playerName || team.playerName || 'Player',
@@ -941,9 +938,6 @@ function App() {
           };
         })
       };
-      
-      console.log('Loaded data:', loadedData);
-      console.log('Slots with pokemon:', loadedData.slots.filter(s => s.pokemon).length);
       
       setTeamBuilderData(loadedData);
       setTeamBuilderLoaded(true);
@@ -1539,7 +1533,6 @@ function App() {
   useEffect(() => {
     // Fetch abilities list from PokeAPI after pokemon data loads
     if (pokemonList.length > 0 && allAbilitiesList.length === 0) {
-      console.log('Fetching abilities for', pokemonList.length, 'pokemon');
       fetchAllAbilities();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1560,6 +1553,9 @@ function App() {
           moves: pokemon.moves,
           generation: pokemon.generation
         })).sort((a, b) => a.id - b.id);
+        
+        // Debug: Check first Pokemon's abilities
+        console.log('Bulbasaur after load:', list.find(p => p.id === 1));
         
         setPokemonList(list);
       })
@@ -1743,7 +1739,6 @@ function App() {
   // Return the visible pokemon list for the draft area, filtered and sorted
   const getVisiblePokemonList = () => {
     const source = (draftPokemonList && draftPokemonList.length > 0) ? draftPokemonList : pokemonList;
-    console.log('getVisiblePokemonList called, filterAbility:', filterAbility);
     const gen = lobbyGenFilter || 0;
     const filtered = (source || []).filter((p) => {
       if (!p) return false;
@@ -1776,33 +1771,17 @@ function App() {
       // Ability filter
       if (filterAbility && filterAbility.trim()) {
         if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
-          if (p.id === 1) {
-            console.log('Bulbasaur filtered out - no abilities array:', p.abilities);
-          }
           return false;
         }
-        // Normalize ability name for comparison (remove spaces and hyphens)
+        // Normalize ability name for comparison (remove spaces, hyphens, and make lowercase)
         const searchAbility = filterAbility.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
         const hasAbility = p.abilities.some(ability => {
           if (!ability) return false;
+          // Normalize the Pokemon's ability name the same way
           const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
-          const matches = normalizedAbility === searchAbility;
-          if (p.id === 1) { // Debug for Bulbasaur
-            console.log('Bulbasaur ability check:', {
-              searchAbility,
-              ability,
-              normalizedAbility,
-              matches
-            });
-          }
-          return matches;
+          return normalizedAbility === searchAbility || normalizedAbility.includes(searchAbility) || searchAbility.includes(normalizedAbility);
         });
-        if (!hasAbility) {
-          if (p.id === 1) {
-            console.log('Bulbasaur filtered out - no matching ability');
-          }
-          return false;
-        }
+        if (!hasAbility) return false;
       }
       
       // Move filter
@@ -1836,12 +1815,7 @@ function App() {
   // Fetch all abilities from PokeAPI and filter by what's in our pokemon_data.json
   const fetchAllAbilities = async () => {
     try {
-      console.log('fetchAllAbilities called, pokemonList length:', pokemonList.length);
-      
-      if (pokemonList.length === 0) {
-        console.warn('Pokemon list is empty, cannot fetch abilities');
-        return;
-      }
+      if (pokemonList.length === 0) return;
       
       // Fetch all abilities from PokeAPI
       const response = await axios.get('https://pokeapi.co/api/v2/ability?limit=1000');
@@ -1849,8 +1823,6 @@ function App() {
         name: ability.name,
         displayName: ability.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
       }));
-      
-      console.log('Fetched', allAbilities.length, 'abilities from PokeAPI');
       
       // Get unique abilities from our pokemon data
       const pokemonAbilities = new Set();
@@ -1866,8 +1838,6 @@ function App() {
         }
       });
       
-      console.log('Found', pokemonAbilities.size, 'unique abilities in pokemon data');
-      
       // Filter abilities to only those in our pokemon data
       const filteredAbilities = allAbilities.filter(ability => {
         const normalized = ability.name.replace(/-/g, '');
@@ -1880,7 +1850,6 @@ function App() {
       );
       
       setAllAbilitiesList(sorted);
-      console.log(`Loaded ${sorted.length} abilities that exist in pokemon data`);
     } catch (err) {
       console.error('Failed to fetch abilities from PokeAPI:', err);
     }
@@ -1896,8 +1865,6 @@ function App() {
 
   // Update ability suggestions
   const updateAbilitySuggestions = (input) => {
-    console.log('updateAbilitySuggestions called with:', input);
-    console.log('allAbilitiesList length:', allAbilitiesList.length);
     if (!input || input.trim() === '') {
       setAbilitySuggestions([]);
       setShowAbilitySuggestions(false);
@@ -1906,8 +1873,6 @@ function App() {
     const filtered = allAbilitiesList.filter(ability => 
       ability.displayName.toLowerCase().includes(input.toLowerCase())
     ).slice(0, 10);
-    console.log('Filtered suggestions:', filtered);
-    console.log('Setting showAbilitySuggestions to:', filtered.length > 0);
     setAbilitySuggestions(filtered);
     setShowAbilitySuggestions(filtered.length > 0);
   };
@@ -3627,14 +3592,6 @@ function App() {
                         }}
                         className="filter-input"
                       />
-                      {(() => {
-                        console.log('Rendering ability suggestions dropdown check:', {
-                          showAbilitySuggestions,
-                          suggestionsLength: abilitySuggestions.length,
-                          willRender: showAbilitySuggestions && abilitySuggestions.length > 0
-                        });
-                        return null;
-                      })()}
                       {showAbilitySuggestions && abilitySuggestions.length > 0 && (
                         <div className="suggestions-dropdown" style={{ 
                           position: 'absolute', 
