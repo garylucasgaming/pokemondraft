@@ -1782,7 +1782,16 @@ function App() {
         const hasAbility = p.abilities.some(ability => {
           if (!ability) return false;
           const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
-          return normalizedAbility === searchAbility;
+          const matches = normalizedAbility === searchAbility;
+          if (p.id === 1) { // Debug for Bulbasaur
+            console.log('Bulbasaur ability check:', {
+              searchAbility,
+              ability,
+              normalizedAbility,
+              matches
+            });
+          }
+          return matches;
         });
         if (!hasAbility) return false;
       }
@@ -1889,6 +1898,7 @@ function App() {
       ability.displayName.toLowerCase().includes(input.toLowerCase())
     ).slice(0, 10);
     console.log('Filtered suggestions:', filtered);
+    console.log('Setting showAbilitySuggestions to:', filtered.length > 0);
     setAbilitySuggestions(filtered);
     setShowAbilitySuggestions(filtered.length > 0);
   };
@@ -3608,6 +3618,14 @@ function App() {
                         }}
                         className="filter-input"
                       />
+                      {(() => {
+                        console.log('Rendering ability suggestions dropdown check:', {
+                          showAbilitySuggestions,
+                          suggestionsLength: abilitySuggestions.length,
+                          willRender: showAbilitySuggestions && abilitySuggestions.length > 0
+                        });
+                        return null;
+                      })()}
                       {showAbilitySuggestions && abilitySuggestions.length > 0 && (
                         <div className="suggestions-dropdown" style={{ 
                           position: 'absolute', 
