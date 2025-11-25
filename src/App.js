@@ -3974,10 +3974,31 @@ function App() {
                       const teamBuilderSlots = Array(12).fill(null).map((_, idx) => {
                         if (idx < myTeam.length) {
                           const p = myTeam[idx];
+                          // Ensure Pokemon has the correct structure for team builder
+                          const pokemonForBuilder = {
+                            id: p.id,
+                            name: p.name,
+                            img: p.img,
+                            // Convert stats to baseStats if needed
+                            baseStats: p.baseStats || (p.stats ? {
+                              hp: p.stats.hp?.base_stat || p.stats.hp || 0,
+                              attack: p.stats.attack?.base_stat || p.stats.attack || 0,
+                              defense: p.stats.defense?.base_stat || p.stats.defense || 0,
+                              specialAttack: p.stats['special-attack']?.base_stat || p.stats.specialAttack || p.stats['specialAttack'] || 0,
+                              specialDefense: p.stats['special-defense']?.base_stat || p.stats.specialDefense || p.stats['specialDefense'] || 0,
+                              speed: p.stats.speed?.base_stat || p.stats.speed || 0
+                            } : {
+                              hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0
+                            }),
+                            abilities: p.abilities || [],
+                            moves: p.moves || [],
+                            types: p.types || []
+                          };
+                          
                           return {
                             slotNumber: idx + 1,
-                            pokemon: p,
-                            ability: '',
+                            pokemon: pokemonForBuilder,
+                            ability: p.abilities?.[0] || '',
                             nature: 'Hardy',
                             heldItem: '',
                             teraType: '',
