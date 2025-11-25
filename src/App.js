@@ -127,6 +127,7 @@ function App() {
   const [filterMove, setFilterMove] = useState(''); // Applied filter
   const [moveInput, setMoveInput] = useState(''); // Input field value
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [allAbilitiesList, setAllAbilitiesList] = useState([]); // All abilities from PokeAPI
   const [abilitySuggestions, setAbilitySuggestions] = useState([]);
   const [showAbilitySuggestions, setShowAbilitySuggestions] = useState(false);
   const [moveSuggestions, setMoveSuggestions] = useState([]);
@@ -1473,6 +1474,11 @@ function App() {
   };
 
   useEffect(() => {
+    // Fetch abilities list from PokeAPI
+    fetchAllAbilities();
+  }, []);
+
+  useEffect(() => {
     // Load Pokemon data from local JSON file instead of PokeAPI
     fetch('/pokemon_data.json')
       .then(response => response.json())
@@ -1704,9 +1710,13 @@ function App() {
         if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
           return false;
         }
-        const hasAbility = p.abilities.some(ability => 
-          ability && ability.toLowerCase().includes(filterAbility.toLowerCase())
-        );
+        // Normalize ability name for comparison (handle both formats)
+        const searchAbility = filterAbility.toLowerCase().replace(/\s+/g, '-');
+        const hasAbility = p.abilities.some(ability => {
+          if (!ability) return false;
+          const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '-');
+          return normalizedAbility.includes(searchAbility) || ability.toLowerCase().includes(filterAbility.toLowerCase());
+        });
         if (!hasAbility) return false;
       }
       
@@ -1738,13 +1748,17 @@ function App() {
     return sorted;
   };
 
-  // Get unique abilities from pokemon list for autocomplete
-  const getUniqueAbilities = () => {
-    const allAbilities = pokemonList
-      .flatMap(p => p.abilities || [])
-      .filter(ability => ability && ability.trim());
-    const unique = [...new Set(allAbilities)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-    return unique;
+  // Fetch all abilities from PokeAPI
+  const fetchAllAbilities = async () => {
+    try {
+      const response = await axios.get('https://pokeapi.co/api/v2/ability?limit=1000');
+      const abilities = response.data.results.map(ability => 
+        ability.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+      ).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      setAllAbilitiesList(abilities);
+    } catch (err) {
+      console.error('Failed to fetch abilities from PokeAPI:', err);
+    }
   };
 
   // Get unique moves from pokemon list for autocomplete
@@ -1762,8 +1776,7 @@ function App() {
       setShowAbilitySuggestions(false);
       return;
     }
-    const uniqueAbilities = getUniqueAbilities();
-    const filtered = uniqueAbilities.filter(ability => 
+    const filtered = allAbilitiesList.filter(ability => 
       ability.toLowerCase().includes(input.toLowerCase())
     ).slice(0, 10);
     setAbilitySuggestions(filtered);
@@ -2712,6 +2725,23 @@ function App() {
                   <button className="gen-button ml-8" onClick={pasteLobbyCodeFromClipboard}>Paste</button>
                   <button className="join-lobby-button ml-8" onClick={() => joinLobby(document.getElementById('join-code').value)}>Join Lobby</button>
                 </div>
+                
+                <div className="control-group">
+                  <button className="nav-button" onClick={() => {
+                    const emptyTeam = {
+                      playerName: PokemonName || 'Player',
+                      slots: Array(12).fill(null).map((_, idx) => createEmptySlot(idx))
+                    };
+                    setTeamBuilderData(emptyTeam);
+                    setTeamBuilderLoaded(true);
+                    setView('teambuilder');
+                  }}>Team Builder</button>
+                  <button className="nav-button ml-8" onClick={() => {
+                    const drafts = readOngoingDraftsFromCookies();
+                    setOngoingDrafts(drafts);
+                    setView('ongoingdrafts');
+                  }}>Ongoing Drafts</button>
+                </div>
               </div>
             )}
           {lobbyCode ? (
@@ -3338,46 +3368,6 @@ function App() {
                       alert('Failed to save team');
                     }
                   }}>Save Team</button>
-                  <button className="gen-button ml-8" onClick={() => {
-                    // Load team into team builder
-                    const myTeam = finalTeams.selections[socket?.id] || [];
-                    // Convert to team builder format
-                    const teamBuilderSlots = Array(12).fill(null).map((_, idx) => {
-                      if (idx < myTeam.length) {
-                        const p = myTeam[idx];
-                        return {
-                          slotIndex: idx,
-                          pokemon: p.name,
-                          pokemonId: p.id,
-                          pokemonName: p.name,
-                          sprite: p.img,
-                          isCaptain: idx === 0,
-                          ability: '',
-                          nature: 'hardy',
-                          heldItem: '',
-                          moves: ['', '', '', ''],
-                          stats: {
-                            hp: { base: 0, iv: 31, ev: 0 },
-                            attack: { base: 0, iv: 31, ev: 0 },
-                            defense: { base: 0, iv: 31, ev: 0 },
-                            specialAttack: { base: 0, iv: 31, ev: 0 },
-                            specialDefense: { base: 0, iv: 31, ev: 0 },
-                            speed: { base: 0, iv: 31, ev: 0 }
-                          },
-                          ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
-                          evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 }
-                        };
-                      }
-                      return createEmptySlot(idx);
-                    });
-                    
-                    setTeamBuilderData({
-                      playerName: PokemonName,
-                      slots: teamBuilderSlots
-                    });
-                    setTeamBuilderLoaded(true);
-                    setView('teambuilder');
-                  }}>Show Team in Team Builder</button>
                   <button className="gen-button ml-8" onClick={() => { 
                     leaveLobby(true); 
                     setDraftComplete(false); 
