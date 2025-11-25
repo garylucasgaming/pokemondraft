@@ -107,6 +107,10 @@ function App() {
     hostIdRef.current = hostId;
   }, [hostId]);
   
+  useEffect(() => {
+    lobbySettingsRef.current = lobbySettings;
+  }, [lobbySettings]);
+  
   const [lobbySettings, setLobbySettings] = useState({ 
     pointsLimit: 100, 
     teamSizeLimit: 10,
@@ -114,6 +118,7 @@ function App() {
     maxTradeLimit: 0,
     unlimitedTrades: false
   });
+  const lobbySettingsRef = useRef(lobbySettings);
   const [banList, setBanList] = useState([]);
   const [pointsMap, setPointsMap] = useState({});
   const [pointsRemaining, setPointsRemaining] = useState({});
@@ -2651,14 +2656,16 @@ function App() {
         
         // Save ongoing draft with current lobby settings (for ALL players)
         try {
+          const currentSettings = lobbySettingsRef.current;
+          console.log('Saving draft with current settings from ref:', currentSettings);
           addOngoingDraftToCookies(data.code, [], {
-            settings: lobbySettings,
+            settings: currentSettings,
             draftOrder: data.draftOrder,
             currentTurn: null,
             pointsRemaining: {},
             pointsMap: data.pointsMap
           });
-          console.log('Saved draft with settings:', lobbySettings);
+          console.log('Saved draft with settings:', currentSettings);
         } catch (err) {
           console.warn('Failed to save draft on start:', err);
         }
