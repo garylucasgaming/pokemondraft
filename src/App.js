@@ -91,8 +91,14 @@ function App() {
   const [lobbyCode, setLobbyCode] = useState('');
   const lobbyCodeRef = useRef('');
   const [lobbyUsers, setLobbyUsers] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [remoteSelections, setRemoteSelections] = useState({});
+  // optimistic local picks (keyed by socket id)
+  const [optimisticSelections, setOptimisticSelections] = useState({});
+  const [hostId, setHostId] = useState(null);
+  const hostIdRef = useRef(null);
   
-  // Sync ref with state for use in event handler closures
+  // Sync refs with state for use in event handler closures
   useEffect(() => {
     lobbyCodeRef.current = lobbyCode;
   }, [lobbyCode]);
@@ -100,12 +106,7 @@ function App() {
   useEffect(() => {
     hostIdRef.current = hostId;
   }, [hostId]);
-  const [socket, setSocket] = useState(null);
-  const [remoteSelections, setRemoteSelections] = useState({});
-  // optimistic local picks (keyed by socket id)
-  const [optimisticSelections, setOptimisticSelections] = useState({});
-  const [hostId, setHostId] = useState(null);
-  const hostIdRef = useRef(null);
+  
   const [lobbySettings, setLobbySettings] = useState({ 
     pointsLimit: 100, 
     teamSizeLimit: 10,
