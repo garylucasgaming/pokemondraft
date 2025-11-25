@@ -884,71 +884,40 @@ function App() {
         return;
       }
       
-      // Ensure all slots have proper structure
+      // The team.data already has the correct structure (slots with pokemon objects)
+      // Just need to ensure empty slots are properly structured
       const loadedData = {
         playerName: team.data.playerName || team.playerName || 'Player',
         slots: team.data.slots.map((slot, idx) => {
-          if (!slot) {
-            return createEmptySlot(idx);
-          }
-          
-          // Handle different slot structures
-          let pokemonObj = null;
-          
-          // Case 1: slot has pokemon object already
-          if (slot.pokemon) {
-            pokemonObj = slot.pokemon;
-          }
-          // Case 2: slot has pokemonName but no pokemon object
-          else if (slot.pokemonName) {
-            pokemonObj = {
-              id: slot.pokemonId || 0,
-              name: slot.pokemonName,
-              img: slot.sprite || '',
-              baseStats: slot.stats ? {
-                hp: slot.stats.hp?.base || 0,
-                attack: slot.stats.attack?.base || 0,
-                defense: slot.stats.defense?.base || 0,
-                specialAttack: slot.stats.specialAttack?.base || 0,
-                specialDefense: slot.stats.specialDefense?.base || 0,
-                speed: slot.stats.speed?.base || 0
-              } : {
-                hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0
-              },
-              abilities: [],
-              moves: []
+          // If slot already has pokemon object, ensure it has all required properties
+          if (slot && slot.pokemon) {
+            return {
+              ...slot,
+              slotNumber: slot.slotNumber || idx + 1,
+              ivs: slot.ivs || { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+              evs: slot.evs || { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+              moves: slot.moves || ['', '', '', ''],
+              ability: slot.ability || '',
+              nature: slot.nature || 'hardy',
+              heldItem: slot.heldItem || '',
+              isCaptain: slot.isCaptain || false
             };
           }
-          
-          // Return null for empty slots
-          if (!pokemonObj) {
-            return createEmptySlot(idx);
-          }
-          
-          // Return properly structured slot
-          return {
-            slotNumber: slot.slotNumber || slot.slotIndex || idx + 1,
-            pokemon: pokemonObj,
-            heldItem: slot.heldItem || '',
-            ability: slot.ability || '',
-            nature: slot.nature || 'hardy',
-            moves: slot.moves || ['', '', '', ''],
-            ivs: slot.ivs || { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
-            evs: slot.evs || { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
-            isCaptain: slot.isCaptain || false
-          };
+          // Otherwise return empty slot
+          return createEmptySlot(idx);
         })
       };
+      
+      console.log('Team loaded:', {
+        loadedData,
+        slotsWithPokemon: loadedData.slots.filter(s => s.pokemon).length,
+        teamBuilderLoaded: true,
+        showTeamSelector: false
+      });
       
       setTeamBuilderData(loadedData);
       setTeamBuilderLoaded(true);
       setShowTeamSelector(false);
-      
-      console.log('Team loaded:', {
-        loadedData,
-        teamBuilderLoaded: true,
-        showTeamSelector: false
-      });
       
       // Force a small delay to ensure state updates properly
       setTimeout(() => {
@@ -4108,14 +4077,14 @@ function App() {
                         </div>
                         <div className="team-selector-card-body">
                           <div className="saved-team-grid">
-                            {team.data.slots.filter(s => s.pokemonName).slice(0, 6).map((slot, idx) => (
+                            {team.data.slots.filter(s => s.pokemon).slice(0, 6).map((slot, idx) => (
                               <div key={idx} className="saved-team-card-small">
-                                {slot.sprite && <img src={slot.sprite} alt={slot.pokemonName} />}
+                                {slot.pokemon?.img && <img src={slot.pokemon.img} alt={slot.pokemon.name} />}
                               </div>
                             ))}
                           </div>
                           <div className="fs-12 muted mt-8">
-                            {team.data.slots.filter(s => s.pokemonName).length} Pokémon
+                            {team.data.slots.filter(s => s.pokemon).length} Pokémon
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
