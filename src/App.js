@@ -591,6 +591,7 @@ function App() {
       heldItem: '',
       ability: '',
       nature: 'hardy',
+      teraType: '', // Tera Type for Gen 9
       moves: ['', '', '', ''],
       ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
       evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
@@ -797,7 +798,7 @@ function App() {
     const newData = { ...teamBuilderData };
     const slot = { ...newData.slots[slotIndex] };
     
-    if (field === 'heldItem' || field === 'ability' || field === 'nature' || field === 'isCaptain') {
+    if (field === 'heldItem' || field === 'ability' || field === 'nature' || field === 'teraType' || field === 'isCaptain') {
       slot[field] = value;
     } else if (field.startsWith('move')) {
       const moveIndex = parseInt(field.replace('move', '')) - 1;
@@ -1011,6 +1012,7 @@ function App() {
             heldItem: slot.heldItem || '',
             ability: slot.ability || (pokemonObj.abilities && pokemonObj.abilities[0]) || '',
             nature: slot.nature || 'hardy',
+            teraType: slot.teraType || '',
             moves: Array.isArray(slot.moves) && slot.moves.length === 4 ? slot.moves : ['', '', '', ''],
             ivs: (slot.ivs && typeof slot.ivs === 'object') ? slot.ivs : { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
             evs: (slot.evs && typeof slot.evs === 'object') ? slot.evs : { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
@@ -2595,6 +2597,15 @@ function App() {
       if (data && data.settings) {
         console.log('lobby_update received settings:', data.settings);
         setLobbySettings(data.settings);
+        // Immediately cache settings to localStorage for draft_complete fallback
+        if (data.code) {
+          try {
+            localStorage.setItem('draftSettings_' + data.code, JSON.stringify(data.settings));
+            console.log('Cached settings from lobby_update:', data.settings);
+          } catch (err) {
+            console.warn('Failed to cache settings from lobby_update:', err);
+          }
+        }
       }
       if (data && data.banList) setBanList(Array.isArray(data.banList) ? data.banList : []);
       if (data && data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
@@ -2841,16 +2852,27 @@ function App() {
         isHost: s?.id === hostIdRef.current
       });
       
-      // Try to get settings from saved ongoing draft first
+      // Try to get settings from saved ongoing draft first, or from lobby cache
       let savedDraftSettings = null;
       try {
         const code = lobbyCodeRef.current;
         if (code) {
+          // Try ongoing draft first
           const ongoingDrafts = readOngoingDraftsFromCookies();
           const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === code);
           if (draft && draft.lobbySettings) {
             savedDraftSettings = draft.lobbySettings;
             console.log('Found saved draft settings:', savedDraftSettings);
+          } else {
+            // Fallback to direct cache from lobby_update
+            const cachedStr = localStorage.getItem('draftSettings_' + code);
+            if (cachedStr) {
+              savedDraftSettings = JSON.parse(cachedStr);
+              console.log('Found cached settings from lobby_update:', savedDraftSettings);
+            }
+          }
+          
+          if (savedDraftSettings) {
             tradingEnabled = savedDraftSettings.allowTrading || false;
             // Update local state
             setLobbySettings(prev => ({
@@ -4233,6 +4255,31 @@ function App() {
                       <label>Nature:</label>
                       <select value={slot.nature} onChange={(e) => updateTeamBuilderSlot(idx, 'nature', e.target.value)}>
                         {naturesList.map(nature => <option key={nature} value={nature}>{nature}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="builder-section">
+                      <label>Tera Type:</label>
+                      <select value={slot.teraType} onChange={(e) => updateTeamBuilderSlot(idx, 'teraType', e.target.value)}>
+                        <option value="">None</option>
+                        <option value="normal">Normal</option>
+                        <option value="fire">Fire</option>
+                        <option value="water">Water</option>
+                        <option value="electric">Electric</option>
+                        <option value="grass">Grass</option>
+                        <option value="ice">Ice</option>
+                        <option value="fighting">Fighting</option>
+                        <option value="poison">Poison</option>
+                        <option value="ground">Ground</option>
+                        <option value="flying">Flying</option>
+                        <option value="psychic">Psychic</option>
+                        <option value="bug">Bug</option>
+                        <option value="rock">Rock</option>
+                        <option value="ghost">Ghost</option>
+                        <option value="dragon">Dragon</option>
+                        <option value="dark">Dark</option>
+                        <option value="steel">Steel</option>
+                        <option value="fairy">Fairy</option>
                       </select>
                     </div>
 
