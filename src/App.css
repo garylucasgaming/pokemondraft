@@ -328,7 +328,6 @@ body {
 .LobbyControlsRow { 
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 12px;
   margin-bottom: 12px;
 }

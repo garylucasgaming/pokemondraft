@@ -884,39 +884,66 @@ function App() {
         return;
       }
       
+      console.log('Loading team:', team);
+      console.log('Team data slots:', team.data.slots);
+      
       // Ensure all slots have proper structure
       const loadedData = {
-        ...team.data,
+        playerName: team.data.playerName || team.playerName || 'Player',
         slots: team.data.slots.map((slot, idx) => {
           if (!slot) {
             return createEmptySlot(idx);
           }
-          // If slot has pokemonName but no pokemon object, create it
-          if (slot.pokemonName && !slot.pokemon) {
-            return {
-              ...slot,
-              pokemon: {
-                id: slot.pokemonId || 0,
-                name: slot.pokemonName,
-                img: slot.sprite || '',
-                baseStats: slot.stats ? {
-                  hp: slot.stats.hp?.base || 0,
-                  attack: slot.stats.attack?.base || 0,
-                  defense: slot.stats.defense?.base || 0,
-                  specialAttack: slot.stats.specialAttack?.base || 0,
-                  specialDefense: slot.stats.specialDefense?.base || 0,
-                  speed: slot.stats.speed?.base || 0
-                } : {
-                  hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0
-                },
-                abilities: [],
-                moves: []
-              }
+          
+          // Handle different slot structures
+          let pokemonObj = null;
+          
+          // Case 1: slot has pokemon object already
+          if (slot.pokemon) {
+            pokemonObj = slot.pokemon;
+          }
+          // Case 2: slot has pokemonName but no pokemon object
+          else if (slot.pokemonName) {
+            pokemonObj = {
+              id: slot.pokemonId || 0,
+              name: slot.pokemonName,
+              img: slot.sprite || '',
+              baseStats: slot.stats ? {
+                hp: slot.stats.hp?.base || 0,
+                attack: slot.stats.attack?.base || 0,
+                defense: slot.stats.defense?.base || 0,
+                specialAttack: slot.stats.specialAttack?.base || 0,
+                specialDefense: slot.stats.specialDefense?.base || 0,
+                speed: slot.stats.speed?.base || 0
+              } : {
+                hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0
+              },
+              abilities: [],
+              moves: []
             };
           }
-          return slot;
+          
+          // Return null for empty slots
+          if (!pokemonObj) {
+            return createEmptySlot(idx);
+          }
+          
+          // Return properly structured slot
+          return {
+            slotNumber: slot.slotNumber || slot.slotIndex || idx + 1,
+            pokemon: pokemonObj,
+            heldItem: slot.heldItem || '',
+            ability: slot.ability || '',
+            nature: slot.nature || 'hardy',
+            moves: slot.moves || ['', '', '', ''],
+            ivs: slot.ivs || { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+            evs: slot.evs || { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+            isCaptain: slot.isCaptain || false
+          };
         })
       };
+      
+      console.log('Loaded data:', loadedData);
       
       setTeamBuilderData(loadedData);
       setTeamBuilderLoaded(true);
@@ -3880,16 +3907,7 @@ function App() {
           </div>
 
           <div className="team-builder-horizontal">
-            {teamBuilderData.slots.map((slot, idx) => {
-              if (!slot.pokemon) {
-                return (
-                  <div key={idx} className="team-builder-slot empty">
-                    <div className="slot-number">Slot {slot.slotNumber}</div>
-                    <div className="empty-slot-placeholder">Empty</div>
-                  </div>
-                );
-              }
-
+            {teamBuilderData.slots.filter(slot => slot.pokemon).map((slot, idx) => {
               const totalEVs = getTotalEVs(slot);
               const remainingEVs = MAX_EVS - totalEVs;
 
