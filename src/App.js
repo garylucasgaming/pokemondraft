@@ -2814,9 +2814,9 @@ function App() {
           console.log('Cache raw value:', cachedStr);
           if (cachedStr) {
             const cached = JSON.parse(cachedStr);
-            console.log('Parsed cache:', cached, 'Current socket ID:', s.id, 'Current lobbyCode:', lobbyCode);
-            // Verify cache is for current lobby AND current socket is the host
-            if (cached.lobbyCode === lobbyCode && cached.hostSocketId === s.id) {
+            console.log('Parsed cache:', cached, 'Current socket ID:', s.id);
+            // Verify current socket is the host who cached these settings
+            if (cached.hostSocketId === s.id) {
               tradingEnabled = cached.allowTrading;
               console.log('✓ Using cached host settings:', cached);
               // Update local state with cached values
@@ -2827,7 +2827,7 @@ function App() {
                 unlimitedTrades: cached.unlimitedTrades
               }));
             } else {
-              console.log('Cache lobby mismatch:', cached.lobbyCode, 'vs', lobbyCode);
+              console.log('Socket ID mismatch:', cached.hostSocketId, 'vs', s.id);
             }
           } else {
             console.log('No cache found in localStorage');
@@ -2836,7 +2836,7 @@ function App() {
           console.warn('Failed to restore cached settings:', err);
         }
       } else {
-        console.log('Not checking cache because:', !data.settings ? 'no server settings' : 'have server settings', s ? 'have socket' : 'no socket', s?.id === hostId ? 'is host' : 'not host');
+        console.log('Not checking cache because:', !data.settings ? 'no server settings' : 'have server settings', s ? 'have socket' : 'no socket');
       }
       
       console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from local:', lobbySettings.allowTrading);
