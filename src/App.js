@@ -2797,14 +2797,14 @@ function App() {
       
       console.log('Checking cache conditions:', {
         hasServerSettings: !!data.settings,
-        hasSocket: !!socket,
-        socketId: socket?.id,
+        hasSocket: !!s,
+        socketId: s?.id,
         hostId: hostId,
-        isHost: socket?.id === hostId
+        isHost: s?.id === hostId
       });
       
       // If server didn't provide settings and we're the host, use cached settings
-      if (!data.settings && socket && socket.id === hostId) {
+      if (!data.settings && s && s.id === hostId) {
         console.log('Attempting to read cached host settings...');
         try {
           const cachedStr = localStorage.getItem('hostDraftSettings');
@@ -2833,7 +2833,7 @@ function App() {
           console.warn('Failed to restore cached settings:', err);
         }
       } else {
-        console.log('Not checking cache because:', !data.settings ? 'no server settings' : 'have server settings', socket ? 'have socket' : 'no socket', socket?.id === hostId ? 'is host' : 'not host');
+        console.log('Not checking cache because:', !data.settings ? 'no server settings' : 'have server settings', s ? 'have socket' : 'no socket', s?.id === hostId ? 'is host' : 'not host');
       }
       
       console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from local:', lobbySettings.allowTrading);
