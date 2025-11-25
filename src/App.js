@@ -1538,9 +1538,11 @@ function App() {
 
   useEffect(() => {
     // Fetch abilities list from PokeAPI after pokemon data loads
-    if (pokemonList.length > 0) {
+    if (pokemonList.length > 0 && allAbilitiesList.length === 0) {
+      console.log('Fetching abilities for', pokemonList.length, 'pokemon');
       fetchAllAbilities();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pokemonList.length]);
 
   useEffect(() => {
@@ -1865,6 +1867,8 @@ function App() {
 
   // Update ability suggestions
   const updateAbilitySuggestions = (input) => {
+    console.log('updateAbilitySuggestions called with:', input);
+    console.log('allAbilitiesList length:', allAbilitiesList.length);
     if (!input || input.trim() === '') {
       setAbilitySuggestions([]);
       setShowAbilitySuggestions(false);
@@ -1873,6 +1877,7 @@ function App() {
     const filtered = allAbilitiesList.filter(ability => 
       ability.displayName.toLowerCase().includes(input.toLowerCase())
     ).slice(0, 10);
+    console.log('Filtered suggestions:', filtered);
     setAbilitySuggestions(filtered);
     setShowAbilitySuggestions(filtered.length > 0);
   };
