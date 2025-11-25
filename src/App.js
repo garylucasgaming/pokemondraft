@@ -2572,7 +2572,10 @@ function App() {
       if (data && data.users) setLobbyUsers(data.users);
       if (data && data.code) setLobbyCode(data.code);
       if (data && data.host) setHostId(data.host);
-      if (data && data.settings) setLobbySettings(data.settings);
+      if (data && data.settings) {
+        console.log('lobby_update received settings:', data.settings);
+        setLobbySettings(data.settings);
+      }
       if (data && data.banList) setBanList(Array.isArray(data.banList) ? data.banList : []);
       if (data && data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
       if (data && data.pointsRemaining) setPointsRemaining(data.pointsRemaining || {});
