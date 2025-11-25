@@ -279,81 +279,223 @@ function App() {
     }
   };
 
-  const saveTeamToCookie = (options = {}) => {
-    // options: { lobbyCodeOverride, teamNameOverride }
-    const localUser = (socket && lobbyUsers) ? lobbyUsers.find(u => u.id === socket.id) : null;
-    const localName = localUser ? localUser.name : (localPlayerName || PokemonName || 'You');
-    const team = getMergedSelectionsForUser(localUser || { id: socket && socket.id, name: localName });
-    if (!team || team.length === 0) {
-      setExportMessage('No selected Pokémon to save');
-      setTimeout(() => setExportMessage(''), 2500);
+  const exportPokemonData = async () => {
+    if (!window.confirm('This will fetch data for all Pokemon from PokeAPI. This may take several minutes. Continue?')) {
       return;
     }
+    
+    setExportMessage('Fetching Pokemon data from PokeAPI... This may take a few minutes.');
+    
     try {
-      const code = sanitizeLobbyCode(options.lobbyCodeOverride || lobbyCode || 'global');
-      if (!code) {
-        setExportMessage('Invalid lobby code');
-        setTimeout(() => setExportMessage(''), 2500);
-        return false;
+      // First get the list of all Pokemon
+      const listResponse = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000');
+      const pokemonUrls = listResponse.data.results;
+      
+      const pokemonData = [];
+      const seenSpecies = new Set();
+      
+      // Fetch data for each Pokemon
+      for (let i = 0; i < pokemonUrls.length; i++) {
+        try {
+          const pokemonResponse = await axios.get(pokemonUrls[i].url);
+          const pokemon = pokemonResponse.data;
+          
+          // Get species data for generation info
+          const speciesResponse = await axios.get(pokemon.species.url);
+          const species = speciesResponse.data;
+          
+          // Determine if this is a regional form
+          const isRegionalForm = pokemon.name.includes('-alola') || 
+                                  pokemon.name.includes('-galar') || 
+                                  pokemon.name.includes('-hisui') || 
+                                  pokemon.name.includes('-paldea');
+          
+          // Skip if species already exists and it's not a regional form
+          const speciesName = species.name;
+          if (seenSpecies.has(speciesName) && !isRegionalForm) {
+            continue;
+          }
+          
+          seenSpecies.add(speciesName);
+          
+          // Extract types
+          const types = pokemon.types.map(t => t.type.name);
+          
+          // Extract all move names
+          const moves = pokemon.moves.map(m => m.move.name);
+          
+          // Get generation number
+          const generationNum = parseInt(species.generation.url.split('/').filter(Boolean).pop());
+          
+          // Build the data object
+          const data = {
+            id: pokemon.id,
+            species_name: speciesName,
+            form_name: pokemon.name,
+            types: types,
+            moves: moves,
+            sprite_front_default: pokemon.sprites.front_default,
+            generation: generationNum
+          };
+          
+          pokemonData.push(data);
+          
+          // Update progress message every 50 Pokemon
+          if ((i + 1) % 50 === 0) {
+            setExportMessage(`Fetching Pokemon data... ${i + 1}/${pokemonUrls.length} processed`);
+          }
+        } catch (err) {
+          console.error(`Failed to fetch data for ${pokemonUrls[i].name}:`, err);
+        }
       }
       
-      const teamName = options.teamNameOverride || `Team Lobby#: ${code}`;
-      const key = `pkmndraft_team_${code}`;
+      // Convert to JSON and download
+      const jsonString = JSON.stringify(pokemonData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pokemon_data_${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
-      // if a saved team already exists for this code, confirm overwrite
-      const existing = readSavedTeamByCode(code);
-      if (existing) {
-        const ok = window.confirm(`A saved team already exists for lobby ${code}. Overwrite?`);
-        if (!ok) return false;
-      }
-      
-      // Validate and sanitize team entries
-      const sanitizedTeam = team.map(p => ({
-        id: p.id || null,
-        name: String(p.name || '').toLowerCase(),
-        img: p.img || null
-      })).filter(p => p.name);
-      
-      if (sanitizedTeam.length === 0) {
-        setExportMessage('No valid Pokémon to save');
-        setTimeout(() => setExportMessage(''), 2500);
-        return false;
-      }
-      
-      const payload = {
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        name: teamName,
-        lobbyCode: code,
-        savedAt: Date.now(),
-        team: sanitizedTeam
-      };
-      
-      const value = JSON.stringify(payload);
-      
-      // store in localStorage (do not use cookies for large blobs)
-      try {
-        localStorage.setItem(key, value);
-      } catch (e) {
-        // localStorage may be unavailable or full
-        console.error('localStorage.setItem failed', e);
-        throw e;
-      }
-      
-      // refresh saved teams state if visible
-      try { setSavedTeams(readSavedTeamsFromCookies()); } catch (e) { /* ignore */ }
-      setExportMessage('Team saved locally');
-      setTimeout(() => setExportMessage(''), 2500);
-      return true;
+      setExportMessage(`Successfully exported ${pokemonData.length} Pokemon to JSON file!`);
+      setTimeout(() => setExportMessage(''), 5000);
     } catch (err) {
-      console.error('Failed to save team to storage', err);
-      setExportMessage('Failed to save team');
-      setTimeout(() => setExportMessage(''), 2500);
-      return false;
+      console.error('Failed to export Pokemon data:', err);
+      setExportMessage('Failed to export Pokemon data. Check console for details.');
+      setTimeout(() => setExportMessage(''), 5000);
     }
   };
 
+  // Saved teams functionality removed - now using ongoing draft data
+  
+  const readSavedTeamsFromCookies = () => {
+    // Now reads from ongoing drafts instead of separate team storage
+    const currentUsername = PokemonName?.trim();
+    if (!currentUsername) return [];
+    
+    const ongoingDrafts = readOngoingDraftsFromCookies();
+    const userTeams = [];
+    
+    for (const draft of ongoingDrafts) {
+      const code = draft.lobbyCode || draft.code;
+      
+      // Check if current user is in this draft's player data
+      if (draft.playerData && draft.playerData[currentUsername]) {
+        const playerData = draft.playerData[currentUsername];
+        const team = playerData.selectedPokemon || [];
+        
+        if (team.length > 0) {
+          userTeams.push({
+            key: code,
+            draftName: draft.draftName || `Draft ${code}`,
+            lobbyCode: code,
+            team: team,
+            pointsRemaining: playerData.pointsRemaining,
+            savedAt: draft.savedAt
+          });
+        }
+      }
+    }
+    
+    return userTeams;
+  };
+  
+  const loadSavedTeam = (lobbyCode) => {
+    try {
+      const currentUsername = PokemonName?.trim();
+      if (!currentUsername) {
+        alert('Please set your username first');
+        return;
+      }
+      
+      const ongoingDrafts = readOngoingDraftsFromCookies();
+      const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === lobbyCode);
+      
+      if (!draft || !draft.playerData || !draft.playerData[currentUsername]) {
+        alert('Team not found for your username in this draft.');
+        setSavedTeams(readSavedTeamsFromCookies());
+        return;
+      }
+      
+      const team = draft.playerData[currentUsername].selectedPokemon || [];
+      const entries = normalizeSavedTeamEntries(team);
+      
+      if (entries.length === 0) {
+        alert('No Pokémon found in this team.');
+        return;
+      }
+      
+      const myId = socket ? socket.id : (`local-${Date.now()}`);
+      setOptimisticSelections((prev) => ({ ...(prev || {}), [myId]: entries }));
+      const ids = entries.map(p => p.id).filter(Boolean);
+      if (ids.length > 0) {
+        setPokemonList((prev) => prev.filter(p => !ids.includes(p.id)));
+        setDraftPokemonList((prev) => prev.filter(p => !ids.includes(p.id)));
+      }
+      setExportMessage('Loaded team from ongoing draft');
+      setTimeout(() => setExportMessage(''), 2500);
+    } catch (err) {
+      console.error('Failed to load team', err);
+      setExportMessage('Failed to load team');
+      setTimeout(() => setExportMessage(''), 2500);
+    }
+  };
+  
+  // deleteSavedTeamCookie removed - teams are part of ongoing drafts and shouldn't be deleted separately
+  
+  const exportSavedTeam = async (lobbyCode) => {
+    try {
+      if (!lobbyCode) return;
+      const currentUsername = PokemonName?.trim();
+      if (!currentUsername) {
+        setExportMessage('Please set your username first');
+        setTimeout(() => setExportMessage(''), 2500);
+        return;
+      }
+      
+      const ongoingDrafts = readOngoingDraftsFromCookies();
+      const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === lobbyCode);
+      
+      if (!draft || !draft.playerData || !draft.playerData[currentUsername]) {
+        setExportMessage('Team not found');
+        setTimeout(() => setExportMessage(''), 2500);
+        return;
+      }
+      
+      const team = draft.playerData[currentUsername].selectedPokemon || [];
+      if (team.length === 0) {
+        setExportMessage('No Pokémon to export');
+        setTimeout(() => setExportMessage(''), 2500);
+        return;
+      }
+      
+      const entries = normalizeSavedTeamEntries(team);
+      const lines = entries.map(p => toShowdownName(p.name || p));
+      const text = lines.join('\n\n');
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        setExportMessage(`Copied ${lines.length} Pokémon to clipboard`);
+        setCopiedTeamKey(lobbyCode);
+        setTimeout(() => setCopiedTeamKey(null), 2500);
+      } else {
+        setExportMessage('Failed to copy team');
+      }
+      setTimeout(() => setExportMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to export team', err);
+      setExportMessage('Failed to export team');
+      setTimeout(() => setExportMessage(''), 2500);
+    }
+  };
+  
+  // clearSavedTeamsCookies removed - use clearOngoingDraftsCookie directly
+
   const addOngoingDraftToCookies = (code, otherPlayerNames = [], options = {}) => {
-    // options: { settings, draftOrder, currentTurn, pointsRemaining }
+    // options: { settings, draftOrder, currentTurn, pointsRemaining, pointsMap }
     if (!code) return;
     
     const sanitizedCode = sanitizeLobbyCode(code);
@@ -370,14 +512,30 @@ function App() {
         if (raw) list = JSON.parse(raw) || [];
       } catch (e) { list = []; }
       
-      // Build a name-to-points map from pointsRemaining (socketId->points) and lobbyUsers (socketId->name)
-      let pointsRemainingByName = null;
-      if (options.pointsRemaining && lobbyUsers && lobbyUsers.length > 0) {
-        pointsRemainingByName = {};
+      // Build player data structure: username -> { selectedPokemon, pointsRemaining }
+      const playerDataByUsername = {};
+      
+      if (lobbyUsers && lobbyUsers.length > 0) {
         for (const user of lobbyUsers) {
-          if (user.id && options.pointsRemaining[user.id] != null) {
-            pointsRemainingByName[user.name] = sanitizePoints(options.pointsRemaining[user.id]);
-          }
+          const username = user.name;
+          if (!username) continue;
+          
+          // Get selected Pokemon for this user
+          const selectedPokemon = remoteSelections[user.id] || remoteSelections[username] || [];
+          
+          // Get points remaining
+          const pointsRem = options.pointsRemaining && options.pointsRemaining[user.id] != null 
+            ? sanitizePoints(options.pointsRemaining[user.id])
+            : (options.settings?.pointsLimit || 100);
+          
+          playerDataByUsername[username] = {
+            selectedPokemon: selectedPokemon.map(p => ({
+              id: p.id,
+              name: p.name,
+              img: p.img
+            })),
+            pointsRemaining: pointsRem
+          };
         }
       }
       
@@ -388,150 +546,49 @@ function App() {
         genFilter: Number(options.settings.genFilter) || 0
       } : null;
       
-      // Avoid duplicate codes; replace if exists
+      // Get draft name (use lobby code as fallback)
+      const draftName = `Draft ${sanitizedCode}`;
+      
+      // Build player list (all usernames)
+      const playerList = lobbyUsers ? lobbyUsers.map(u => u.name).filter(Boolean) : otherPlayerNames;
+      
+      // Build pick order (convert socket IDs to usernames)
+      let pickOrder = [];
+      if (options.draftOrder && Array.isArray(options.draftOrder) && lobbyUsers) {
+        pickOrder = options.draftOrder.map(socketId => {
+          const user = lobbyUsers.find(u => u.id === socketId);
+          return user ? user.name : socketId;
+        }).filter(Boolean);
+      }
+      
+      // Get current pick (convert socket ID to username)
+      let currentPick = null;
+      if (options.currentTurn && lobbyUsers) {
+        const currentUser = lobbyUsers.find(u => u.id === options.currentTurn);
+        currentPick = currentUser ? currentUser.name : options.currentTurn;
+      }
+      
+      // Create comprehensive draft entry
       const entry = {
         schemaVersion: CURRENT_SCHEMA_VERSION,
-        code: sanitizedCode,
-        players: Array.isArray(otherPlayerNames) ? otherPlayerNames.filter(n => typeof n === 'string') : [],
-        settings: sanitizedSettings,
-        draftOrder: options.draftOrder || null,
-        currentTurn: options.currentTurn || null,
-        pointsRemaining: options.pointsRemaining || null,
-        pointsRemainingByName: pointsRemainingByName,
+        draftName: draftName,
+        lobbyCode: sanitizedCode,
+        lobbySettings: sanitizedSettings,
+        playerList: playerList,
+        pickOrder: pickOrder,
+        currentPick: currentPick,
+        playerData: playerDataByUsername,
+        pokemonPointValues: options.pointsMap || {},
         savedAt: Date.now()
       };
       
-      const filtered = list.filter(it => it.code !== sanitizedCode);
+      // Avoid duplicate codes; replace if exists
+      const filtered = list.filter(it => it.lobbyCode !== sanitizedCode && it.code !== sanitizedCode);
       filtered.push(entry);
       
       try { localStorage.setItem(key, JSON.stringify(filtered)); } catch (e) { console.error('localStorage set failed', e); }
     } catch (err) {
       console.error('Failed to add ongoing draft to storage', err);
-    }
-  };
-
-  const readSavedTeamsFromCookies = () => {
-    const prefix = 'pkmndraft_team_';
-    const out = [];
-    const keysToRemove = [];
-    
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key || !key.startsWith(prefix)) continue;
-        
-        try {
-          const val = localStorage.getItem(key);
-          const parsed = val ? JSON.parse(val) : null;
-          
-          // Validate schema
-          if (!parsed || !validateSavedTeam(parsed)) {
-            console.warn('Invalid saved team, marking for removal', key);
-            keysToRemove.push(key);
-            continue;
-          }
-          
-          // Check expiry
-          if (isExpired(parsed.savedAt, MAX_SAVED_TEAM_AGE_DAYS)) {
-            console.warn('Saved team expired, marking for removal', key);
-            keysToRemove.push(key);
-            continue;
-          }
-          
-          out.push({ key, team: parsed });
-        } catch (err) {
-          console.warn('Failed to parse saved team from storage', key, err);
-          keysToRemove.push(key);
-        }
-      }
-      
-      // Clean up invalid entries
-      keysToRemove.forEach(k => {
-        try { localStorage.removeItem(k); } catch (e) {}
-      });
-      
-    } catch (err) {
-      console.warn('Failed to read saved teams from storage', err);
-    }
-    return out;
-  };
-
-  const loadSavedTeam = (cookieKey) => {
-    try {
-      // cookieKey is like 'pkmndraft_team_<code>'
-      const code = cookieKey.replace('pkmndraft_team_', '');
-      const payload = readSavedTeamByCode(code);
-      if (!payload) {
-        alert('Saved team not found or invalid. It may have expired or been corrupted.');
-        // Refresh saved teams list to remove invalid entry from UI
-        const teams = readSavedTeamsFromCookies();
-        setSavedTeams(teams);
-        return;
-      }
-      const entries = normalizeSavedTeamEntries(payload.team);
-      if (entries.length === 0) {
-        alert('Saved team contains no valid Pokémon entries.');
-        return;
-      }
-      const myId = socket ? socket.id : (`local-${Date.now()}`);
-      setOptimisticSelections((prev) => ({ ...(prev || {}), [myId]: entries }));
-      const ids = entries.map(p => p.id).filter(Boolean);
-      if (ids.length > 0) {
-        setPokemonList((prev) => prev.filter(p => !ids.includes(p.id)));
-        setDraftPokemonList((prev) => prev.filter(p => !ids.includes(p.id)));
-      }
-      setExportMessage('Loaded saved team locally');
-      setTimeout(() => setExportMessage(''), 2500);
-    } catch (err) {
-      console.error('Failed to load saved team', err);
-      setExportMessage('Failed to load saved team');
-      setTimeout(() => setExportMessage(''), 2500);
-    }
-  };
-
-  const deleteSavedTeamCookie = (cookieKey) => {
-    if (!window.confirm('Delete this saved team? This cannot be undone.')) return;
-    try {
-      // remove from localStorage
-      try { localStorage.removeItem(cookieKey); } catch (e) { console.error('localStorage remove failed', e); }
-      // refresh savedTeams state
-      const teams = readSavedTeamsFromCookies();
-      setSavedTeams(teams);
-      setExportMessage('Deleted saved team');
-      setTimeout(() => setExportMessage(''), 2500);
-    } catch (err) {
-      console.error('Failed to delete saved team cookie', err);
-      setExportMessage('Failed to delete saved team');
-      setTimeout(() => setExportMessage(''), 2500);
-    }
-  };
-
-  const exportSavedTeam = async (cookieKey) => {
-    try {
-      if (!cookieKey) return;
-      const code = cookieKey.replace('pkmndraft_team_', '');
-      const payload = readSavedTeamByCode(code);
-      if (!payload || !Array.isArray(payload.team) || payload.team.length === 0) {
-        setExportMessage('No saved team to export');
-        setTimeout(() => setExportMessage(''), 2500);
-        return;
-      }
-      const entries = normalizeSavedTeamEntries(payload.team);
-      const lines = entries.map(p => toShowdownName(p.name || p));
-      const text = lines.join('\n\n');
-      const ok = await copyToClipboard(text);
-      if (ok) {
-        setExportMessage(`Copied ${lines.length} Pokémon to clipboard`);
-        setCopiedTeamKey(cookieKey);
-        setTimeout(() => setCopiedTeamKey(null), 2500);
-      } else {
-        setExportMessage('Failed to copy saved team');
-      }
-      setTimeout(() => setExportMessage(''), 3000);
-    } catch (err) {
-      console.error('Failed to export saved team', err);
-      setExportMessage('Failed to export saved team');
-      setTimeout(() => setExportMessage(''), 2500);
     }
   };
 
@@ -543,31 +600,6 @@ function App() {
       }
     } catch (e) {
       // ignore
-    }
-  };
-
-  const clearSavedTeamsCookies = () => {
-    // confirm destructive action
-    if (!window.confirm('Delete all saved teams? This will remove all locally-saved teams and you will not be able to rejoin those lobbies from saved data. Are you sure?')) return;
-    try {
-      const prefix = 'pkmndraft_team_';
-      try {
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith(prefix)) keysToRemove.push(k);
-        }
-        keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
-      } catch (e) {
-        console.error('Failed clearing saved teams from localStorage', e);
-      }
-      setSavedTeams([]);
-      setExportMessage('Cleared saved teams');
-      setTimeout(() => setExportMessage(''), 2500);
-    } catch (err) {
-      console.error('Failed to clear saved teams', err);
-      setExportMessage('Failed to clear saved teams');
-      setTimeout(() => setExportMessage(''), 2500);
     }
   };
 
@@ -601,45 +633,65 @@ function App() {
       let hasInvalid = false;
       
       for (const entry of parsed) {
-        // Validate schema
-        if (!validateOngoingDraft(entry)) {
-          console.warn('Invalid ongoing draft entry', entry.code);
+        // Support both old and new format
+        const code = entry.lobbyCode || entry.code;
+        
+        // Validate basic structure
+        if (!code || typeof code !== 'string') {
+          console.warn('Invalid ongoing draft entry - missing code');
           hasInvalid = true;
           continue;
         }
         
         // Check expiry
         if (isExpired(entry.savedAt, MAX_ONGOING_DRAFT_AGE_DAYS)) {
-          console.warn('Ongoing draft expired', entry.code);
+          console.warn('Ongoing draft expired', code);
           hasInvalid = true;
           continue;
         }
         
-        // Sanitize nested values
-        const sanitized = {
-          ...entry,
-          code: sanitizeLobbyCode(entry.code) || entry.code,
-          players: Array.isArray(entry.players) ? entry.players : []
-        };
-        
-        // Sanitize settings if present
-        if (sanitized.settings) {
-          sanitized.settings = {
-            pointsLimit: sanitizePoints(sanitized.settings.pointsLimit || 100),
-            teamSizeLimit: sanitizeTeamSize(sanitized.settings.teamSizeLimit || 10),
-            genFilter: Number(sanitized.settings.genFilter) || 0
+        // Convert old format to new format if needed
+        let sanitized;
+        if (entry.lobbyCode && entry.playerData) {
+          // New format - just sanitize
+          sanitized = {
+            schemaVersion: entry.schemaVersion || CURRENT_SCHEMA_VERSION,
+            draftName: entry.draftName || `Draft ${code}`,
+            lobbyCode: sanitizeLobbyCode(code) || code,
+            lobbySettings: entry.lobbySettings ? {
+              pointsLimit: sanitizePoints(entry.lobbySettings.pointsLimit || 100),
+              teamSizeLimit: sanitizeTeamSize(entry.lobbySettings.teamSizeLimit || 10),
+              genFilter: Number(entry.lobbySettings.genFilter) || 0
+            } : null,
+            playerList: Array.isArray(entry.playerList) ? entry.playerList : [],
+            pickOrder: Array.isArray(entry.pickOrder) ? entry.pickOrder : [],
+            currentPick: entry.currentPick || null,
+            playerData: entry.playerData || {},
+            pokemonPointValues: entry.pokemonPointValues || {},
+            savedAt: entry.savedAt
           };
-        }
-        
-        // Sanitize pointsRemaining if present
-        if (sanitized.pointsRemainingByName) {
-          const cleaned = {};
-          for (const [name, pts] of Object.entries(sanitized.pointsRemainingByName)) {
-            if (typeof name === 'string' && name.length > 0) {
-              cleaned[name] = sanitizePoints(pts);
+        } else {
+          // Old format - convert to new
+          sanitized = {
+            schemaVersion: CURRENT_SCHEMA_VERSION,
+            draftName: `Draft ${code}`,
+            lobbyCode: sanitizeLobbyCode(code) || code,
+            lobbySettings: entry.settings ? {
+              pointsLimit: sanitizePoints(entry.settings.pointsLimit || 100),
+              teamSizeLimit: sanitizeTeamSize(entry.settings.teamSizeLimit || 10),
+              genFilter: Number(entry.settings.genFilter) || 0
+            } : null,
+            playerList: Array.isArray(entry.players) ? entry.players : [],
+            pickOrder: Array.isArray(entry.draftOrder) ? entry.draftOrder : [],
+            currentPick: entry.currentTurn || null,
+            playerData: {},
+            pokemonPointValues: {},
+            savedAt: entry.savedAt,
+            // Keep old fields for backwards compatibility during rejoin
+            _legacy: {
+              pointsRemainingByName: entry.pointsRemainingByName || {}
             }
-          }
-          sanitized.pointsRemainingByName = cleaned;
+          };
         }
         
         validEntries.push(sanitized);
@@ -675,7 +727,7 @@ function App() {
         const raw = localStorage.getItem(key);
         if (raw) list = JSON.parse(raw) || [];
       } catch (e) { list = []; }
-      const filtered = list.filter(it => it.code !== code);
+      const filtered = list.filter(it => it.lobbyCode !== code && it.code !== code);
       try {
         if (filtered.length === 0) localStorage.removeItem(key);
         else localStorage.setItem(key, JSON.stringify(filtered));
@@ -752,14 +804,35 @@ function App() {
 
   const handleRejoinComplete = (code, draftEntry = null) => {
     try {
-      const payload = readSavedTeamByCode(code);
-      if (!payload || !Array.isArray(payload.team) || payload.team.length === 0) {
-        setExportMessage('No saved team found for this lobby');
+      const currentUsername = PokemonName?.trim();
+      if (!currentUsername) {
+        setExportMessage('Please set your username first');
         setTimeout(() => setExportMessage(''), 2500);
         return;
       }
+      
+      // Get team from ongoing draft playerData
+      if (!draftEntry || !draftEntry.playerData || !draftEntry.playerData[currentUsername]) {
+        setExportMessage('No team found for your username in this draft');
+        setTimeout(() => setExportMessage(''), 2500);
+        return;
+      }
+      
+      const playerData = draftEntry.playerData[currentUsername];
+      const team = playerData.selectedPokemon || [];
+      
+      if (team.length === 0) {
+        setExportMessage('No Pokémon found in saved team');
+        setTimeout(() => setExportMessage(''), 2500);
+        return;
+      }
+      
       // show the saved team in the viewed panel
-      setViewedOngoingTeam(payload);
+      setViewedOngoingTeam({
+        name: draftEntry.draftName || `Team Lobby#: ${code}`,
+        lobbyCode: code,
+        team: team
+      });
       
       // Update BOTH optimistic and remote selections so the UI shows the team immediately
       const myId = socket ? socket.id : (`local-${Date.now()}`);
@@ -768,41 +841,34 @@ function App() {
       // Set remote selections (this is what the UI reads from)
       setRemoteSelections((prev) => {
         const updated = { ...(prev || {}) };
-        updated[myId] = payload.team;
-        if (myName) updated[myName] = payload.team;
+        updated[myId] = team;
+        if (myName) updated[myName] = team;
         return updated;
       });
       
       // Also set optimistic selections as backup
-      setOptimisticSelections((prev) => ({ ...(prev || {}), [myId]: payload.team }));
+      setOptimisticSelections((prev) => ({ ...(prev || {}), [myId]: team }));
       
       // hide those pokemon from visible lists
-      const ids = payload.team.map(p => p.id).filter(Boolean);
+      const ids = team.map(p => p.id).filter(Boolean);
       if (ids.length > 0) {
         setPokemonList((prev) => prev.filter(p => !ids.includes(p.id)));
         setDraftPokemonList((prev) => prev.filter(p => !ids.includes(p.id)));
       }
-      // restore pointsRemaining by matching saved names to current socket IDs
-      if (draftEntry && draftEntry.pointsRemainingByName && typeof draftEntry.pointsRemainingByName === 'object' && lobbyUsers && lobbyUsers.length > 0) {
-        try {
-          const remappedPoints = {};
-          for (const user of lobbyUsers) {
-            if (user.name && draftEntry.pointsRemainingByName[user.name] != null) {
-              remappedPoints[user.id] = draftEntry.pointsRemainingByName[user.name];
-            }
-          }
-          if (Object.keys(remappedPoints).length > 0) {
-            setPointsRemaining(remappedPoints);
-          }
-        } catch (e) {
-          console.warn('Failed to remap pointsRemaining on rejoin', e);
-        }
+      
+      // restore pointsRemaining from playerData
+      if (playerData.pointsRemaining != null && socket && socket.id) {
+        setPointsRemaining((prev) => ({
+          ...(prev || {}),
+          [socket.id]: playerData.pointsRemaining
+        }));
       }
-      setExportMessage('Loaded saved team for this lobby');
+      
+      setExportMessage('Loaded your team for this lobby');
       setTimeout(() => setExportMessage(''), 2500);
     } catch (err) {
-      console.error('Failed to load saved team on rejoin', err);
-      setExportMessage('Failed to load saved team');
+      console.error('Failed to load team on rejoin', err);
+      setExportMessage('Failed to load team');
       setTimeout(() => setExportMessage(''), 2500);
     }
   };
@@ -1319,15 +1385,19 @@ function App() {
   };
 
   const leaveLobby = (skipAutoSave = false) => {
-    // If leaving while in an active draft, save ongoing draft metadata and auto-save the team
+    // If leaving while in an active draft, save ongoing draft metadata
     if (!skipAutoSave && view === 'draft' && lobbyCode) {
       try {
         // other players' names (exclude local)
         const otherNames = (lobbyUsers || []).filter(u => u.id !== (socket && socket.id)).map(u => u.name);
-        // auto-save current team with lobby code metadata
-        saveTeamToCookie({ lobbyCodeOverride: lobbyCode, teamNameOverride: `Team Lobby#: ${lobbyCode}` });
-        // record ongoing draft list entry including settings, draft order, currentTurn, and pointsRemaining
-        addOngoingDraftToCookies(lobbyCode, otherNames, { settings: lobbySettings, draftOrder: lobbyDraftOrder, currentTurn, pointsRemaining });
+        // record ongoing draft list entry including settings, draft order, currentTurn, pointsRemaining, and pointsMap
+        addOngoingDraftToCookies(lobbyCode, otherNames, { 
+          settings: lobbySettings, 
+          draftOrder: lobbyDraftOrder, 
+          currentTurn, 
+          pointsRemaining,
+          pointsMap 
+        });
       } catch (err) {
         console.error('Error while saving ongoing draft on leave', err);
       }
@@ -1361,10 +1431,14 @@ function App() {
       return;
     }
     try {
-      const saved = saveTeamToCookie({ lobbyCodeOverride: lobbyCode, teamNameOverride: `Team Lobby#: ${lobbyCode}` });
-      if (!saved) return; // user cancelled or failed
       const otherNames = (lobbyUsers || []).filter(u => u.id !== (socket && socket.id)).map(u => u.name);
-      addOngoingDraftToCookies(lobbyCode, otherNames, { settings: lobbySettings, draftOrder: lobbyDraftOrder, currentTurn, pointsRemaining });
+      addOngoingDraftToCookies(lobbyCode, otherNames, { 
+        settings: lobbySettings, 
+        draftOrder: lobbyDraftOrder, 
+        currentTurn, 
+        pointsRemaining,
+        pointsMap 
+      });
       // leave but skip the auto-save inside leaveLobby since we've already saved
       leaveLobby(true);
     } catch (err) {
@@ -1694,15 +1768,7 @@ function App() {
       console.log('Draft complete!', data);
       setDraftComplete(true);
       setFinalTeams(data);
-      // Auto-save team
-      try {
-        const mySelections = getMergedSelectionsForUser({ id: s.id, name: localPlayerName });
-        if (mySelections && mySelections.length > 0) {
-          saveTeamToCookie();
-        }
-      } catch (err) {
-        console.error('Error auto-saving team:', err);
-      }
+      // Team is already saved in ongoing draft, no need to auto-save separately
     });
     return () => {
       s.disconnect();
@@ -1787,8 +1853,12 @@ function App() {
                 </div>
                 
                 <div className="control-group">
-                  <button className="gen-button" onClick={() => { clearSavedTeamsCookies(); }}>Clear Saved Teams</button>
-                  <button className="gen-button ml-8" onClick={() => { clearOngoingDraftsCookie(); }}>Clear Ongoing Drafts</button>
+                  <button className="gen-button" onClick={() => { clearOngoingDraftsCookie(); }}>Clear All Ongoing Drafts</button>
+                </div>
+                
+                <div className="control-group">
+                  <button className="import-button" onClick={exportPokemonData}>Export All Pokemon Data (JSON)</button>
+                  {exportMessage && <span className="ml-8" style={{ color: '#16a34a', fontWeight: 600 }}>{exportMessage}</span>}
                 </div>
               </div>
             )}
@@ -1998,12 +2068,15 @@ function App() {
           )}
           {savedTeamsVisible && (
             <div className="SavedTeamsPanel">
-              <h4>Saved Teams</h4>
+              <h4>My Teams (from Ongoing Drafts)</h4>
               {savedTeams && savedTeams.length > 0 ? (
                 <>
               {savedTeams.map((s) => (
                 <div key={s.key} className="saved-team-item">
-                  <div className="saved-team-key"><strong>{s.key.replace('pkmndraft_team_', '')}</strong></div>
+                  <div className="saved-team-key"><strong>{s.draftName || s.key}</strong></div>
+                  <div className="saved-team-meta" style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+                    Lobby: {s.lobbyCode} | Points Remaining: {s.pointsRemaining}
+                  </div>
                   <div className="saved-team-list">
                     {(() => {
                       const entries = normalizeSavedTeamEntries(s.team);
@@ -2023,15 +2096,15 @@ function App() {
                     })()}
                   </div>
                   <div className="saved-team-actions">
-                    <button className="gen-button" onClick={() => exportSavedTeam(s.key)}>Export</button>
+                    <button className="gen-button" onClick={() => loadSavedTeam(s.key)}>Load</button>
+                    <button className="gen-button ml-8" onClick={() => exportSavedTeam(s.key)}>Export</button>
                     {copiedTeamKey === s.key && (<span className="copy-confirm ml-8">Copied!</span>)}
-                    <button className="gen-button" onClick={() => deleteSavedTeamCookie(s.key)}>Delete</button>
                   </div>
                 </div>
               ))}
               </>
               ) : (
-                <div className="muted-text">No saved teams found.</div>
+                <div className="muted-text">No teams found. Teams are saved when you participate in drafts.</div>
               )}
             </div>
           )}
@@ -2040,32 +2113,70 @@ function App() {
               <h4>Ongoing Drafts</h4>
               {ongoingDrafts && ongoingDrafts.length > 0 ? (
                 <>
-              {ongoingDrafts.map((d) => (
-                <div key={d.code} className="ongoing-draft-item">
-                  <div className="ongoing-draft-key"><strong>{d.code}</strong></div>
-                  <div className="ongoing-draft-players">Players: {Array.isArray(d.players) && d.players.length > 0 ? d.players.join(', ') : <em>—</em>}</div>
-                  {d.settings && (
-                    <div className="ongoing-draft-settings">Settings: PointsLimit {d.settings.pointsLimit || '—'}, TeamSize {d.settings.teamSizeLimit || '—'}</div>
+              {ongoingDrafts.map((d) => {
+                const code = d.lobbyCode || d.code;
+                return (
+                <div key={code} className="ongoing-draft-item">
+                  <div className="ongoing-draft-key"><strong>{d.draftName || code}</strong></div>
+                  <div className="ongoing-draft-players">
+                    Players: {Array.isArray(d.playerList) && d.playerList.length > 0 
+                      ? d.playerList.join(', ') 
+                      : (Array.isArray(d.players) && d.players.length > 0 ? d.players.join(', ') : <em>—</em>)}
+                  </div>
+                  {(d.lobbySettings || d.settings) && (
+                    <div className="ongoing-draft-settings">
+                      Settings: PointsLimit {(d.lobbySettings?.pointsLimit || d.settings?.pointsLimit) || '—'}, 
+                      TeamSize {(d.lobbySettings?.teamSizeLimit || d.settings?.teamSizeLimit) || '—'}
+                    </div>
                   )}
-                  {d.draftOrder && Array.isArray(d.draftOrder) && d.draftOrder.length > 0 && (
-                    <div className="ongoing-draft-order">Draft Order: {d.draftOrder.join(', ')}</div>
+                  {d.pickOrder && Array.isArray(d.pickOrder) && d.pickOrder.length > 0 && (
+                    <div className="ongoing-draft-order">Pick Order: {d.pickOrder.join(' → ')}</div>
+                  )}
+                  {d.currentPick && (
+                    <div className="ongoing-draft-current">Current Pick: <strong>{d.currentPick}</strong></div>
+                  )}
+                  {d.playerData && Object.keys(d.playerData).length > 0 && (
+                    <div className="ongoing-draft-player-summary">
+                      {Object.entries(d.playerData).map(([username, data]) => (
+                        <div key={username} className="player-summary-item">
+                          <span className="player-summary-name">{username}:</span>
+                          <span className="player-summary-stats">
+                            {data.selectedPokemon?.length || 0} Pokémon, {data.pointsRemaining} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                     <div className="ongoing-draft-actions">
                       <button className="gen-button" onClick={() => { 
-                        const savedPoints = d.pointsRemainingByName && d.pointsRemainingByName[PokemonName] != null ? d.pointsRemainingByName[PokemonName] : null;
-                        const savedTeam = readSavedTeamByCode(d.code);
-                        const savedSelections = savedTeam && savedTeam.team ? savedTeam.team : null;
-                        setRejoinPending({ code: d.code, expectedPlayers: d.players || [], draftEntry: d }); 
-                        joinLobby(d.code, savedPoints, savedSelections); 
+                        const currentUsername = PokemonName?.trim();
+                        const savedPoints = d.playerData && d.playerData[currentUsername]?.pointsRemaining != null 
+                          ? d.playerData[currentUsername].pointsRemaining 
+                          : (d._legacy?.pointsRemainingByName && d._legacy.pointsRemainingByName[currentUsername] != null 
+                            ? d._legacy.pointsRemainingByName[currentUsername] 
+                            : null);
+                        const savedSelections = d.playerData && d.playerData[currentUsername]?.selectedPokemon 
+                          ? d.playerData[currentUsername].selectedPokemon 
+                          : null;
+                        setRejoinPending({ code: code, expectedPlayers: d.playerList || d.players || [], draftEntry: d }); 
+                        joinLobby(code, savedPoints, savedSelections); 
                       }}>Rejoin</button>
                       <button className="gen-button ml-8" onClick={() => {
-                        const team = readSavedTeamByCode(d.code);
-                        setViewedOngoingTeam(team);
+                        const currentUsername = PokemonName?.trim();
+                        if (d.playerData && d.playerData[currentUsername]) {
+                          setViewedOngoingTeam({
+                            name: d.draftName || `Team Lobby#: ${code}`,
+                            lobbyCode: code,
+                            team: d.playerData[currentUsername].selectedPokemon || []
+                          });
+                        } else {
+                          alert('No team found for your username in this draft');
+                        }
                       }}>View Team</button>
-                      <button className="gen-button danger ml-8" onClick={() => deleteOngoingDraft(d.code)}>Delete</button>
+                      <button className="gen-button danger ml-8" onClick={() => deleteOngoingDraft(code)}>Delete</button>
                     </div>
                 </div>
-              ))}
+              )})}
               {viewedOngoingTeam && (
                 <div className="viewed-ongoing-team">
                   <h5>{viewedOngoingTeam.name || `Team Lobby#: ${viewedOngoingTeam.lobbyCode}`}</h5>

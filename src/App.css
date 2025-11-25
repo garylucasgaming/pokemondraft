@@ -695,6 +695,55 @@ body {
   text-align: center;
 }
 
+/* Ongoing drafts styling */
+.ongoing-draft-item {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.ongoing-draft-key {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.ongoing-draft-players,
+.ongoing-draft-settings,
+.ongoing-draft-order,
+.ongoing-draft-current {
+  font-size: 13px;
+  margin: 4px 0;
+  color: #555;
+}
+.ongoing-draft-current strong {
+  color: #1d8ca8;
+}
+.ongoing-draft-player-summary {
+  margin-top: 8px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+.player-summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.player-summary-name {
+  font-weight: 600;
+  color: #333;
+}
+.player-summary-stats {
+  color: #666;
+}
+.ongoing-draft-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .App {
