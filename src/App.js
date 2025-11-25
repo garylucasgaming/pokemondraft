@@ -1775,8 +1775,10 @@ function App() {
       
       // Ability filter
       if (filterAbility && filterAbility.trim()) {
-        console.log('Filtering by ability:', filterAbility);
         if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
+          if (p.id === 1) {
+            console.log('Bulbasaur filtered out - no abilities array:', p.abilities);
+          }
           return false;
         }
         // Normalize ability name for comparison (remove spaces and hyphens)
@@ -1795,7 +1797,12 @@ function App() {
           }
           return matches;
         });
-        if (!hasAbility) return false;
+        if (!hasAbility) {
+          if (p.id === 1) {
+            console.log('Bulbasaur filtered out - no matching ability');
+          }
+          return false;
+        }
       }
       
       // Move filter
