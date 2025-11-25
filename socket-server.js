@@ -51,7 +51,10 @@ io.on('connection', (socket) => {
       pointsRemaining: { [socket.id]: 100 },
       draftStarted: false,
       currentTurn: null,
-      draftOrder: []
+      draftOrder: [],
+      tradesCompleted: {},
+      playersFinishedTrading: [],
+      pendingTrades: new Map()
     };
     lobbies.set(code, lobby);
     socket.join(code);
@@ -121,7 +124,9 @@ io.on('connection', (socket) => {
       pointsRemaining: lobby.pointsRemaining,
       draftOrder: lobby.draftOrder,
       currentTurn: lobby.currentTurn,
-      draftStarted: lobby.draftStarted
+      draftStarted: lobby.draftStarted,
+      tradesCompleted: lobby.tradesCompleted || {},
+      playersFinishedTrading: lobby.playersFinishedTrading || []
     });
   });
 
@@ -152,7 +157,9 @@ io.on('connection', (socket) => {
         selections: lobby.selections,
         pointsRemaining: lobby.pointsRemaining,
         draftOrder: lobby.draftOrder,
-        currentTurn: lobby.currentTurn
+        currentTurn: lobby.currentTurn,
+        tradesCompleted: lobby.tradesCompleted || {},
+        playersFinishedTrading: lobby.playersFinishedTrading || []
       });
     }
   });
@@ -180,7 +187,9 @@ io.on('connection', (socket) => {
       pointsMap: lobby.pointsMap,
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining,
-      currentTurn: lobby.currentTurn
+      currentTurn: lobby.currentTurn,
+      tradesCompleted: lobby.tradesCompleted || {},
+      playersFinishedTrading: lobby.playersFinishedTrading || []
     });
   });
 
@@ -253,7 +262,9 @@ io.on('connection', (socket) => {
       pointsRemaining: lobby.pointsRemaining,
       draftOrder: lobby.draftOrder,
       currentTurn: lobby.currentTurn,
-      draftStarted: true
+      draftStarted: true,
+      tradesCompleted: lobby.tradesCompleted || {},
+      playersFinishedTrading: lobby.playersFinishedTrading || []
     });
   });
 
@@ -330,6 +341,252 @@ io.on('connection', (socket) => {
     io.to(code).emit('turn_update', { currentTurn: lobby.currentTurn });
   });
 
+  // Trading phase handlers
+  socket.on('start_trading_phase', ({ code, settings }) => {
+    const lobby = lobbies.get(code);
+    if (!lobby) return;
+    
+    console.log(`Starting trading phase for lobby ${code}`);
+    
+    // Initialize trading state
+    if (!lobby.tradesCompleted) {
+      lobby.tradesCompleted = {};
+      lobby.users.forEach(user => {
+        lobby.tradesCompleted[user.id] = 0;
+      });
+    }
+    if (!lobby.playersFinishedTrading) {
+      lobby.playersFinishedTrading = [];
+    }
+    if (!lobby.pendingTrades) {
+      lobby.pendingTrades = new Map();
+    }
+    
+    // Broadcast to all players
+    io.to(code).emit('trading_phase_start', {
+      settings: settings || lobby.settings
+    });
+  });
+
+  socket.on('offer_trade', ({ code, from, to, pokemon1, pokemon2 }, callback) => {
+    const lobby = lobbies.get(code);
+    if (!lobby) {
+      return callback?.({ ok: false, error: 'Lobby not found' });
+    }
+    
+    console.log(`Trade offer in ${code}: ${from} -> ${to}, ${pokemon1} <-> ${pokemon2}`);
+    
+    // Initialize trading state if needed
+    if (!lobby.tradesCompleted) {
+      lobby.tradesCompleted = {};
+    }
+    if (!lobby.pendingTrades) {
+      lobby.pendingTrades = new Map();
+    }
+    if (!lobby.playersFinishedTrading) {
+      lobby.playersFinishedTrading = [];
+    }
+    
+    // Check if either player has finished trading
+    if (lobby.playersFinishedTrading.includes(from)) {
+      return callback?.({ ok: false, error: 'You have already finished trading' });
+    }
+    if (lobby.playersFinishedTrading.includes(to)) {
+      return callback?.({ ok: false, error: 'That player has already finished trading' });
+    }
+    
+    // Check trade limits
+    const fromTrades = lobby.tradesCompleted[from] || 0;
+    const toTrades = lobby.tradesCompleted[to] || 0;
+    const maxTrades = lobby.settings.maxTradeLimit || 0;
+    const unlimited = lobby.settings.unlimitedTrades;
+    
+    if (!unlimited && fromTrades >= maxTrades) {
+      return callback?.({ ok: false, error: 'You have reached your trade limit' });
+    }
+    if (!unlimited && toTrades >= maxTrades) {
+      return callback?.({ ok: false, error: 'Other player has reached their trade limit' });
+    }
+    
+    // Create trade ID
+    const tradeId = `${Date.now()}_${from}_${to}`;
+    
+    // Store pending trade
+    lobby.pendingTrades.set(tradeId, {
+      from,
+      to,
+      pokemon1,
+      pokemon2,
+      timestamp: Date.now()
+    });
+    
+    // Find names
+    const fromUser = lobby.users.find(u => u.id === from);
+    const toUser = lobby.users.find(u => u.id === to);
+    
+    // Notify the recipient
+    io.to(to).emit('trade_offer_received', {
+      tradeId,
+      from,
+      to,
+      fromName: fromUser?.name || 'Unknown',
+      pokemon1,
+      pokemon2
+    });
+    
+    callback?.({ ok: true });
+  });
+
+  socket.on('accept_trade', ({ code, tradeId }) => {
+    const lobby = lobbies.get(code);
+    if (!lobby || !lobby.pendingTrades) return;
+    
+    const trade = lobby.pendingTrades.get(tradeId);
+    if (!trade) {
+      console.log(`Trade ${tradeId} not found`);
+      return;
+    }
+    
+    console.log(`Trade accepted: ${tradeId}`);
+    
+    // Swap the Pokemon
+    const fromSelections = lobby.selections[trade.from] || [];
+    const toSelections = lobby.selections[trade.to] || [];
+    
+    const fromIndex = fromSelections.findIndex(p => p.name === trade.pokemon1);
+    const toIndex = toSelections.findIndex(p => p.name === trade.pokemon2);
+    
+    if (fromIndex !== -1 && toIndex !== -1) {
+      // Swap
+      const temp = fromSelections[fromIndex];
+      fromSelections[fromIndex] = toSelections[toIndex];
+      toSelections[toIndex] = temp;
+      
+      lobby.selections[trade.from] = fromSelections;
+      lobby.selections[trade.to] = toSelections;
+      
+      // Increment trade counts
+      lobby.tradesCompleted[trade.from] = (lobby.tradesCompleted[trade.from] || 0) + 1;
+      lobby.tradesCompleted[trade.to] = (lobby.tradesCompleted[trade.to] || 0) + 1;
+      
+      // Remove pending trade
+      lobby.pendingTrades.delete(tradeId);
+      
+      // Notify both players
+      io.to(code).emit('trade_accepted', {
+        updatedSelections: lobby.selections,
+        tradesCompleted: lobby.tradesCompleted
+      });
+      
+      console.log(`Trade completed. Counts: ${trade.from}=${lobby.tradesCompleted[trade.from]}, ${trade.to}=${lobby.tradesCompleted[trade.to]}`);
+    }
+  });
+
+  socket.on('decline_trade', ({ code, tradeId }) => {
+    const lobby = lobbies.get(code);
+    if (!lobby || !lobby.pendingTrades) return;
+    
+    const trade = lobby.pendingTrades.get(tradeId);
+    if (!trade) return;
+    
+    console.log(`Trade declined: ${tradeId}`);
+    
+    // Remove pending trade
+    lobby.pendingTrades.delete(tradeId);
+    
+    // Notify the offerer
+    io.to(trade.from).emit('trade_declined');
+  });
+
+  socket.on('trade_for_unpicked', ({ code, playerId, oldPokemon, newPokemon }, callback) => {
+    const lobby = lobbies.get(code);
+    if (!lobby) {
+      return callback?.({ ok: false, error: 'Lobby not found' });
+    }
+    
+    console.log(`Unpicked trade in ${code}: ${playerId} swapping ${oldPokemon} for ${newPokemon}`);
+    
+    // Initialize trading state if needed
+    if (!lobby.tradesCompleted) {
+      lobby.tradesCompleted = {};
+    }
+    if (!lobby.playersFinishedTrading) {
+      lobby.playersFinishedTrading = [];
+    }
+    
+    // Check if player has finished trading
+    if (lobby.playersFinishedTrading.includes(playerId)) {
+      return callback?.({ ok: false, error: 'You have already finished trading' });
+    }
+    
+    // Check trade limit
+    const playerTrades = lobby.tradesCompleted[playerId] || 0;
+    const maxTrades = lobby.settings.maxTradeLimit || 0;
+    const unlimited = lobby.settings.unlimitedTrades;
+    
+    if (!unlimited && playerTrades >= maxTrades) {
+      return callback?.({ ok: false, error: 'You have reached your trade limit' });
+    }
+    
+    // Find and replace the Pokemon
+    const playerSelections = lobby.selections[playerId] || [];
+    const pokemonIndex = playerSelections.findIndex(p => p.name === oldPokemon);
+    
+    if (pokemonIndex !== -1) {
+      // Find the new Pokemon data (we need to construct a valid selection object)
+      // For now, we'll create a minimal object with the new name
+      const oldPokemonData = playerSelections[pokemonIndex];
+      const newPokemonData = {
+        ...oldPokemonData,
+        name: newPokemon,
+        id: undefined // Let the client reconstruct the full data
+      };
+      
+      playerSelections[pokemonIndex] = newPokemonData;
+      lobby.selections[playerId] = playerSelections;
+      
+      // Increment trade count
+      lobby.tradesCompleted[playerId] = (lobby.tradesCompleted[playerId] || 0) + 1;
+      
+      // Notify all players
+      io.to(code).emit('unpicked_trade_completed', {
+        updatedSelections: lobby.selections,
+        tradesCompleted: lobby.tradesCompleted
+      });
+      
+      callback?.({ ok: true });
+      
+      console.log(`Unpicked trade completed. ${playerId} count: ${lobby.tradesCompleted[playerId]}`);
+    } else {
+      callback?.({ ok: false, error: 'Pokemon not found in your team' });
+    }
+  });
+
+  socket.on('finish_trading', ({ code }) => {
+    const lobby = lobbies.get(code);
+    if (!lobby) return;
+    
+    if (!lobby.playersFinishedTrading) {
+      lobby.playersFinishedTrading = [];
+    }
+    
+    if (!lobby.playersFinishedTrading.includes(socket.id)) {
+      lobby.playersFinishedTrading.push(socket.id);
+      console.log(`${socket.id} finished trading in ${code}`);
+    }
+    
+    // Notify all players
+    io.to(code).emit('player_finished_trading', {
+      playersFinished: lobby.playersFinishedTrading
+    });
+    
+    // Check if all players are finished
+    if (lobby.playersFinishedTrading.length === lobby.users.length) {
+      console.log(`All players finished trading in ${code}`);
+      io.to(code).emit('all_players_finished_trading');
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     
@@ -354,7 +611,9 @@ io.on('connection', (socket) => {
             selections: lobby.selections,
             pointsRemaining: lobby.pointsRemaining,
             draftOrder: lobby.draftOrder,
-            currentTurn: lobby.currentTurn
+            currentTurn: lobby.currentTurn,
+            tradesCompleted: lobby.tradesCompleted || {},
+            playersFinishedTrading: lobby.playersFinishedTrading || []
           });
         }
       }

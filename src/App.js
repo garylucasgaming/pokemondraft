@@ -2373,6 +2373,16 @@ function App() {
     
     if (!myPokemon || !theirPokemon) return;
     
+    // Check if either player has finished trading
+    if (playersFinishedTrading.includes(myId)) {
+      alert('You have already finished trading');
+      return;
+    }
+    if (playersFinishedTrading.includes(theirPokemon.ownerId)) {
+      alert('That player has already finished trading');
+      return;
+    }
+    
     // Check trade limit
     const myTrades = tradesCompleted[myId] || 0;
     if (!lobbySettings.unlimitedTrades && myTrades >= lobbySettings.maxTradeLimit) {
@@ -2648,6 +2658,8 @@ function App() {
       if (data && data.banList) setBanList(Array.isArray(data.banList) ? data.banList : []);
       if (data && data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
       if (data && data.pointsRemaining) setPointsRemaining(data.pointsRemaining || {});
+      if (data && data.tradesCompleted) setTradesCompleted(data.tradesCompleted || {});
+      if (data && data.playersFinishedTrading) setPlayersFinishedTrading(data.playersFinishedTrading || []);
       if (data && data.selections) {
         setRemoteSelections(data.selections || {});
         // remove selected pokemons from our visible list
@@ -3003,10 +3015,12 @@ function App() {
     });
     
     s.on('all_players_finished_trading', () => {
+      console.log('All players finished trading - transitioning to final teams view');
       setTradingPhaseActive(false);
     });
     
     s.on('unpicked_trade_completed', (data) => {
+      console.log('Unpicked trade completed:', data);
       // Update final teams with the new selection
       if (data.updatedSelections) {
         setFinalTeams(prev => ({
@@ -3014,7 +3028,12 @@ function App() {
           selections: data.updatedSelections
         }));
       }
+      // Update trade count
+      if (data.tradesCompleted) {
+        setTradesCompleted(data.tradesCompleted);
+      }
       setShowUnpickedModal(null);
+      setUnpickedSearchQuery('');
     });
     
     return () => {
