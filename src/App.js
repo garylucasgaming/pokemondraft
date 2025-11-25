@@ -129,6 +129,7 @@ function App() {
   const [allAbilitiesList, setAllAbilitiesList] = useState([]); // All abilities from PokeAPI
   const [abilitySuggestions, setAbilitySuggestions] = useState([]);
   const [showAbilitySuggestions, setShowAbilitySuggestions] = useState(false);
+  const [pokemonWithAbility, setPokemonWithAbility] = useState([]); // Pokemon species that have the selected ability
   const [moveSuggestions, setMoveSuggestions] = useState([]);
   const [showMoveSuggestions, setShowMoveSuggestions] = useState(false);
   
@@ -1554,9 +1555,6 @@ function App() {
           generation: pokemon.generation
         })).sort((a, b) => a.id - b.id);
         
-        // Debug: Check first Pokemon's abilities
-        console.log('Bulbasaur after load:', list.find(p => p.id === 1));
-        
         setPokemonList(list);
       })
       .catch((err) => {
@@ -1769,18 +1767,12 @@ function App() {
       if (filterPointsMax !== '' && cost > Number(filterPointsMax)) return false;
       
       // Ability filter
-      if (filterAbility && filterAbility.trim()) {
-        if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
-          return false;
-        }
-        // Normalize ability name for comparison (remove spaces, hyphens, and make lowercase)
-        const searchAbility = filterAbility.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
-        const hasAbility = p.abilities.some(ability => {
-          if (!ability) return false;
-          // Normalize the Pokemon's ability name the same way
-          const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
-          return normalizedAbility === searchAbility || normalizedAbility.includes(searchAbility) || searchAbility.includes(normalizedAbility);
-        });
+      if (filterAbility && filterAbility.trim() && pokemonWithAbility.length > 0) {
+        // Check if this Pokemon's name matches any species that have the ability
+        const pokemonName = (p.name || '').toLowerCase();
+        const hasAbility = pokemonWithAbility.some(speciesName => 
+          pokemonName.includes(speciesName) || speciesName.includes(pokemonName)
+        );
         if (!hasAbility) return false;
       }
       
@@ -1863,6 +1855,32 @@ function App() {
     return [...new Set(allMoves)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   };
 
+  // Fetch Pokemon with a specific ability from PokeAPI
+  const fetchPokemonWithAbility = async (abilityName) => {
+    if (!abilityName) {
+      setPokemonWithAbility([]);
+      return;
+    }
+    
+    try {
+      // Convert display name back to API format (lowercase with hyphens)
+      const apiAbilityName = abilityName.toLowerCase().replace(/\s+/g, '-');
+      const response = await axios.get(`https://pokeapi.co/api/v2/ability/${apiAbilityName}`);
+      
+      // Extract Pokemon species names that have this ability
+      const speciesNames = response.data.pokemon.map(p => {
+        // Extract species name from URL or use pokemon.name
+        const speciesName = p.pokemon.species?.name || p.pokemon.name;
+        return speciesName.toLowerCase();
+      });
+      
+      setPokemonWithAbility(speciesNames);
+    } catch (err) {
+      console.error('Failed to fetch Pokemon with ability:', err);
+      setPokemonWithAbility([]);
+    }
+  };
+
   // Update ability suggestions
   const updateAbilitySuggestions = (input) => {
     if (!input || input.trim() === '') {
@@ -1902,6 +1920,7 @@ function App() {
     setFilterMove('');
     setAbilitySuggestions([]);
     setShowAbilitySuggestions(false);
+    setPokemonWithAbility([]);
     setMoveSuggestions([]);
     setShowMoveSuggestions(false);
   };
@@ -3583,12 +3602,21 @@ function App() {
                         onChange={(e) => {
                           setFilterAbility(e.target.value);
                           updateAbilitySuggestions(e.target.value);
+                          if (!e.target.value.trim()) {
+                            setPokemonWithAbility([]);
+                          }
                         }}
                         onFocus={() => {
                           if (filterAbility) updateAbilitySuggestions(filterAbility);
                         }}
                         onBlur={() => {
                           setTimeout(() => setShowAbilitySuggestions(false), 200);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && filterAbility.trim()) {
+                            fetchPokemonWithAbility(filterAbility);
+                            setShowAbilitySuggestions(false);
+                          }
                         }}
                         className="filter-input"
                       />
@@ -3619,6 +3647,7 @@ function App() {
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 setFilterAbility(ability.displayName);
+                                fetchPokemonWithAbility(ability.displayName);
                                 setShowAbilitySuggestions(false);
                               }}
                               onMouseEnter={(e) => {
