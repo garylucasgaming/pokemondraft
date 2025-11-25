@@ -91,14 +91,8 @@ function App() {
   const [lobbyCode, setLobbyCode] = useState('');
   const lobbyCodeRef = useRef('');
   const [lobbyUsers, setLobbyUsers] = useState([]);
-  const [socket, setSocket] = useState(null);
-  const [remoteSelections, setRemoteSelections] = useState({});
-  // optimistic local picks (keyed by socket id)
-  const [optimisticSelections, setOptimisticSelections] = useState({});
-  const [hostId, setHostId] = useState(null);
-  const hostIdRef = useRef(null);
   
-  // Sync refs with state for use in event handler closures
+  // Sync ref with state for use in event handler closures
   useEffect(() => {
     lobbyCodeRef.current = lobbyCode;
   }, [lobbyCode]);
@@ -106,7 +100,12 @@ function App() {
   useEffect(() => {
     hostIdRef.current = hostId;
   }, [hostId]);
-  
+  const [socket, setSocket] = useState(null);
+  const [remoteSelections, setRemoteSelections] = useState({});
+  // optimistic local picks (keyed by socket id)
+  const [optimisticSelections, setOptimisticSelections] = useState({});
+  const [hostId, setHostId] = useState(null);
+  const hostIdRef = useRef(null);
   const [lobbySettings, setLobbySettings] = useState({ 
     pointsLimit: 100, 
     teamSizeLimit: 10,
@@ -3138,11 +3137,13 @@ function App() {
                                   });
                                   // Cache updated settings for draft_complete fallback
                                   try {
-                                    const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
+                                    const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                    const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
                                     cached.allowTrading = newValue;
                                     cached.lobbyCode = lobbyCode;
                                     cached.hostSocketId = socket.id;
-                                    localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
+                                    localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                    console.log('Updated cache:', cacheKey, cached);
                                   } catch (err) {
                                     console.warn('Failed to cache setting update:', err);
                                   }
@@ -3172,11 +3173,12 @@ function App() {
                                     });
                                     // Cache updated settings
                                     try {
-                                      const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
+                                      const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                      const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
                                       cached.maxTradeLimit = newLimit;
                                       cached.lobbyCode = lobbyCode;
                                       cached.hostSocketId = socket.id;
-                                      localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
+                                      localStorage.setItem(cacheKey, JSON.stringify(cached));
                                     } catch (err) {
                                       console.warn('Failed to cache setting update:', err);
                                     }
@@ -3200,11 +3202,12 @@ function App() {
                                       socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
                                         // Cache updated settings
                                         try {
-                                          const cached = JSON.parse(localStorage.getItem('hostDraftSettings') || '{}');
+                                          const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                          const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
                                           cached.unlimitedTrades = newValue;
                                           cached.lobbyCode = lobbyCode;
                                           cached.hostSocketId = socket.id;
-                                          localStorage.setItem('hostDraftSettings', JSON.stringify(cached));
+                                          localStorage.setItem(cacheKey, JSON.stringify(cached));
                                         } catch (err) {
                                           console.warn('Failed to cache setting update:', err);
                                         }
