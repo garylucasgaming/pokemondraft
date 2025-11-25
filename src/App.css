@@ -337,7 +337,32 @@ body {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: center;
 }
+
+.control-group .nav-button {
+  background-color: #1d8ca8;
+  color: white;
+  border: 2px solid #166a75;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-group .nav-button:hover {
+  background-color: #166a75;
+  border-color: #0f4d57;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(29, 140, 168, 0.3);
+}
+
+.control-group .nav-button:active {
+  transform: translateY(0);
+}
+
 .JoinCodeInput { padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; }
 .join-lobby-button {
   padding: 6px 10px;
