@@ -122,8 +122,7 @@ function App() {
   const [filterGeneration, setFilterGeneration] = useState(0);
   const [filterPointsMin, setFilterPointsMin] = useState('');
   const [filterPointsMax, setFilterPointsMax] = useState('');
-  const [filterAbility, setFilterAbility] = useState(''); // Applied filter
-  const [abilityInput, setAbilityInput] = useState(''); // Input field value
+  const [filterAbility, setFilterAbility] = useState('');
   const [filterMove, setFilterMove] = useState(''); // Applied filter
   const [moveInput, setMoveInput] = useState(''); // Input field value
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -944,16 +943,20 @@ function App() {
       };
       
       console.log('Loaded data:', loadedData);
+      console.log('Slots with pokemon:', loadedData.slots.filter(s => s.pokemon).length);
       
       setTeamBuilderData(loadedData);
       setTeamBuilderLoaded(true);
       setShowTeamSelector(false);
       
-      setExportMessage('Team loaded successfully!');
-      setTimeout(() => setExportMessage(''), 3000);
+      // Force a small delay to ensure state updates properly
+      setTimeout(() => {
+        setExportMessage('Team loaded successfully!');
+        setTimeout(() => setExportMessage(''), 3000);
+      }, 100);
     } catch (err) {
       console.error('Failed to load team:', err);
-      alert('Failed to load team');
+      alert('Failed to load team: ' + err.message);
     }
   };
   
@@ -1534,9 +1537,11 @@ function App() {
   };
 
   useEffect(() => {
-    // Fetch abilities list from PokeAPI
-    fetchAllAbilities();
-  }, []);
+    // Fetch abilities list from PokeAPI after pokemon data loads
+    if (pokemonList.length > 0) {
+      fetchAllAbilities();
+    }
+  }, [pokemonList.length]);
 
   useEffect(() => {
     // Load Pokemon data from local JSON file instead of PokeAPI
@@ -1770,12 +1775,12 @@ function App() {
         if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
           return false;
         }
-        // Normalize ability name for comparison (handle both formats)
+        // Normalize ability name for comparison (remove spaces and hyphens)
         const searchAbility = filterAbility.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
         const hasAbility = p.abilities.some(ability => {
           if (!ability) return false;
           const normalizedAbility = ability.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
-          return normalizedAbility === searchAbility || normalizedAbility.includes(searchAbility);
+          return normalizedAbility === searchAbility;
         });
         if (!hasAbility) return false;
       }
@@ -1808,14 +1813,43 @@ function App() {
     return sorted;
   };
 
-  // Fetch all abilities from PokeAPI
+  // Fetch all abilities from PokeAPI and filter by what's in our pokemon_data.json
   const fetchAllAbilities = async () => {
     try {
+      // Fetch all abilities from PokeAPI
       const response = await axios.get('https://pokeapi.co/api/v2/ability?limit=1000');
-      const abilities = response.data.results.map(ability => 
-        ability.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-      ).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-      setAllAbilitiesList(abilities);
+      const allAbilities = response.data.results.map(ability => ({
+        name: ability.name,
+        displayName: ability.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+      }));
+      
+      // Get unique abilities from our pokemon data
+      const pokemonAbilities = new Set();
+      pokemonList.forEach(p => {
+        if (p.abilities && Array.isArray(p.abilities)) {
+          p.abilities.forEach(ability => {
+            if (ability) {
+              // Normalize to match PokeAPI format (lowercase, no spaces)
+              const normalized = ability.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
+              pokemonAbilities.add(normalized);
+            }
+          });
+        }
+      });
+      
+      // Filter abilities to only those in our pokemon data
+      const filteredAbilities = allAbilities.filter(ability => {
+        const normalized = ability.name.replace(/-/g, '');
+        return pokemonAbilities.has(normalized);
+      });
+      
+      // Sort and set
+      const sorted = filteredAbilities.sort((a, b) => 
+        a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase())
+      );
+      
+      setAllAbilitiesList(sorted);
+      console.log(`Loaded ${sorted.length} abilities that exist in pokemon data`);
     } catch (err) {
       console.error('Failed to fetch abilities from PokeAPI:', err);
     }
@@ -1837,7 +1871,7 @@ function App() {
       return;
     }
     const filtered = allAbilitiesList.filter(ability => 
-      ability.toLowerCase().includes(input.toLowerCase())
+      ability.displayName.toLowerCase().includes(input.toLowerCase())
     ).slice(0, 10);
     setAbilitySuggestions(filtered);
     setShowAbilitySuggestions(filtered.length > 0);
@@ -1865,7 +1899,6 @@ function App() {
     setFilterPointsMin('');
     setFilterPointsMax('');
     setFilterAbility('');
-    setAbilityInput('');
     setFilterMove('');
     setAbilitySuggestions([]);
     setShowAbilitySuggestions(false);
@@ -3546,25 +3579,16 @@ function App() {
                       <input 
                         type="text" 
                         placeholder="Search by ability" 
-                        value={abilityInput} 
+                        value={filterAbility} 
                         onChange={(e) => {
-                          setAbilityInput(e.target.value);
+                          setFilterAbility(e.target.value);
                           updateAbilitySuggestions(e.target.value);
                         }}
                         onFocus={() => {
-                          if (abilityInput) updateAbilitySuggestions(abilityInput);
+                          if (filterAbility) updateAbilitySuggestions(filterAbility);
                         }}
                         onBlur={() => {
                           setTimeout(() => setShowAbilitySuggestions(false), 200);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && abilityInput.trim()) {
-                            // Apply filter on Enter key
-                            setFilterAbility(abilityInput);
-                            setShowAbilitySuggestions(false);
-                          } else if (e.key === 'Escape') {
-                            setShowAbilitySuggestions(false);
-                          }
                         }}
                         className="filter-input"
                       />
@@ -3594,8 +3618,7 @@ function App() {
                               }}
                               onMouseDown={(e) => {
                                 e.preventDefault();
-                                setAbilityInput(ability);
-                                setFilterAbility(ability);
+                                setFilterAbility(ability.displayName);
                                 setShowAbilitySuggestions(false);
                               }}
                               onMouseEnter={(e) => {
@@ -3605,7 +3628,7 @@ function App() {
                                 e.target.style.background = '#fff';
                               }}
                             >
-                              {ability}
+                              {ability.displayName}
                             </div>
                           ))}
                         </div>
@@ -3907,16 +3930,22 @@ function App() {
           </div>
 
           <div className="team-builder-horizontal">
-            {teamBuilderData.slots.filter(slot => slot.pokemon).map((slot, idx) => {
-              const totalEVs = getTotalEVs(slot);
-              const remainingEVs = MAX_EVS - totalEVs;
+            {teamBuilderData.slots.filter(slot => slot.pokemon).length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', width: '100%' }}>
+                <p style={{ fontSize: '18px', color: '#666' }}>No Pokémon in this team yet.</p>
+                <button className="gen-button" onClick={() => setShowTeamSelector(true)}>Load a Team</button>
+              </div>
+            ) : (
+              teamBuilderData.slots.filter(slot => slot.pokemon).map((slot, idx) => {
+                const totalEVs = getTotalEVs(slot);
+                const remainingEVs = MAX_EVS - totalEVs;
 
-              return (
-                <div key={idx} className="team-builder-slot">
-                  <div className="slot-number">Slot {slot.slotNumber}</div>
-                  <div className="pokemon-builder-card">
-                    <img src={slot.pokemon.img} alt={slot.pokemon.name} className="pokemon-img" />
-                    <div className="pokemon-name">{slot.pokemon.name}</div>
+                return (
+                  <div key={idx} className="team-builder-slot">
+                    <div className="slot-number">Slot {slot.slotNumber}</div>
+                    <div className="pokemon-builder-card">
+                      <img src={slot.pokemon.img} alt={slot.pokemon.name} className="pokemon-img" />
+                      <div className="pokemon-name">{slot.pokemon.name}</div>
 
                     <div className="builder-section">
                       <label>Held Item:</label>
@@ -4010,7 +4039,8 @@ function App() {
                   </div>
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
       )}
