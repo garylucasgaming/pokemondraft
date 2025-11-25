@@ -95,7 +95,13 @@ function App() {
   // optimistic local picks (keyed by socket id)
   const [optimisticSelections, setOptimisticSelections] = useState({});
   const [hostId, setHostId] = useState(null);
-  const [lobbySettings, setLobbySettings] = useState({ pointsLimit: 100, teamSizeLimit: 10 });
+  const [lobbySettings, setLobbySettings] = useState({ 
+    pointsLimit: 100, 
+    teamSizeLimit: 10,
+    allowTrading: false,
+    maxTradeLimit: 0,
+    unlimitedTrades: false
+  });
   const [banList, setBanList] = useState([]);
   const [pointsMap, setPointsMap] = useState({});
   const [pointsRemaining, setPointsRemaining] = useState({});
@@ -118,6 +124,15 @@ function App() {
   const [filterAbility, setFilterAbility] = useState('');
   const [filterMove, setFilterMove] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  // Trading state
+  const [tradingPhaseActive, setTradingPhaseActive] = useState(false);
+  const [selectedForTrade, setSelectedForTrade] = useState([]); // [{pokemonName, ownerId}]
+  const [pendingTradeOffer, setPendingTradeOffer] = useState(null); // {from, to, pokemon1, pokemon2}
+  const [incomingTradeOffer, setIncomingTradeOffer] = useState(null);
+  const [playersFinishedTrading, setPlayersFinishedTrading] = useState([]);
+  const [tradesCompleted, setTradesCompleted] = useState({}); // {userId: count}
+  const [showUnpickedModal, setShowUnpickedModal] = useState(null); // {pokemonName, ownerId}
 
   // Team builder constants
   const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
@@ -771,25 +786,42 @@ function App() {
     return Object.values(slot.evs).reduce((sum, val) => sum + (val || 0), 0);
   };
   
-  const saveTeamBuilderToFile = () => {
+  const saveTeamToStorage = () => {
     if (!teamBuilderData) {
       alert('No team data to save');
       return;
     }
     
     try {
-      const jsonString = JSON.stringify(teamBuilderData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `team_${teamBuilderData.playerName}_${Date.now()}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const teamName = prompt('Enter a name for this team:', `${teamBuilderData.playerName}'s Team`);
+      if (!teamName) return;
       
-      setExportMessage('Team saved to file!');
+      const SAVED_TEAMS_KEY = 'pkmndraft_saved_teams';
+      let savedTeams = [];
+      try {
+        const raw = localStorage.getItem(SAVED_TEAMS_KEY);
+        if (raw) savedTeams = JSON.parse(raw) || [];
+      } catch (e) { savedTeams = []; }
+      
+      const teamToSave = {
+        id: Date.now(),
+        name: teamName,
+        playerName: teamBuilderData.playerName,
+        data: teamBuilderData,
+        savedAt: Date.now()
+      };
+      
+      // Check if updating existing team with same name
+      const existingIndex = savedTeams.findIndex(t => t.name === teamName);
+      if (existingIndex >= 0) {
+        savedTeams[existingIndex] = teamToSave;
+      } else {
+        savedTeams.push(teamToSave);
+      }
+      
+      localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(savedTeams));
+      
+      setExportMessage('Team saved!');
       setTimeout(() => setExportMessage(''), 3000);
     } catch (err) {
       console.error('Failed to save team:', err);
@@ -797,34 +829,54 @@ function App() {
     }
   };
   
-  const loadTeamBuilderFromFile = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        
-        // Validate structure
-        if (!data.playerName || !data.slots || !Array.isArray(data.slots)) {
-          alert('Invalid team file format');
-          return;
-        }
-        
-        setTeamBuilderData(data);
-        saveTeamBuilderData(data);
-        setTeamBuilderLoaded(true);
-        setView('teambuilder');
-        
-        setExportMessage('Team loaded successfully!');
-        setTimeout(() => setExportMessage(''), 3000);
-      } catch (err) {
-        console.error('Failed to parse team file:', err);
-        alert('Failed to load team file. Please check the file format.');
+  const loadSavedTeams = () => {
+    try {
+      const SAVED_TEAMS_KEY = 'pkmndraft_saved_teams';
+      const raw = localStorage.getItem(SAVED_TEAMS_KEY);
+      if (!raw) return [];
+      return JSON.parse(raw) || [];
+    } catch (err) {
+      console.error('Failed to load saved teams:', err);
+      return [];
+    }
+  };
+  
+  const loadTeamFromStorage = (teamId) => {
+    try {
+      const savedTeams = loadSavedTeams();
+      const team = savedTeams.find(t => t.id === teamId);
+      
+      if (!team || !team.data) {
+        alert('Team not found');
+        return;
       }
-    };
-    reader.readAsText(file);
+      
+      setTeamBuilderData(team.data);
+      saveTeamBuilderData(team.data);
+      setTeamBuilderLoaded(true);
+      setShowTeamSelector(false);
+      
+      setExportMessage('Team loaded successfully!');
+      setTimeout(() => setExportMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to load team:', err);
+      alert('Failed to load team');
+    }
+  };
+  
+  const deleteTeamFromStorage = (teamId) => {
+    try {
+      const SAVED_TEAMS_KEY = 'pkmndraft_saved_teams';
+      let savedTeams = loadSavedTeams();
+      savedTeams = savedTeams.filter(t => t.id !== teamId);
+      localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(savedTeams));
+      
+      setExportMessage('Team deleted!');
+      setTimeout(() => setExportMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to delete team:', err);
+      alert('Failed to delete team');
+    }
   };
 
   // ========== END TEAM BUILDER FUNCTIONS ==========
@@ -1835,6 +1887,143 @@ function App() {
     }
   };
 
+  // ========== TRADING FUNCTIONS ==========
+  
+  const handlePokemonClick = (pokemonName, ownerId) => {
+    // Check if player has finished trading
+    if (playersFinishedTrading.includes(ownerId)) {
+      return; // Can't select from finished players
+    }
+    
+    const myId = socket?.id;
+    
+    // Check if already selected
+    const alreadySelected = selectedForTrade.find(s => s.pokemonName === pokemonName && s.ownerId === ownerId);
+    if (alreadySelected) {
+      // Deselect
+      setSelectedForTrade(prev => prev.filter(s => !(s.pokemonName === pokemonName && s.ownerId === ownerId)));
+      return;
+    }
+    
+    // Can only select 1 from own team and 1 from another team
+    const mySelection = selectedForTrade.find(s => s.ownerId === myId);
+    const otherSelection = selectedForTrade.find(s => s.ownerId !== myId);
+    
+    if (ownerId === myId) {
+      // Selecting from own team
+      if (mySelection) {
+        // Replace existing selection
+        setSelectedForTrade(prev => prev.filter(s => s.ownerId !== myId).concat([{pokemonName, ownerId}]));
+      } else {
+        setSelectedForTrade(prev => [...prev, {pokemonName, ownerId}]);
+      }
+    } else {
+      // Selecting from another team
+      if (otherSelection) {
+        // Replace existing selection
+        setSelectedForTrade(prev => prev.filter(s => s.ownerId === myId || s.ownerId === ownerId).concat([{pokemonName, ownerId}]));
+      } else {
+        setSelectedForTrade(prev => [...prev, {pokemonName, ownerId}]);
+      }
+    }
+  };
+  
+  const offerTrade = () => {
+    if (selectedForTrade.length !== 2) return;
+    
+    const myId = socket?.id;
+    const myPokemon = selectedForTrade.find(s => s.ownerId === myId);
+    const theirPokemon = selectedForTrade.find(s => s.ownerId !== myId);
+    
+    if (!myPokemon || !theirPokemon) return;
+    
+    // Check trade limit
+    const myTrades = tradesCompleted[myId] || 0;
+    if (!lobbySettings.unlimitedTrades && myTrades >= lobbySettings.maxTradeLimit) {
+      alert(`You have reached your trade limit (${lobbySettings.maxTradeLimit})`);
+      return;
+    }
+    
+    setPendingTradeOffer({
+      from: myId,
+      to: theirPokemon.ownerId,
+      myPokemon: myPokemon.pokemonName,
+      theirPokemon: theirPokemon.pokemonName
+    });
+  };
+  
+  const confirmOfferTrade = () => {
+    if (!pendingTradeOffer || !socket) return;
+    
+    socket.emit('offer_trade', {
+      code: lobbyCode,
+      from: pendingTradeOffer.from,
+      to: pendingTradeOffer.to,
+      pokemon1: pendingTradeOffer.myPokemon,
+      pokemon2: pendingTradeOffer.theirPokemon
+    });
+  };
+  
+  const cancelTrade = () => {
+    setPendingTradeOffer(null);
+    setSelectedForTrade([]);
+  };
+  
+  const acceptTrade = () => {
+    if (!incomingTradeOffer || !socket) return;
+    
+    // Check trade limit
+    const myId = socket?.id;
+    const myTrades = tradesCompleted[myId] || 0;
+    if (!lobbySettings.unlimitedTrades && myTrades >= lobbySettings.maxTradeLimit) {
+      alert(`You have reached your trade limit (${lobbySettings.maxTradeLimit})`);
+      declineTrade();
+      return;
+    }
+    
+    socket.emit('accept_trade', {
+      code: lobbyCode,
+      tradeId: incomingTradeOffer.tradeId
+    });
+  };
+  
+  const declineTrade = () => {
+    if (!incomingTradeOffer || !socket) return;
+    
+    socket.emit('decline_trade', {
+      code: lobbyCode,
+      tradeId: incomingTradeOffer.tradeId
+    });
+    
+    setIncomingTradeOffer(null);
+  };
+  
+  const finishTrading = () => {
+    if (!socket) return;
+    
+    socket.emit('finish_trading', {
+      code: lobbyCode,
+      playerId: socket.id
+    });
+  };
+  
+  const tradeForUnpicked = (pokemonName, ownerId) => {
+    setShowUnpickedModal({pokemonName, ownerId});
+  };
+  
+  const confirmUnpickedTrade = (newPokemonName) => {
+    if (!showUnpickedModal || !socket) return;
+    
+    socket.emit('trade_for_unpicked', {
+      code: lobbyCode,
+      playerId: showUnpickedModal.ownerId,
+      oldPokemon: showUnpickedModal.pokemonName,
+      newPokemon: newPokemonName
+    });
+  };
+  
+  // ========== END TRADING FUNCTIONS ==========
+
   const startDraft = () => {
     if (socket && lobbyCode) {
       socket.emit('start_draft', { code: lobbyCode }, (resp) => {
@@ -2156,8 +2345,62 @@ function App() {
       console.log('Draft complete!', data);
       setDraftComplete(true);
       setFinalTeams(data);
+      
+      // Check if trading is enabled
+      if (lobbySettings.allowTrading) {
+        setTradingPhaseActive(true);
+      }
       // Team is already saved in ongoing draft, no need to auto-save separately
     });
+    
+    // Trading socket handlers
+    s.on('trade_offer_received', (data) => {
+      setIncomingTradeOffer(data);
+    });
+    
+    s.on('trade_accepted', (data) => {
+      // Update final teams with the new selections
+      if (data.updatedSelections) {
+        setFinalTeams(prev => ({
+          ...prev,
+          selections: data.updatedSelections
+        }));
+      }
+      setTradesCompleted(data.tradesCompleted || {});
+      setPendingTradeOffer(null);
+      setIncomingTradeOffer(null);
+      setSelectedForTrade([]);
+    });
+    
+    s.on('trade_declined', () => {
+      setPendingTradeOffer(null);
+      setSelectedForTrade([]);
+      alert('Trade was declined');
+    });
+    
+    s.on('trade_cancelled', () => {
+      setIncomingTradeOffer(null);
+    });
+    
+    s.on('player_finished_trading', (data) => {
+      setPlayersFinishedTrading(data.playersFinished || []);
+    });
+    
+    s.on('all_players_finished_trading', () => {
+      setTradingPhaseActive(false);
+    });
+    
+    s.on('unpicked_trade_completed', (data) => {
+      // Update final teams with the new selection
+      if (data.updatedSelections) {
+        setFinalTeams(prev => ({
+          ...prev,
+          selections: data.updatedSelections
+        }));
+      }
+      setShowUnpickedModal(null);
+    });
+    
     return () => {
       s.disconnect();
     };
@@ -2229,19 +2472,20 @@ function App() {
                 
                 <div className="control-group">
                   <button className="gen-button" onClick={() => {
-                    const teams = readSavedTeamsFromCookies();
-                    setSavedTeams(teams);
-                    setSavedTeamsVisible((v) => !v);
-                  }}>{savedTeamsVisible ? 'Hide Saved Teams' : 'Show Saved Teams'}</button>
+                    // Initialize team builder with empty team
+                    const emptyTeam = {
+                      playerName: PokemonName || 'Player',
+                      slots: Array(12).fill(null).map((_, idx) => createEmptySlot(idx))
+                    };
+                    setTeamBuilderData(emptyTeam);
+                    setTeamBuilderLoaded(true);
+                    setView('teambuilder');
+                  }}>Team Builder</button>
                   <button className="gen-button ml-8" onClick={() => {
                     const drafts = readOngoingDraftsFromCookies();
                     setOngoingDrafts(drafts);
-                    setOngoingDraftsVisible((v) => !v);
-                  }}>{ongoingDraftsVisible ? 'Hide Ongoing Drafts' : 'Show Ongoing Drafts'}</button>
-                </div>
-                
-                <div className="control-group">
-                  <button className="gen-button" onClick={() => { clearOngoingDraftsCookie(); }}>Clear All Ongoing Drafts</button>
+                    setView('ongoingdrafts');
+                  }}>Ongoing Drafts</button>
                 </div>
               </div>
             )}
@@ -2316,7 +2560,7 @@ function App() {
                               const newGen = Number(e.target.value);
                               setLobbyGenFilter(newGen);
                               if (socket && lobbyCode && socket.id === hostId) {
-                                socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: lobbySettings.pointsLimit, genFilter: newGen, teamSizeLimit: lobbySettings.teamSizeLimit } }, (resp) => {
+                                socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: lobbySettings.pointsLimit, genFilter: newGen, teamSizeLimit: lobbySettings.teamSizeLimit, allowTrading: lobbySettings.allowTrading, maxTradeLimit: lobbySettings.maxTradeLimit, unlimitedTrades: lobbySettings.unlimitedTrades } }, (resp) => {
                                   if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                 });
                               }
@@ -2330,6 +2574,74 @@ function App() {
                           <button className="gen-button ml-8 unban-all-button" onClick={() => { if (socket && socket.id === hostId) unbanAll(); }}>Unban All</button>
                         </div>
                       </div>
+                      
+                      {/* Trading Settings */}
+                      <div className="row mt-8">
+                        <div className="col-1">
+                          <label className="label-small">
+                            <input 
+                              type="checkbox" 
+                              checked={lobbySettings.allowTrading} 
+                              onChange={(e) => {
+                                const newValue = e.target.checked;
+                                setLobbySettings((s) => ({...s, allowTrading: newValue}));
+                                if (socket && lobbyCode && socket.id === hostId) {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, allowTrading: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                    if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                  });
+                                }
+                              }}
+                            />
+                            {' '}Allow Trading After Draft
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {lobbySettings.allowTrading && (
+                        <>
+                          <div className="row mt-8">
+                            <div className="col-1">
+                              <label className="label-small">Max Trades Per Player</label>
+                              <input 
+                                type="number" 
+                                min={0} 
+                                value={lobbySettings.maxTradeLimit} 
+                                onChange={(e) => {
+                                  const newLimit = Math.max(0, Number(e.target.value) || 0);
+                                  setLobbySettings((s) => ({...s, maxTradeLimit: newLimit}));
+                                  if (socket && lobbyCode && socket.id === hostId) {
+                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, maxTradeLimit: newLimit, genFilter: lobbyGenFilter } }, (resp) => {
+                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    });
+                                  }
+                                }} 
+                                className="input-full"
+                                disabled={lobbySettings.unlimitedTrades}
+                              />
+                            </div>
+                          </div>
+                          <div className="row mt-8">
+                            <div className="col-1">
+                              <label className="label-small">
+                                <input 
+                                  type="checkbox" 
+                                  checked={lobbySettings.unlimitedTrades} 
+                                  onChange={(e) => {
+                                    const newValue = e.target.checked;
+                                    setLobbySettings((s) => ({...s, unlimitedTrades: newValue}));
+                                    if (socket && lobbyCode && socket.id === hostId) {
+                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                      });
+                                    }
+                                  }}
+                                />
+                                {' '}Allow Unlimited Trades
+                              </label>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       
 
@@ -2449,184 +2761,339 @@ function App() {
           ) : (
             <div className="muted-text">No lobby yet — create one or join with a code.</div>
           )}
-          {savedTeamsVisible && (
-            <div className="SavedTeamsPanel">
-              <h4>My Teams (from Ongoing Drafts)</h4>
-              {savedTeams && savedTeams.length > 0 ? (
-                <>
-              {savedTeams.map((s) => (
-                <div key={s.key} className="saved-team-item">
-                  <div className="saved-team-key"><strong>{s.draftName || s.key}</strong></div>
-                  <div className="saved-team-meta" style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-                    Lobby: {s.lobbyCode} | Points Remaining: {s.pointsRemaining}
-                  </div>
-                  <div className="saved-team-list">
-                    {(() => {
-                      const entries = normalizeSavedTeamEntries(s.team);
-                      if (entries && entries.length > 0) {
-                        return (
-                          <div className="saved-team-grid">
-                            {entries.map((p) => (
-                              <div key={p.id || p.name} className="saved-team-card">
-                                {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
-                                <div className="pokemon-name">{p.name}</div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      }
-                      return <em>No entries</em>;
-                    })()}
-                  </div>
-                  <div className="saved-team-actions">
-                    <button className="gen-button" onClick={() => loadSavedTeam(s.key)}>Load</button>
-                    <button className="gen-button ml-8" onClick={() => exportSavedTeam(s.key)}>Export</button>
-                    <button className="gen-button ml-8" onClick={() => loadTeamIntoBuilder(s.key)}>Team Builder</button>
-                    {copiedTeamKey === s.key && (<span className="copy-confirm ml-8">Copied!</span>)}
-                  </div>
-                </div>
-              ))}
-              </>
-              ) : (
-                <div className="muted-text">No teams found. Teams are saved when you participate in drafts.</div>
-              )}
+        </div>
+      )}
+
+      {view === 'ongoingdrafts' && (
+        <div className="LobbyContainer">
+          <div className="OngoingDraftsPanel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2>Ongoing Drafts</h2>
+              <button className="gen-button" onClick={() => setView('lobby')}>Back to Lobby</button>
             </div>
-          )}
-          {ongoingDraftsVisible && (
-            <div className="OngoingDraftsPanel">
-              <h4>Ongoing Drafts</h4>
-              {ongoingDrafts && ongoingDrafts.length > 0 ? (
-                <>
-              {ongoingDrafts.map((d) => {
-                const code = d.lobbyCode || d.code;
-                return (
-                <div key={code} className="ongoing-draft-item">
-                  <div className="ongoing-draft-key"><strong>{d.draftName || code}</strong></div>
-                  <div className="ongoing-draft-players">
-                    Players: {Array.isArray(d.playerList) && d.playerList.length > 0 
-                      ? d.playerList.join(', ') 
-                      : (Array.isArray(d.players) && d.players.length > 0 ? d.players.join(', ') : <em>—</em>)}
+            {ongoingDrafts && ongoingDrafts.length > 0 ? (
+              <>
+            {ongoingDrafts.map((d) => {
+              const code = d.lobbyCode || d.code;
+              return (
+              <div key={code} className="ongoing-draft-item">
+                <div className="ongoing-draft-key"><strong>{d.draftName || code}</strong></div>
+                <div className="ongoing-draft-players">
+                  Players: {Array.isArray(d.playerList) && d.playerList.length > 0 
+                    ? d.playerList.join(', ') 
+                    : (Array.isArray(d.players) && d.players.length > 0 ? d.players.join(', ') : <em>—</em>)}
+                </div>
+                {(d.lobbySettings || d.settings) && (
+                  <div className="ongoing-draft-settings">
+                    Settings: PointsLimit {(d.lobbySettings?.pointsLimit || d.settings?.pointsLimit) || '—'}, 
+                    TeamSize {(d.lobbySettings?.teamSizeLimit || d.settings?.teamSizeLimit) || '—'}
                   </div>
-                  {(d.lobbySettings || d.settings) && (
-                    <div className="ongoing-draft-settings">
-                      Settings: PointsLimit {(d.lobbySettings?.pointsLimit || d.settings?.pointsLimit) || '—'}, 
-                      TeamSize {(d.lobbySettings?.teamSizeLimit || d.settings?.teamSizeLimit) || '—'}
-                    </div>
-                  )}
-                  {d.pickOrder && Array.isArray(d.pickOrder) && d.pickOrder.length > 0 && (
-                    <div className="ongoing-draft-order">Pick Order: {d.pickOrder.join(' → ')}</div>
-                  )}
-                  {d.currentPick && (
-                    <div className="ongoing-draft-current">Current Pick: <strong>{d.currentPick}</strong></div>
-                  )}
-                  {d.playerData && Object.keys(d.playerData).length > 0 && (
-                    <div className="ongoing-draft-player-summary">
-                      {Object.entries(d.playerData).map(([username, data]) => (
-                        <div key={username} className="player-summary-item">
-                          <span className="player-summary-name">{username}:</span>
-                          <span className="player-summary-stats">
-                            {data.selectedPokemon?.length || 0} Pokémon, {data.pointsRemaining} pts
-                          </span>
+                )}
+                {d.pickOrder && Array.isArray(d.pickOrder) && d.pickOrder.length > 0 && (
+                  <div className="ongoing-draft-order">Pick Order: {d.pickOrder.join(' → ')}</div>
+                )}
+                {d.currentPick && (
+                  <div className="ongoing-draft-current">Current Pick: <strong>{d.currentPick}</strong></div>
+                )}
+                {d.playerData && Object.keys(d.playerData).length > 0 && (
+                  <div className="ongoing-draft-player-summary">
+                    {Object.entries(d.playerData).map(([username, data]) => (
+                      <div key={username} className="player-summary-item">
+                        <span className="player-summary-name">{username}:</span>
+                        <span className="player-summary-stats">
+                          {data.selectedPokemon?.length || 0} Pokémon, {data.pointsRemaining} pts
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                  <div className="ongoing-draft-actions">
+                    <button className="gen-button" onClick={() => { 
+                      const currentUsername = PokemonName?.trim();
+                      const savedPoints = d.playerData && d.playerData[currentUsername]?.pointsRemaining != null 
+                        ? d.playerData[currentUsername].pointsRemaining 
+                        : (d._legacy?.pointsRemainingByName && d._legacy.pointsRemainingByName[currentUsername] != null 
+                          ? d._legacy.pointsRemainingByName[currentUsername] 
+                          : null);
+                      const savedSelections = d.playerData && d.playerData[currentUsername]?.selectedPokemon 
+                        ? d.playerData[currentUsername].selectedPokemon 
+                        : null;
+                      setRejoinPending({ code: code, expectedPlayers: d.playerList || d.players || [], draftEntry: d }); 
+                      joinLobby(code, savedPoints, savedSelections); 
+                    }}>Rejoin</button>
+                    <button className="gen-button ml-8" onClick={() => {
+                      const currentUsername = PokemonName?.trim();
+                      if (d.playerData && d.playerData[currentUsername]) {
+                        setViewedOngoingTeam({
+                          name: d.draftName || `Team Lobby#: ${code}`,
+                          lobbyCode: code,
+                          team: d.playerData[currentUsername].selectedPokemon || []
+                        });
+                      } else {
+                        alert('No team found for your username in this draft');
+                      }
+                    }}>View Team</button>
+                    <button className="gen-button danger ml-8" onClick={() => {
+                      deleteOngoingDraft(code);
+                      // Refresh the list
+                      const drafts = readOngoingDraftsFromCookies();
+                      setOngoingDrafts(drafts);
+                    }}>Delete</button>
+                  </div>
+              </div>
+            )})}
+            {viewedOngoingTeam && (
+              <div className="viewed-ongoing-team">
+                <h5>{viewedOngoingTeam.name || `Team Lobby#: ${viewedOngoingTeam.lobbyCode}`}</h5>
+                <div className="saved-team-list">
+                  {Array.isArray(viewedOngoingTeam.team) && viewedOngoingTeam.team.length > 0 ? (
+                    <div className="saved-team-grid">
+                      {normalizeSavedTeamEntries(viewedOngoingTeam.team).map((p) => (
+                        <div key={p.id || p.name} className="saved-team-card">
+                          {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                          <div className="pokemon-name">{p.name}</div>
                         </div>
                       ))}
                     </div>
-                  )}
-                    <div className="ongoing-draft-actions">
-                      <button className="gen-button" onClick={() => { 
-                        const currentUsername = PokemonName?.trim();
-                        const savedPoints = d.playerData && d.playerData[currentUsername]?.pointsRemaining != null 
-                          ? d.playerData[currentUsername].pointsRemaining 
-                          : (d._legacy?.pointsRemainingByName && d._legacy.pointsRemainingByName[currentUsername] != null 
-                            ? d._legacy.pointsRemainingByName[currentUsername] 
-                            : null);
-                        const savedSelections = d.playerData && d.playerData[currentUsername]?.selectedPokemon 
-                          ? d.playerData[currentUsername].selectedPokemon 
-                          : null;
-                        setRejoinPending({ code: code, expectedPlayers: d.playerList || d.players || [], draftEntry: d }); 
-                        joinLobby(code, savedPoints, savedSelections); 
-                      }}>Rejoin</button>
-                      <button className="gen-button ml-8" onClick={() => {
-                        const currentUsername = PokemonName?.trim();
-                        if (d.playerData && d.playerData[currentUsername]) {
-                          setViewedOngoingTeam({
-                            name: d.draftName || `Team Lobby#: ${code}`,
-                            lobbyCode: code,
-                            team: d.playerData[currentUsername].selectedPokemon || []
-                          });
-                        } else {
-                          alert('No team found for your username in this draft');
-                        }
-                      }}>View Team</button>
-                      <button className="gen-button danger ml-8" onClick={() => deleteOngoingDraft(code)}>Delete</button>
-                    </div>
+                  ) : <em>No entries</em>}
                 </div>
-              )})}
-              {viewedOngoingTeam && (
-                <div className="viewed-ongoing-team">
-                  <h5>{viewedOngoingTeam.name || `Team Lobby#: ${viewedOngoingTeam.lobbyCode}`}</h5>
-                  <div className="saved-team-list">
-                    {Array.isArray(viewedOngoingTeam.team) && viewedOngoingTeam.team.length > 0 ? (
-                      <div className="saved-team-grid">
-                        {normalizeSavedTeamEntries(viewedOngoingTeam.team).map((p) => (
-                          <div key={p.id || p.name} className="saved-team-card">
-                            {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
-                            <div className="pokemon-name">{p.name}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : <em>No entries</em>}
-                  </div>
-                </div>
-              )}
-              </>
-              ) : (
-                <div className="muted-text">No ongoing drafts found.</div>
-              )}
-            </div>
-          )}
+                <button className="gen-button mt-8" onClick={() => setViewedOngoingTeam(null)}>Close</button>
+              </div>
+            )}
+            </>
+            ) : (
+              <div className="muted-text">No ongoing drafts found.</div>
+            )}
+          </div>
         </div>
       )}
 
       {view === 'draft' && (
         <div className="MainArea">
           {draftComplete && finalTeams ? (
-            <div className="draft-complete-container">
-              <h2 style={{ textAlign: 'center', color: '#16a34a', marginBottom: 20 }}>🎉 Draft Complete! Final Teams:</h2>
-              <div className="final-teams-grid">
-                {(finalTeams.users || []).map(user => {
-                  const userSelections = finalTeams.selections[user.id] || [];
-                  return (
-                    <div key={user.id} className="final-team-card">
-                      <h3>{user.name}</h3>
-                      <div className="final-team-pokemon">
-                        {userSelections.length > 0 ? (
-                          <div className="saved-team-grid">
-                            {userSelections.map((p) => (
-                              <div key={p.id || p.name} className="saved-team-card">
-                                {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
-                                <div className="pokemon-name">{p.name}</div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : <em>No selections</em>}
+            tradingPhaseActive ? (
+              // Trading Phase UI
+              <div className="trading-container">
+                <h2 style={{ textAlign: 'center', color: '#ffd700', marginBottom: 20 }}>🔄 Trading Phase Has Started!</h2>
+                <p style={{ textAlign: 'center', marginBottom: 20 }}>
+                  Select 1 Pokémon from your team and 1 from another player's team to offer a trade.
+                  {!lobbySettings.unlimitedTrades && ` (Max ${lobbySettings.maxTradeLimit} trades per player)`}
+                </p>
+                
+                {/* Display all teams with selectable Pokemon */}
+                <div className="trading-teams-grid">
+                  {(finalTeams.users || []).map(user => {
+                    const userSelections = finalTeams.selections[user.id] || [];
+                    const isMyTeam = user.id === socket?.id;
+                    const isFinished = playersFinishedTrading.includes(user.id);
+                    const userTrades = tradesCompleted[user.id] || 0;
+                    
+                    return (
+                      <div key={user.id} className="trading-team-card">
+                        <div className="trading-team-header">
+                          <h3>{user.name} {isMyTeam && '(You)'}</h3>
+                          {isFinished && <span className="finished-badge">✓ Finished</span>}
+                          {!lobbySettings.unlimitedTrades && (
+                            <span className="trades-count">Trades: {userTrades}/{lobbySettings.maxTradeLimit}</span>
+                          )}
+                        </div>
+                        <div className="trading-team-pokemon">
+                          {userSelections.length > 0 ? (
+                            <div className="trading-pokemon-grid">
+                              {userSelections.map((p) => {
+                                const isSelected = selectedForTrade.some(s => s.pokemonName === p.name && s.ownerId === user.id);
+                                const canSelect = !isFinished && (isMyTeam || !playersFinishedTrading.includes(socket?.id));
+                                
+                                return (
+                                  <div key={p.id || p.name} className="trading-pokemon-wrapper">
+                                    <div 
+                                      className={`trading-pokemon-card ${isSelected ? 'selected' : ''} ${canSelect ? 'selectable' : 'disabled'}`}
+                                      onClick={() => canSelect && handlePokemonClick(p.name, user.id)}
+                                    >
+                                      {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                                      <div className="pokemon-name">{p.name}</div>
+                                    </div>
+                                    {isMyTeam && !isFinished && (
+                                      <button 
+                                        className="trade-unpicked-btn"
+                                        onClick={() => tradeForUnpicked(p.name, user.id)}
+                                      >
+                                        Trade for Unpicked
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : <em>No selections</em>}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                
+                {/* Trade action buttons */}
+                <div style={{ textAlign: 'center', marginTop: 30 }}>
+                  {selectedForTrade.length === 2 && (
+                    <button className="gen-button" onClick={offerTrade}>Offer Trade</button>
+                  )}
+                  {selectedForTrade.length > 0 && (
+                    <button className="gen-button ml-8" onClick={() => setSelectedForTrade([])}>Clear Selection</button>
+                  )}
+                  {!playersFinishedTrading.includes(socket?.id) && (
+                    <button className="export-button ml-8" onClick={finishTrading}>Finished Trading</button>
+                  )}
+                </div>
               </div>
-              <div style={{ textAlign: 'center', marginTop: 30 }}>
-                <button className="export-button" onClick={() => {
-                  exportRemoved();
-                  alert('Team exported to clipboard!');
-                }}>Export My Team</button>
-                <button className="gen-button ml-8" onClick={() => { 
-                  leaveLobby(true); 
-                  setDraftComplete(false); 
-                  setFinalTeams(null); 
-                }}>Back to Lobby</button>
+            ) : (
+              // Final Teams View (after trading complete)
+              <div className="draft-complete-container">
+                <h2 style={{ textAlign: 'center', color: '#16a34a', marginBottom: 20 }}>🎉 Draft Complete! Final Teams:</h2>
+                <div className="final-teams-grid">
+                  {(finalTeams.users || []).map(user => {
+                    const userSelections = finalTeams.selections[user.id] || [];
+                    const isMyTeam = user.id === socket?.id;
+                    
+                    return (
+                      <div key={user.id} className="final-team-card">
+                        <h3>{user.name} {isMyTeam && '(You)'}</h3>
+                        <div className="final-team-pokemon">
+                          {userSelections.length > 0 ? (
+                            <div className="saved-team-grid">
+                              {userSelections.map((p) => (
+                                <div key={p.id || p.name} className="saved-team-card">
+                                  {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                                  <div className="pokemon-name">{p.name}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : <em>No selections</em>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ textAlign: 'center', marginTop: 30 }}>
+                  <button className="export-button" onClick={() => {
+                    // Save draft team to localStorage
+                    const myTeam = finalTeams.selections[socket?.id] || [];
+                    const teamName = prompt('Enter a name for this team:', `${PokemonName}'s Draft Team`);
+                    if (!teamName) return;
+                    
+                    try {
+                      const SAVED_TEAMS_KEY = 'pkmndraft_saved_teams';
+                      let savedTeams = [];
+                      try {
+                        const raw = localStorage.getItem(SAVED_TEAMS_KEY);
+                        if (raw) savedTeams = JSON.parse(raw) || [];
+                      } catch (e) { savedTeams = []; }
+                      
+                      // Convert to team builder format
+                      const teamBuilderSlots = Array(12).fill(null).map((_, idx) => {
+                        if (idx < myTeam.length) {
+                          const p = myTeam[idx];
+                          return {
+                            slotIndex: idx,
+                            pokemon: p.name,
+                            pokemonId: p.id,
+                            pokemonName: p.name,
+                            sprite: p.img,
+                            isCaptain: idx === 0,
+                            ability: '',
+                            nature: 'hardy',
+                            heldItem: '',
+                            moves: ['', '', '', ''],
+                            stats: {
+                              hp: { base: 0, iv: 31, ev: 0 },
+                              attack: { base: 0, iv: 31, ev: 0 },
+                              defense: { base: 0, iv: 31, ev: 0 },
+                              specialAttack: { base: 0, iv: 31, ev: 0 },
+                              specialDefense: { base: 0, iv: 31, ev: 0 },
+                              speed: { base: 0, iv: 31, ev: 0 }
+                            },
+                            ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+                            evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 }
+                          };
+                        }
+                        return createEmptySlot(idx);
+                      });
+                      
+                      const teamToSave = {
+                        id: Date.now(),
+                        name: teamName,
+                        playerName: PokemonName,
+                        data: {
+                          playerName: PokemonName,
+                          slots: teamBuilderSlots
+                        },
+                        savedAt: Date.now()
+                      };
+                      
+                      // Check if updating existing team
+                      const existingIndex = savedTeams.findIndex(t => t.name === teamName);
+                      if (existingIndex >= 0) {
+                        savedTeams[existingIndex] = teamToSave;
+                      } else {
+                        savedTeams.push(teamToSave);
+                      }
+                      
+                      localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(savedTeams));
+                      alert('Team saved!');
+                    } catch (err) {
+                      console.error('Failed to save team:', err);
+                      alert('Failed to save team');
+                    }
+                  }}>Save Team</button>
+                  <button className="gen-button ml-8" onClick={() => {
+                    // Load team into team builder
+                    const myTeam = finalTeams.selections[socket?.id] || [];
+                    // Convert to team builder format
+                    const teamBuilderSlots = Array(12).fill(null).map((_, idx) => {
+                      if (idx < myTeam.length) {
+                        const p = myTeam[idx];
+                        return {
+                          slotIndex: idx,
+                          pokemon: p.name,
+                          pokemonId: p.id,
+                          pokemonName: p.name,
+                          sprite: p.img,
+                          isCaptain: idx === 0,
+                          ability: '',
+                          nature: 'hardy',
+                          heldItem: '',
+                          moves: ['', '', '', ''],
+                          stats: {
+                            hp: { base: 0, iv: 31, ev: 0 },
+                            attack: { base: 0, iv: 31, ev: 0 },
+                            defense: { base: 0, iv: 31, ev: 0 },
+                            specialAttack: { base: 0, iv: 31, ev: 0 },
+                            specialDefense: { base: 0, iv: 31, ev: 0 },
+                            speed: { base: 0, iv: 31, ev: 0 }
+                          },
+                          ivs: { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+                          evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 }
+                        };
+                      }
+                      return createEmptySlot(idx);
+                    });
+                    
+                    setTeamBuilderData({
+                      playerName: PokemonName,
+                      slots: teamBuilderSlots
+                    });
+                    setTeamBuilderLoaded(true);
+                    setView('teambuilder');
+                  }}>Show Team in Team Builder</button>
+                  <button className="gen-button ml-8" onClick={() => { 
+                    leaveLobby(true); 
+                    setDraftComplete(false); 
+                    setFinalTeams(null); 
+                    setTradingPhaseActive(false);
+                  }}>Return to Lobby</button>
+                </div>
+                {exportMessage && (<div className="export-msg" style={{ textAlign: 'center', marginTop: 10 }}>{exportMessage}</div>)}
               </div>
-              {exportMessage && (<div className="export-msg" style={{ textAlign: 'center', marginTop: 10 }}>{exportMessage}</div>)}
-            </div>
+            )
           ) : (
             <>
           <div className="DisplaySection">
@@ -2843,6 +3310,125 @@ function App() {
         </div>
       )}
 
+      {/* Trade Offer Modal (Initiator) */}
+      {pendingTradeOffer && (
+        <div className="modal-overlay">
+          <div className="trade-modal">
+            <h3>Offer Trade?</h3>
+            <div className="trade-pokemon-display">
+              <div className="trade-pokemon-side">
+                <h4>Your Pokémon</h4>
+                <div className="trade-pokemon-preview">
+                  {(() => {
+                    const p = pokemonList.find(pk => pk.name === pendingTradeOffer.myPokemon);
+                    return (
+                      <div className="trading-pokemon-card">
+                        {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                        <div className="pokemon-name">{pendingTradeOffer.myPokemon}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div className="trade-arrow">↔</div>
+              <div className="trade-pokemon-side">
+                <h4>Their Pokémon</h4>
+                <div className="trade-pokemon-preview">
+                  {(() => {
+                    const p = pokemonList.find(pk => pk.name === pendingTradeOffer.theirPokemon);
+                    return (
+                      <div className="trading-pokemon-card">
+                        {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                        <div className="pokemon-name">{pendingTradeOffer.theirPokemon}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+            <div className="modal-buttons">
+              <button className="gen-button" onClick={cancelTrade}>Cancel</button>
+              <button className="export-button ml-8" onClick={confirmOfferTrade}>Offer Trade</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Trade Offer Modal */}
+      {incomingTradeOffer && (
+        <div className="modal-overlay">
+          <div className="trade-modal">
+            <h3>Trade Offer Received!</h3>
+            <p>{incomingTradeOffer.fromName} wants to trade with you</p>
+            <div className="trade-pokemon-display">
+              <div className="trade-pokemon-side">
+                <h4>They Offer</h4>
+                <div className="trade-pokemon-preview">
+                  {(() => {
+                    const p = pokemonList.find(pk => pk.name === incomingTradeOffer.pokemon1);
+                    return (
+                      <div className="trading-pokemon-card">
+                        {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                        <div className="pokemon-name">{incomingTradeOffer.pokemon1}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div className="trade-arrow">↔</div>
+              <div className="trade-pokemon-side">
+                <h4>You Give</h4>
+                <div className="trade-pokemon-preview">
+                  {(() => {
+                    const p = pokemonList.find(pk => pk.name === incomingTradeOffer.pokemon2);
+                    return (
+                      <div className="trading-pokemon-card">
+                        {p?.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                        <div className="pokemon-name">{incomingTradeOffer.pokemon2}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+            <div className="modal-buttons">
+              <button className="gen-button" onClick={declineTrade}>Decline</button>
+              <button className="export-button ml-8" onClick={acceptTrade}>Accept</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trade for Unpicked Modal */}
+      {showUnpickedModal && (
+        <div className="modal-overlay">
+          <div className="trade-modal unpicked-modal">
+            <h3>Trade for Unpicked Pokémon</h3>
+            <p>Select a Pokémon to replace <strong>{showUnpickedModal.pokemonName}</strong></p>
+            <div className="unpicked-pokemon-list">
+              {(() => {
+                const allPicked = Object.values(finalTeams?.selections || {}).flat().map(p => p.name);
+                const unpicked = pokemonList.filter(p => !allPicked.includes(p.name) && getCost(p) > 0);
+                return unpicked.map(p => (
+                  <div 
+                    key={p.id} 
+                    className="unpicked-pokemon-card"
+                    onClick={() => confirmUnpickedTrade(p.name)}
+                  >
+                    {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                    <div className="pokemon-name">{p.name}</div>
+                    <div className="pokemon-cost">{getCost(p)} pts</div>
+                  </div>
+                ));
+              })()}
+            </div>
+            <div className="modal-buttons">
+              <button className="gen-button" onClick={() => setShowUnpickedModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {view === 'teambuilder' && teamBuilderData && !showTeamSelector && (
         <div className="TeamBuilderContainer">
           <div className="team-builder-header">
@@ -2850,7 +3436,7 @@ function App() {
               <h2>Team Builder - {teamBuilderData.playerName}</h2>
             </div>
             <div className="team-builder-header-buttons">
-              <button className="gen-button" onClick={saveTeamBuilderToFile}>Save Team</button>
+              <button className="gen-button" onClick={saveTeamToStorage}>Save Team</button>
               <button className="gen-button ml-8" onClick={() => setShowTeamSelector(true)}>Load Team</button>
               <button className="gen-button ml-8" onClick={() => setView('lobby')}>Back to Lobby</button>
               {exportMessage && <span className="ml-8" style={{ color: '#16a34a', fontWeight: 600 }}>{exportMessage}</span>}
@@ -2984,17 +3570,63 @@ function App() {
 
           <div className="team-selector-content">
             <div className="team-selector-section">
-              <h3>Load from File</h3>
-              <input 
-                type="file" 
-                accept=".json" 
-                onChange={loadTeamBuilderFromFile}
-                style={{ display: 'none' }}
-                id="team-file-input"
-              />
-              <label htmlFor="team-file-input" className="gen-button" style={{ cursor: 'pointer', display: 'inline-block' }}>
-                Choose JSON File
-              </label>
+              <h3>Saved Teams</h3>
+              {(() => {
+                const savedTeams = loadSavedTeams();
+                if (savedTeams.length === 0) {
+                  return <div className="muted-text">No saved teams found. Save a team from the team builder to see it here.</div>;
+                }
+                
+                return (
+                  <div className="team-selector-grid">
+                    {savedTeams.map((team) => (
+                      <div key={team.id} className="team-selector-card">
+                        <div className="team-selector-card-header">
+                          <strong>{team.name}</strong>
+                          <div className="fs-12 muted">
+                            {new Date(team.savedAt).toLocaleDateString()} {new Date(team.savedAt).toLocaleTimeString()}
+                          </div>
+                        </div>
+                        <div className="team-selector-card-body">
+                          <div className="saved-team-grid">
+                            {team.data.slots.filter(s => s.pokemonName).slice(0, 6).map((slot, idx) => (
+                              <div key={idx} className="saved-team-card-small">
+                                {slot.sprite && <img src={slot.sprite} alt={slot.pokemonName} />}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="fs-12 muted mt-8">
+                            {team.data.slots.filter(s => s.pokemonName).length} Pokémon
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                          <button 
+                            className="gen-button" 
+                            style={{ flex: 1 }}
+                            onClick={() => loadTeamFromStorage(team.id)}
+                          >
+                            Load
+                          </button>
+                          <button 
+                            className="gen-button" 
+                            style={{ flex: 1, backgroundColor: '#dc2626' }}
+                            onClick={() => {
+                              if (window.confirm(`Delete team "${team.name}"?`)) {
+                                deleteTeamFromStorage(team.id);
+                                // Force re-render by toggling the selector
+                                setShowTeamSelector(false);
+                                setTimeout(() => setShowTeamSelector(true), 10);
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="team-selector-section">
