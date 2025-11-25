@@ -874,7 +874,7 @@ function App() {
     }
   };
   
-  const loadTeamFromStorage = (teamId) => {
+  const loadTeamFromStorage = async (teamId) => {
     try {
       const savedTeams = loadSavedTeams();
       const team = savedTeams.find(t => t.id === teamId);
@@ -885,38 +885,60 @@ function App() {
       }
       
       console.log('Raw team data from storage:', team.data);
-      console.log('First slot from storage:', team.data.slots[0]);
       
-      // The team.data already has the correct structure (slots with pokemon objects)
-      // Just need to ensure empty slots are properly structured
-      const loadedData = {
-        playerName: team.data.playerName || team.playerName || 'Player',
-        slots: team.data.slots.map((slot, idx) => {
-          // Check if slot has pokemon data
-          if (slot && (slot.pokemon || slot.pokemonName)) {
-            // Handle old format where pokemon is a string or just pokemonName exists
-            let pokemonObj;
-            
-            if (typeof slot.pokemon === 'object' && slot.pokemon !== null) {
-              // New format - pokemon is already an object
+      // Fetch pokemon_data.json to get moves and abilities
+      const response = await fetch('/pokemon_data.json');
+      const allPokemon = await response.json();
+      
+      // Process each slot and fetch full data including base stats from PokeAPI
+      const processedSlots = await Promise.all(team.data.slots.map(async (slot, idx) => {
+        // Check if slot has pokemon data
+        if (slot && (slot.pokemon || slot.pokemonName)) {
+          // Get the pokemon name and ID
+          const pokemonName = (slot.pokemonName || slot.pokemon || '').toLowerCase();
+          const pokemonId = slot.pokemonId || 0;
+          
+          // Find the full pokemon data from pokemon_data.json
+          const fullPokemonData = allPokemon.find(p => 
+            (p.form_name || '').toLowerCase() === pokemonName || 
+            (p.species_name || '').toLowerCase() === pokemonName ||
+            p.id === pokemonId
+          );
+          
+          let pokemonObj;
+          
+          if (typeof slot.pokemon === 'object' && slot.pokemon !== null && slot.pokemon.moves && slot.pokemon.moves.length > 0 && slot.pokemon.baseStats && slot.pokemon.baseStats.hp > 0) {
+            // New format with full data already loaded - use it as is
+            pokemonObj = slot.pokemon;
+          } else if (fullPokemonData) {
+            // Found pokemon in data - fetch base stats from PokeAPI
+            try {
+              const pokeApiResponse = await axios.get(`https://pokeapi.co/api/v2/pokemon/${fullPokemonData.id}`);
+              const stats = pokeApiResponse.data.stats;
+              
               pokemonObj = {
-                id: slot.pokemon.id || 0,
-                name: slot.pokemon.name || '',
-                img: slot.pokemon.img || '',
-                baseStats: slot.pokemon.baseStats || {
-                  hp: 0, attack: 0, defense: 0, 
-                  specialAttack: 0, specialDefense: 0, speed: 0
+                id: fullPokemonData.id,
+                name: fullPokemonData.form_name || fullPokemonData.species_name,
+                img: fullPokemonData.sprite_front_default || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${fullPokemonData.id}.png`,
+                baseStats: {
+                  hp: stats.find(s => s.stat.name === 'hp')?.base_stat || 0,
+                  attack: stats.find(s => s.stat.name === 'attack')?.base_stat || 0,
+                  defense: stats.find(s => s.stat.name === 'defense')?.base_stat || 0,
+                  specialAttack: stats.find(s => s.stat.name === 'special-attack')?.base_stat || 0,
+                  specialDefense: stats.find(s => s.stat.name === 'special-defense')?.base_stat || 0,
+                  speed: stats.find(s => s.stat.name === 'speed')?.base_stat || 0
                 },
-                abilities: slot.pokemon.abilities || [],
-                moves: slot.pokemon.moves || [],
-                types: slot.pokemon.types || []
+                abilities: fullPokemonData.abilities || [],
+                moves: fullPokemonData.moves || [],
+                types: fullPokemonData.types || []
               };
-            } else {
-              // Old format - reconstruct pokemon object from flat structure
+            } catch (err) {
+              console.error(`Failed to fetch stats for ${pokemonName}:`, err);
+              // Fallback - use saved stats or zeros
               pokemonObj = {
-                id: slot.pokemonId || 0,
-                name: slot.pokemonName || slot.pokemon || '',
-                img: slot.sprite || '',
+                id: fullPokemonData.id,
+                name: fullPokemonData.form_name || fullPokemonData.species_name,
+                img: fullPokemonData.sprite_front_default || slot.sprite || '',
                 baseStats: slot.stats ? {
                   hp: slot.stats.hp?.base || 0,
                   attack: slot.stats.attack?.base || 0,
@@ -928,37 +950,60 @@ function App() {
                   hp: 0, attack: 0, defense: 0, 
                   specialAttack: 0, specialDefense: 0, speed: 0
                 },
-                abilities: [],
-                moves: [],
-                types: []
+                abilities: fullPokemonData.abilities || [],
+                moves: fullPokemonData.moves || [],
+                types: fullPokemonData.types || []
               };
             }
-            
-            // Build the slot with proper defaults
-            const loadedSlot = {
-              slotNumber: slot.slotNumber || slot.slotIndex + 1 || idx + 1,
-              pokemon: pokemonObj,
-              heldItem: slot.heldItem || '',
-              ability: slot.ability || '',
-              nature: slot.nature || 'hardy',
-              moves: Array.isArray(slot.moves) && slot.moves.length === 4 ? slot.moves : ['', '', '', ''],
-              ivs: (slot.ivs && typeof slot.ivs === 'object') ? slot.ivs : { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
-              evs: (slot.evs && typeof slot.evs === 'object') ? slot.evs : { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
-              isCaptain: slot.isCaptain || false
+          } else {
+            // Fallback - reconstruct from old format
+            pokemonObj = {
+              id: pokemonId,
+              name: pokemonName,
+              img: slot.sprite || '',
+              baseStats: slot.stats ? {
+                hp: slot.stats.hp?.base || 0,
+                attack: slot.stats.attack?.base || 0,
+                defense: slot.stats.defense?.base || 0,
+                specialAttack: slot.stats.specialAttack?.base || 0,
+                specialDefense: slot.stats.specialDefense?.base || 0,
+                speed: slot.stats.speed?.base || 0
+              } : {
+                hp: 0, attack: 0, defense: 0, 
+                specialAttack: 0, specialDefense: 0, speed: 0
+              },
+              abilities: [],
+              moves: [],
+              types: []
             };
-            return loadedSlot;
           }
-          // Otherwise return empty slot
-          return createEmptySlot(idx);
-        })
+          
+          // Build the slot with proper defaults
+          return {
+            slotNumber: slot.slotNumber || (slot.slotIndex !== undefined ? slot.slotIndex + 1 : idx + 1),
+            pokemon: pokemonObj,
+            heldItem: slot.heldItem || '',
+            ability: slot.ability || (pokemonObj.abilities && pokemonObj.abilities[0]) || '',
+            nature: slot.nature || 'hardy',
+            moves: Array.isArray(slot.moves) && slot.moves.length === 4 ? slot.moves : ['', '', '', ''],
+            ivs: (slot.ivs && typeof slot.ivs === 'object') ? slot.ivs : { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+            evs: (slot.evs && typeof slot.evs === 'object') ? slot.evs : { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+            isCaptain: slot.isCaptain || false
+          };
+        }
+        // Otherwise return empty slot
+        return createEmptySlot(idx);
+      }));
+      
+      const loadedData = {
+        playerName: team.data.playerName || team.playerName || 'Player',
+        slots: processedSlots
       };
       
       console.log('Team loaded:', {
         loadedData,
         slotsWithPokemon: loadedData.slots.filter(s => s.pokemon).length,
-        firstSlot: loadedData.slots.find(s => s.pokemon),
-        teamBuilderLoaded: true,
-        showTeamSelector: false
+        firstSlot: loadedData.slots.find(s => s.pokemon)
       });
       
       setTeamBuilderData(loadedData);
@@ -4123,14 +4168,24 @@ function App() {
                         </div>
                         <div className="team-selector-card-body">
                           <div className="saved-team-grid">
-                            {team.data.slots.filter(s => s.pokemon).slice(0, 6).map((slot, idx) => (
-                              <div key={idx} className="saved-team-card-small">
-                                {slot.pokemon?.img && <img src={slot.pokemon.img} alt={slot.pokemon.name} />}
-                              </div>
-                            ))}
+                            {team.data.slots.filter(s => s.pokemon || s.pokemonName).slice(0, 6).map((slot, idx) => {
+                              // Handle both old format (slot.sprite) and new format (slot.pokemon.img)
+                              const imgSrc = slot.pokemon && typeof slot.pokemon === 'object' 
+                                ? slot.pokemon.img 
+                                : slot.sprite;
+                              const pokemonName = slot.pokemon && typeof slot.pokemon === 'object'
+                                ? slot.pokemon.name
+                                : slot.pokemonName || slot.pokemon;
+                              
+                              return (
+                                <div key={idx} className="saved-team-card-small">
+                                  {imgSrc && <img src={imgSrc} alt={pokemonName} />}
+                                </div>
+                              );
+                            })}
                           </div>
                           <div className="fs-12 muted mt-8">
-                            {team.data.slots.filter(s => s.pokemon).length} Pokémon
+                            {team.data.slots.filter(s => s.pokemon || s.pokemonName).length} Pokémon
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
