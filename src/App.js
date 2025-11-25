@@ -1743,6 +1743,7 @@ function App() {
   // Return the visible pokemon list for the draft area, filtered and sorted
   const getVisiblePokemonList = () => {
     const source = (draftPokemonList && draftPokemonList.length > 0) ? draftPokemonList : pokemonList;
+    console.log('getVisiblePokemonList called, filterAbility:', filterAbility);
     const gen = lobbyGenFilter || 0;
     const filtered = (source || []).filter((p) => {
       if (!p) return false;
@@ -1774,6 +1775,7 @@ function App() {
       
       // Ability filter
       if (filterAbility && filterAbility.trim()) {
+        console.log('Filtering by ability:', filterAbility);
         if (!p.abilities || !Array.isArray(p.abilities) || p.abilities.length === 0) {
           return false;
         }
