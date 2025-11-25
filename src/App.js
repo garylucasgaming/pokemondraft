@@ -2756,6 +2756,7 @@ function App() {
     });
     s.on('draft_complete', (data) => {
       console.log('Draft complete!', data);
+      console.log('Current lobbySettings:', lobbySettings);
       setDraftComplete(true);
       setFinalTeams(data);
       
