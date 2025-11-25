@@ -96,11 +96,16 @@ function App() {
   useEffect(() => {
     lobbyCodeRef.current = lobbyCode;
   }, [lobbyCode]);
+  
+  useEffect(() => {
+    hostIdRef.current = hostId;
+  }, [hostId]);
   const [socket, setSocket] = useState(null);
   const [remoteSelections, setRemoteSelections] = useState({});
   // optimistic local picks (keyed by socket id)
   const [optimisticSelections, setOptimisticSelections] = useState({});
   const [hostId, setHostId] = useState(null);
+  const hostIdRef = useRef(null);
   const [lobbySettings, setLobbySettings] = useState({ 
     pointsLimit: 100, 
     teamSizeLimit: 10,
@@ -2641,7 +2646,7 @@ function App() {
         if (data.draftOrder) setLobbyDraftOrder(data.draftOrder || []);
         
         // If host, cache current settings for draft_complete fallback
-        if (s && s.id === hostId) {
+        if (s && s.id === hostIdRef.current) {
           try {
             const settingsCache = {
               allowTrading: lobbySettings.allowTrading,
@@ -2807,12 +2812,12 @@ function App() {
         hasServerSettings: !!data.settings,
         hasSocket: !!s,
         socketId: s?.id,
-        hostId: hostId,
-        isHost: s?.id === hostId
+        hostId: hostIdRef.current,
+        isHost: s?.id === hostIdRef.current
       });
       
       // If host, check cache and broadcast trading phase status to all players
-      if (!data.settings && s && s.id === hostId) {
+      if (!data.settings && s && s.id === hostIdRef.current) {
         console.log('Host checking cached draft settings...');
         try {
           const code = lobbyCodeRef.current;
