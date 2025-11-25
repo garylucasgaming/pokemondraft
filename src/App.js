@@ -2680,6 +2680,7 @@ function App() {
       }
       // remove the selected pokemon from the draft list for everyone
       if (data.pokemon && data.pokemon.id) {
+        setPokemonList((prev) => prev.filter(p => Number(p.id) !== Number(data.pokemon.id)));
         setDraftPokemonList((prev) => prev.filter(p => Number(p.id) !== Number(data.pokemon.id)));
       }
     });
@@ -2743,8 +2744,15 @@ function App() {
             return copy;
           });
           // restore the pokemon to the visible lists so user can try again
-          setPokemonList((prev) => (pk ? [...prev, pk] : prev));
-          setDraftPokemonList((prev) => (pk ? [...prev, pk] : prev));
+          // (only if it's not already there)
+          setPokemonList((prev) => {
+            if (prev.some(p => Number(p.id) === Number(pk.id))) return prev;
+            return [...prev, pk];
+          });
+          setDraftPokemonList((prev) => {
+            if (prev.some(p => Number(p.id) === Number(pk.id))) return prev;
+            return [...prev, pk];
+          });
         }
       } catch (err) {
         // ignore
