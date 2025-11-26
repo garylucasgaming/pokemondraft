@@ -4531,7 +4531,7 @@ function App() {
                   {draftSuggestionsVisible && searchTerm && (
                     <div className="suggestions-dropdown" style={{ position: 'absolute', top: '36px', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto' }}>
                       {(draftPokemonList.length > 0 ? draftPokemonList : pokemonList).filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0,8).map(p => (
-                        <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
+                        <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
                           <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
                           <span>{p.name}</span>
                         </div>
