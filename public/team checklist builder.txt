@@ -1,0 +1,413 @@
+General
+-Entry Hazard
+-Spinner/Defogger
+-Reliable Recovery
+
+Defensive
+-Cleric
+-Status Move
+-Phazer
+
+Offensive
+-Boosting Move
+-Volt-turn Move
+-Choice Item
+
+
+entry hazard moves: 
+spikes
+ceaseless edge
+stealth rock
+stone axe
+toxic spikes
+toxic debris
+sticky web
+
+defog/spinner moves:
+rapid spin
+defog
+mortal spin
+tidy up
+court change
+defog/spinner abilties:
+screen cleaner
+
+reliable recovery moves: 
+roost
+slack off
+recover
+moonlight
+morning sun
+synthesis
+wish
+soft-boiled
+
+reliable recovery abilities:
+volt absorb
+water absorb
+poison heal
+
+cleric moves:
+heal bell
+aromatherapy
+wish
+
+cleric abilities:
+healer
+
+status moves:
+Acid Armor
+Acupressure
+After You
+Agility
+Ally Switch
+Amnesia
+Aqua Ring
+Aromatic Mist
+Attract
+Aurora Veil
+Baby-Doll Eyes
+Baneful Bunker
+Baton Pass
+Belly Drum
+Block
+Bulk Up
+Burning Bulwark
+Calm Mind
+Celebrate
+Charge
+Charm
+Chilly Reception
+Clangorous Soul
+Coaching
+Coil
+Confide
+Confuse Ray
+Conversion
+Conversion 2
+Copycat
+Cosmic Power
+Cotton Guard
+Cotton Spore
+Court Change
+Curse
+Dark Void
+Decorate
+Defend Order
+Defense Curl
+Defog
+Destiny Bond
+Detect
+Disable
+Doodle
+Double Team
+Dragon Cheer
+Dragon Dance
+Eerie Impulse
+Electric Terrain
+Encore
+Endure
+Entrainment
+Fairy Lock
+Fake Tears
+Feather Dance
+Fillet Away
+Flatter
+Floral Healing
+Focus Energy
+Follow Me
+Forest's Curse
+Gastro Acid
+Glare
+Grassy Terrain
+Gravity
+Growl
+Growth
+Guard Split
+Guard Swap
+Happy Hour
+Harden
+Haze
+Heal Bell
+Heal Pulse
+Healing Wish
+Heart Swap
+Helping Hand
+Hone Claws
+Howl
+Hypnosis
+Imprison
+Ingrain
+Instruct
+Iron Defense
+Jungle Healing
+Leech Seed
+Leer
+Life Dew
+Light Screen
+Lock-On
+Lunar Blessing
+Lunar Dance
+Magic Powder
+Magic Room
+Magnet Rise
+Magnetic Flux
+Mean Look
+Memento
+Metal Sound
+Metronome
+Milk Drink
+Mimic
+Minimize
+Mist
+Misty Terrain
+Moonlight
+Morning Sun
+Nasty Plot
+No Retreat
+Noble Roar
+Pain Split
+Parting Shot
+Perish Song
+Play Nice
+Poison Gas
+Poison Powder
+Power Split
+Power Swap
+Power Trick
+Protect
+Psych Up
+Psychic Terrain
+Quash
+Quick Guard
+Quiver Dance
+Rage Powder
+Rain Dance
+Recover
+Recycle
+Reflect
+Reflect Type
+Rest
+Revival Blessing
+Roar
+Rock Polish
+Role Play
+Roost
+Safeguard
+Sand Attack
+Sandstorm
+Scary Face
+Screech
+Shed Tail
+Shell Smash
+Shelter
+Shift Gear
+Shore Up
+Silk Trap
+Simple Beam
+Sing
+Sketch
+Skill Swap
+Slack Off
+Sleep Powder
+Sleep Talk
+Smokescreen
+Snowscape
+Soak
+Soft-Boiled
+Speed Swap
+Spicy Extract
+Spikes
+Spiky Shield
+Spite
+Splash
+Spore
+Stealth Rock
+Sticky Web
+Stockpile
+Strength Sap
+String Shot
+Stuff Cheeks
+Stun Spore
+Substitute
+Sunny Day
+shell smash
+Supersonic
+Swagger
+Swallow
+Sweet Kiss
+Sweet Scent
+Switcheroo
+Swords Dance
+Synthesis
+Tail Glow
+Tail Whip
+Tailwind
+Take Heart
+Tar Shot
+Taunt
+Tearful Look
+Teatime
+Teeter Dance
+Teleport
+Thunder Wave
+Tickle
+Tidy Up
+Topsy-Turvy
+Torment
+Toxic
+Toxic Spikes
+Toxic Thread
+Transform
+Trick
+Trick Room
+Victory Dance
+Whirlwind
+Wide Guard
+Will-O-Wisp
+Wish
+Withdraw
+Wonder Room
+Work Up
+Worry Seed
+Yawn
+
+
+phazer moves: 
+roar
+whirlwind
+dragon tail
+circle throw
+haze
+perish song
+topsy turvy
+clear smog
+heart swap
+spectral thief
+psych up
+
+boosting moves: 
+ominous wind
+ancient power
+silver wind
+power-up punch
+acid spray
+leaf tornado
+psychic
+earth power
+muddy water
+bubble beam
+skull bash
+crabhammer
+nightslash
+icy wind
+sand tomb
+close combat
+overheat
+octazooka
+mirror shot
+super power
+draco meteor
+psycho boost
+fellstinger
+Nasty Plot
+Swords Dance
+Calm Mind
+Bulk Up
+Geomancy
+Quiver Dance
+Tail Glow
+Dragon Dance
+Shell Smash
+Cotton Guard
+Autotomize
+Shift Gear
+Work Up
+Cosmic Power
+Defend Order
+Hone Claws
+Coil
+Stockpile
+Growth
+Belly Drum
+Rock Polish
+Amnesia
+Agility
+Iron Defense
+
+boosting abilities: 
+huge power
+blaze
+chlorophyll
+flash fire
+flower gift
+fur coat
+gorilla tactics
+grass pelt
+guts
+hustle
+ice scales
+marvel scale
+minus
+orichalcum
+overgrow
+plus
+protosynthesis
+pure power
+quark drive
+quick feet
+sand rush
+slush rush
+solar power
+surge surfer
+swarm
+swift swim
+torrent
+unburden
+defiant
+adaptability
+aerilate
+analytic
+battery
+battle bond
+dragon's maw
+galvanize
+iron fist
+mega launcher
+normalize
+pixilate
+power spot
+punk rock
+reckless
+refigerate
+rivalry
+rocky payload
+sand force
+sharpness
+sheer force
+stakeout
+steelworker
+steely spirit
+strong jaw
+supreme overlord
+technician
+tough claws
+toxic boost
+transistor
+water bubble
+
+volt-turn moves: 
+baton pass
+chilly reception
+flip turn
+parting shot
+shed tail
+teleport
+u-turn
+volt switch
+
+
+choice item: 
+choice-band
+choice-scarf
+choice-specs

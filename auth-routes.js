@@ -135,6 +135,7 @@ router.post('/login', async (req, res) => {
 
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
+    
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -285,6 +286,103 @@ router.get('/verify', authenticateToken, (req, res) => {
       email: req.user.email
     }
   });
+});
+
+// Auto-login with device fingerprint
+router.post('/device-login', async (req, res) => {
+  try {
+    const { fingerprint } = req.body;
+
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Device fingerprint required' });
+    }
+
+    // Find user with this trusted device
+    const user = await User.findOne({
+      'devices.fingerprint': fingerprint,
+      'devices.trusted': true
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Device not recognized' });
+    }
+
+    // Update last seen for this device
+    const deviceIndex = user.devices.findIndex(d => d.fingerprint === fingerprint);
+    if (deviceIndex !== -1) {
+      user.devices[deviceIndex].lastSeen = new Date();
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    // Generate new token
+    const token = jwt.sign(
+      { 
+        userId: user._id, 
+        username: user.username,
+        email: user.email 
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName
+      }
+    });
+  } catch (error) {
+    console.error('Device login error:', error);
+    res.status(500).json({ error: 'Device login failed' });
+  }
+});
+
+// Register device after successful login
+router.post('/register-device', authenticateToken, async (req, res) => {
+  try {
+    const { fingerprint, userAgent } = req.body;
+
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Device fingerprint required' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if device already registered
+    const existingDevice = user.devices.find(d => d.fingerprint === fingerprint);
+    
+    if (existingDevice) {
+      // Update last seen
+      existingDevice.lastSeen = new Date();
+      existingDevice.userAgent = userAgent;
+    } else {
+      // Add new device
+      user.devices.push({
+        fingerprint,
+        userAgent,
+        lastSeen: new Date(),
+        trusted: true
+      });
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Device registered'
+    });
+  } catch (error) {
+    console.error('Register device error:', error);
+    res.status(500).json({ error: 'Failed to register device' });
+  }
 });
 
 module.exports = { router, authenticateToken };

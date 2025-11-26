@@ -135,6 +135,57 @@ router.get('/drafts/user/ongoing', authenticateToken, async (req, res) => {
   }
 });
 
+// Search all ongoing drafts (for public discovery)
+router.get('/drafts/search', async (req, res) => {
+  try {
+    const { query, username } = req.query;
+    
+    const filter = {
+      status: { $in: ['lobby', 'drafting'] },
+      expiresAt: { $gt: new Date() }
+    };
+
+    // If query provided, search lobby names and codes
+    if (query && query.trim()) {
+      filter.$or = [
+        { lobbyName: { $regex: query.trim(), $options: 'i' } },
+        { lobbyCode: { $regex: query.trim(), $options: 'i' } },
+        { 'participants.username': { $regex: query.trim(), $options: 'i' } }
+      ];
+    }
+
+    // If username provided, filter to only show drafts user is in
+    if (username && username.trim()) {
+      filter['participants.username'] = username.trim();
+    }
+
+    const sessions = await DraftSession.find(filter)
+      .select('lobbyCode lobbyName status participants settings turnOrder currentTurn createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(50);
+
+    res.json(sessions.map(s => ({
+      lobbyCode: s.lobbyCode,
+      lobbyName: s.lobbyName || `Draft ${s.lobbyCode}`,
+      hostUsername: s.participants.find(p => p.socketId === s.hostSocketId)?.username || s.participants[0]?.username,
+      status: s.status,
+      participants: s.participants.map(p => ({
+        username: p.username,
+        selectionsCount: p.selections?.length || 0,
+        pointsRemaining: p.pointsRemaining
+      })),
+      settings: s.settings,
+      turnOrder: s.turnOrder,
+      currentTurn: s.currentTurn,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt
+    })));
+  } catch (error) {
+    console.error('Search drafts error:', error);
+    res.status(500).json({ error: 'Failed to search drafts' });
+  }
+});
+
 // Get ongoing drafts by username (for non-authenticated users using localStorage)
 router.get('/drafts/username/:username', async (req, res) => {
   try {
@@ -150,8 +201,13 @@ router.get('/drafts/username/:username', async (req, res) => {
       success: true,
       sessions: sessions.map(s => ({
         lobbyCode: s.lobbyCode,
+        lobbyName: s.lobbyName || `Draft ${s.lobbyCode}`,
+        hostUsername: s.participants.find(p => p.socketId === s.hostSocketId)?.username || s.participants[0]?.username,
         status: s.status,
         participantCount: s.participants.length,
+        participants: s.participants,
+        turnOrder: s.turnOrder,
+        currentTurn: s.currentTurn,
         settings: s.settings,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
@@ -193,6 +249,60 @@ router.post('/drafts/:lobbyCode/participant/:username/connect', async (req, res)
   } catch (error) {
     console.error('Update participant error:', error);
     res.status(500).json({ error: 'Failed to update participant' });
+  }
+});
+
+// Remove participant from draft (leave draft)
+router.post('/drafts/:lobbyCode/participant/:username/leave', async (req, res) => {
+  try {
+    const { lobbyCode, username } = req.params;
+
+    const session = await DraftSession.findOne({ lobbyCode });
+    if (!session) {
+      return res.status(404).json({ error: 'Draft session not found' });
+    }
+
+    // Find and remove participant
+    const participantIndex = session.participants.findIndex(p => p.username === username);
+    if (participantIndex === -1) {
+      return res.status(404).json({ error: 'Participant not found in draft' });
+    }
+
+    session.participants.splice(participantIndex, 1);
+    
+    // Remove from turn order if present
+    if (session.turnOrder) {
+      session.turnOrder = session.turnOrder.filter(name => name !== username);
+    }
+
+    // If current turn was this user, advance to next player
+    if (session.currentTurn === username && session.turnOrder.length > 0) {
+      session.currentTurn = session.turnOrder[0];
+    }
+
+    session.updatedAt = new Date();
+    
+    // If no participants remain, delete the draft
+    if (session.participants.length === 0) {
+      await DraftSession.deleteOne({ lobbyCode });
+      return res.json({
+        success: true,
+        message: 'Successfully left draft (draft deleted - no participants remain)',
+        participantsRemaining: 0,
+        draftDeleted: true
+      });
+    }
+    
+    await session.save();
+
+    res.json({
+      success: true,
+      message: 'Successfully left draft',
+      participantsRemaining: session.participants.length
+    });
+  } catch (error) {
+    console.error('Leave draft error:', error);
+    res.status(500).json({ error: 'Failed to leave draft' });
   }
 });
 
@@ -281,6 +391,91 @@ router.post('/drafts/cleanup', async (req, res) => {
   } catch (error) {
     console.error('Cleanup error:', error);
     res.status(500).json({ error: 'Cleanup failed' });
+  }
+});
+
+// Update draft status (mark as completed, etc.)
+router.patch('/drafts/:lobbyCode/status', async (req, res) => {
+  try {
+    const { lobbyCode } = req.params;
+    const { status } = req.body;
+
+    if (!lobbyCode) {
+      return res.status(400).json({ error: 'Lobby code required' });
+    }
+
+    if (!status || !['lobby', 'drafting', 'completed', 'abandoned'].includes(status)) {
+      return res.status(400).json({ error: 'Valid status required (lobby, drafting, completed, abandoned)' });
+    }
+
+    const session = await DraftSession.findOne({ lobbyCode });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Draft session not found' });
+    }
+
+    session.status = status;
+    session.updatedAt = new Date();
+
+    if (status === 'completed' && !session.completedAt) {
+      session.completedAt = new Date();
+    }
+
+    await session.save();
+
+    res.json({
+      success: true,
+      session: {
+        lobbyCode: session.lobbyCode,
+        status: session.status,
+        completedAt: session.completedAt
+      }
+    });
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// Update connection status for a participant
+router.post('/drafts/:lobbyCode/connection-status', async (req, res) => {
+  try {
+    const { lobbyCode } = req.params;
+    const { username, isConnected } = req.body;
+
+    if (!lobbyCode || !username) {
+      return res.status(400).json({ error: 'Lobby code and username required' });
+    }
+
+    const session = await DraftSession.findOne({ lobbyCode });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Draft session not found' });
+    }
+
+    const participant = session.participants.find(p => p.username === username);
+    
+    if (!participant) {
+      return res.status(404).json({ error: 'Participant not found in draft' });
+    }
+
+    participant.isConnected = isConnected !== false; // Default to true if not specified
+    participant.lastSeen = new Date();
+    session.updatedAt = new Date();
+
+    await session.save();
+
+    res.json({
+      success: true,
+      participant: {
+        username: participant.username,
+        isConnected: participant.isConnected,
+        lastSeen: participant.lastSeen
+      }
+    });
+  } catch (error) {
+    console.error('Update connection status error:', error);
+    res.status(500).json({ error: 'Failed to update connection status' });
   }
 });
 

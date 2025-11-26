@@ -2,11 +2,17 @@ const mongoose = require('mongoose');
 
 // User Schema
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true, trim: true, minlength: 3, maxlength: 20 },
+  username: { type: String, required: true, unique: true, lowercase: true, trim: true, minlength: 3, maxlength: 20 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true }, // Hashed password
   displayName: { type: String, default: '' },
   avatar: { type: String, default: '' }, // URL or identifier
+  devices: [{
+    fingerprint: { type: String, required: true },
+    lastSeen: { type: Date, default: Date.now },
+    userAgent: String,
+    trusted: { type: Boolean, default: true }
+  }],
   createdAt: { type: Date, default: Date.now },
   lastLogin: { type: Date },
   isActive: { type: Boolean, default: true }
@@ -79,7 +85,7 @@ const tournamentSchema = new mongoose.Schema({
 
 // Saved Team Schema
 const savedTeamSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional for guest users
   username: { type: String, required: true }, // Cached for display
   name: { type: String, required: true },
   pokemon: [{
@@ -112,7 +118,7 @@ const savedTeamSchema = new mongoose.Schema({
   format: String, // 'SV OU', 'VGC 2024', 'National Dex', etc.
   description: String,
   isPublic: { type: Boolean, default: false },
-  shareCode: { type: String, unique: true, sparse: true }, // Unique code for sharing
+  teamBuilderData: mongoose.Schema.Types.Mixed, // Store team builder format data
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -120,7 +126,9 @@ const savedTeamSchema = new mongoose.Schema({
 // Draft Session Schema - for ongoing drafts
 const draftSessionSchema = new mongoose.Schema({
   lobbyCode: { type: String, required: true, unique: true },
+  lobbyName: { type: String, default: '' }, // Host-set lobby name
   hostId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional: link to user if authenticated
+  hostUsername: { type: String }, // Username of the host
   hostSocketId: { type: String }, // Current socket ID for reconnection
   status: { type: String, enum: ['lobby', 'drafting', 'completed', 'abandoned'], default: 'lobby' },
   settings: {
@@ -129,8 +137,13 @@ const draftSessionSchema = new mongoose.Schema({
     allowTrading: { type: Boolean, default: false },
     maxTradeLimit: { type: Number, default: 0 },
     unlimitedTrades: { type: Boolean, default: false },
-    genFilter: { type: Number, default: 0 }
+    genFilter: { type: Number, default: 0 },
+    timerEnabled: { type: Boolean, default: false },
+    firstRoundTimer: { type: Number, default: 480 }, // in minutes, default 8 hours (480 minutes)
+    subsequentRoundTimer: { type: Number, default: 480 } // in minutes, default 8 hours
   },
+  currentTurnStartTime: { type: Date }, // When current player's turn started
+  skippedPlayers: [{ type: String }], // Usernames of players whose turns were skipped
   participants: [{
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional: if authenticated
     socketId: { type: String }, // Last known socket ID
@@ -161,7 +174,7 @@ const draftSessionSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
   startedAt: { type: Date }, // When draft actually started
   completedAt: { type: Date }, // When draft finished
-  expiresAt: { type: Date, default: () => Date.now() + 7 * 24 * 60 * 60 * 1000 } // 7 days
+  expiresAt: { type: Date, default: () => Date.now() + 90 * 24 * 60 * 60 * 1000 } // 90 days
 });
 
 // Create indexes for better query performance
@@ -176,6 +189,8 @@ savedTeamSchema.index({ userId: 1 });
 savedTeamSchema.index({ isPublic: 1, createdAt: -1 });
 draftSessionSchema.index({ lobbyCode: 1 });
 draftSessionSchema.index({ 'participants.userId': 1 });
+draftSessionSchema.index({ 'participants.username': 1 }); // For username search
+draftSessionSchema.index({ lobbyName: 'text' }); // Text search for lobby names
 draftSessionSchema.index({ status: 1, expiresAt: 1 }); // For cleanup queries
 draftSessionSchema.index({ expiresAt: 1 }); // TTL index for auto-deletion
 

@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+        "label": "Start Socket Server",
+        "type": "shell",
+        "command": "node socket-server.js",
+        "isBackground": true,
+        "problemMatcher": [],
+        "presentation": {
+            "reveal": "always",
+            "panel": "dedicated",
+            "group": "servers"
+        }
+    },
+    {
+        "label": "Start React Dev Server",
+        "type": "shell",
+        "command": "$env:PORT=3000; npm start",
+        "isBackground": true,
+        "problemMatcher": [],
+        "presentation": {
+            "reveal": "always",
+            "panel": "dedicated",
+            "group": "servers"
+        }
+    },
+    {
+        "label": "Start All Servers",
+        "dependsOn": [
+            "Start Socket Server",
+            "Start React Dev Server"
+        ],
+        "problemMatcher": []
+    }
+]
+}

@@ -1,18 +1,52 @@
 import logo from './logo.svg';
 import './App.css';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import CreditsPage from './pages/Credits';
 import ContactPage from './pages/Contact';
 import PrivacyPage from './pages/Privacy';
 import CopyrightPage from './pages/Copyright';
 import LeagueManager from './components/LeagueManager';
+import { AuthProvider, useAuth } from './components/AuthContext';
+import AuthModal from './components/AuthModal';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
 
 function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { user, logout, loading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [PokemonName, setPokemonName] = useState("");
+  
+  // Set PokemonName from authenticated user
+  useEffect(() => {
+    if (user) {
+      setPokemonName(user.username);
+    }
+  }, [user]);
+  
+  // Show auth modal on mount if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      setShowAuthModal(true);
+    }
+  }, [loading, user]);
+  
+  // Socket URL configuration - used throughout the app
+  const socketUrl = process.env.REACT_APP_SOCKET_URL || (
+    process.env.NODE_ENV === 'production' 
+      ? window.location.origin 
+      : 'http://localhost:4000'
+  );
+
   const [PokemonChosen, setPokemonChosen] = useState(false);  
   const [PokemonData, setPokemonData] = useState({
     species: "",
@@ -74,10 +108,10 @@ function App() {
   const [footerPage, setFooterPage] = useState(null);
   const [ongoingDraftsVisible, setOngoingDraftsVisible] = useState(false);
   const [ongoingDrafts, setOngoingDrafts] = useState([]);
+  const [draftSearchQuery, setDraftSearchQuery] = useState('');
   const [viewedOngoingTeam, setViewedOngoingTeam] = useState(null);
   const [rejoinPending, setRejoinPending] = useState(null);
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
-  const [leaveDraftConfirmVisible, setLeaveDraftConfirmVisible] = useState(false);
   const [draftComplete, setDraftComplete] = useState(false);
   const [finalTeams, setFinalTeams] = useState(null);
   // app view: 'lobby' (main), 'draft' (the drafting page), or 'teambuilder' (team builder page)
@@ -88,10 +122,13 @@ function App() {
   const [teamBuilderData, setTeamBuilderData] = useState(null);
   const [teamBuilderLoaded, setTeamBuilderLoaded] = useState(false);
   const [showTeamSelector, setShowTeamSelector] = useState(false);
+  const [savedTeamsFromDB, setSavedTeamsFromDB] = useState([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
   const [selectedForExport, setSelectedForExport] = useState([]); // Array of slot indices
   // lobby state
   const [lobbyCode, setLobbyCode] = useState('');
   const lobbyCodeRef = useRef('');
+  const [lobbyName, setLobbyName] = useState('');
   const [lobbyUsers, setLobbyUsers] = useState([]);
   const [socket, setSocket] = useState(null);
   const [remoteSelections, setRemoteSelections] = useState({});
@@ -104,7 +141,10 @@ function App() {
     teamSizeLimit: 10,
     allowTrading: false,
     maxTradeLimit: 0,
-    unlimitedTrades: false
+    unlimitedTrades: false,
+    timerEnabled: false,
+    firstRoundTimer: 480, // 8 hours in minutes
+    subsequentRoundTimer: 480 // 8 hours in minutes
   });
   const lobbySettingsRef = useRef(lobbySettings);
   
@@ -120,6 +160,13 @@ function App() {
   useEffect(() => {
     lobbySettingsRef.current = lobbySettings;
   }, [lobbySettings]);
+
+  // Fetch teams from database when team selector is opened
+  useEffect(() => {
+    if (showTeamSelector && view === 'teambuilder') {
+      fetchTeamsFromDB();
+    }
+  }, [showTeamSelector, view]);
   
   // Load presets from JSON
   useEffect(() => {
@@ -144,11 +191,14 @@ function App() {
   const [pointsValueSelected, setPointsValueSelected] = useState(1);
   const [selectedPokemonForPoints, setSelectedPokemonForPoints] = useState([]); // Array of pokemon objects to apply points to
   const [currentTurn, setCurrentTurn] = useState(null);
+  const [currentTurnStartTime, setCurrentTurnStartTime] = useState(null); // When current player's turn started
+  const [timeRemaining, setTimeRemaining] = useState(null); // Time remaining in seconds for current turn
   const [lobbyDraftOrder, setLobbyDraftOrder] = useState([]);
   const [lobbyGenFilter, setLobbyGenFilter] = useState(0);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [localPlayerName, setLocalPlayerName] = useState('');
   const [draftSuggestionsVisible, setDraftSuggestionsVisible] = useState(false);
+  const [searchTerms, setSearchTerms] = useState([]); // Array of search terms for multi-search
   
   // Advanced filter states
   const [filterTypes, setFilterTypes] = useState([]);
@@ -187,6 +237,41 @@ function App() {
 
   // Team builder constants
   const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
+  
+  // Team composition checklist data
+  const checklistData = {
+    entryHazard: {
+      moves: ['spikes', 'ceaseless-edge', 'stealth-rock', 'stone-axe', 'toxic-spikes', 'toxic-debris', 'sticky-web']
+    },
+    spinner: {
+      moves: ['rapid-spin', 'defog', 'mortal-spin', 'tidy-up', 'court-change'],
+      abilities: ['screen-cleaner']
+    },
+    recovery: {
+      moves: ['roost', 'slack-off', 'recover', 'moonlight', 'morning-sun', 'synthesis', 'wish', 'soft-boiled'],
+      abilities: ['volt-absorb', 'water-absorb', 'poison-heal']
+    },
+    cleric: {
+      moves: ['heal-bell', 'aromatherapy', 'wish'],
+      abilities: ['healer']
+    },
+    statusMove: {
+      moves: ['acid-armor', 'acupressure', 'after-you', 'agility', 'ally-switch', 'amnesia', 'aqua-ring', 'aromatic-mist', 'attract', 'aurora-veil', 'baby-doll-eyes', 'baneful-bunker', 'baton-pass', 'belly-drum', 'block', 'bulk-up', 'burning-bulwark', 'calm-mind', 'celebrate', 'charge', 'charm', 'chilly-reception', 'clangorous-soul', 'coaching', 'coil', 'confide', 'confuse-ray', 'conversion', 'conversion-2', 'copycat', 'cosmic-power', 'cotton-guard', 'cotton-spore', 'court-change', 'curse', 'dark-void', 'decorate', 'defend-order', 'defense-curl', 'defog', 'destiny-bond', 'detect', 'disable', 'doodle', 'double-team', 'dragon-cheer', 'dragon-dance', 'eerie-impulse', 'electric-terrain', 'encore', 'endure', 'entrainment', 'fairy-lock', 'fake-tears', 'feather-dance', 'fillet-away', 'flatter', 'floral-healing', 'focus-energy', 'follow-me', "forest's-curse", 'gastro-acid', 'glare', 'grassy-terrain', 'gravity', 'growl', 'growth', 'guard-split', 'guard-swap', 'happy-hour', 'harden', 'haze', 'heal-bell', 'heal-pulse', 'healing-wish', 'heart-swap', 'helping-hand', 'hone-claws', 'howl', 'hypnosis', 'imprison', 'ingrain', 'instruct', 'iron-defense', 'jungle-healing', 'leech-seed', 'leer', 'life-dew', 'light-screen', 'lock-on', 'lunar-blessing', 'lunar-dance', 'magic-powder', 'magic-room', 'magnet-rise', 'magnetic-flux', 'mean-look', 'memento', 'metal-sound', 'metronome', 'milk-drink', 'mimic', 'minimize', 'mist', 'misty-terrain', 'moonlight', 'morning-sun', 'nasty-plot', 'no-retreat', 'noble-roar', 'pain-split', 'parting-shot', 'perish-song', 'play-nice', 'poison-gas', 'poison-powder', 'power-split', 'power-swap', 'power-trick', 'protect', 'psych-up', 'psychic-terrain', 'quash', 'quick-guard', 'quiver-dance', 'rage-powder', 'rain-dance', 'recover', 'recycle', 'reflect', 'reflect-type', 'rest', 'revival-blessing', 'roar', 'rock-polish', 'role-play', 'roost', 'safeguard', 'sand-attack', 'sandstorm', 'scary-face', 'screech', 'shed-tail', 'shell-smash', 'shelter', 'shift-gear', 'shore-up', 'silk-trap', 'simple-beam', 'sing', 'sketch', 'skill-swap', 'slack-off', 'sleep-powder', 'sleep-talk', 'smokescreen', 'snowscape', 'soak', 'soft-boiled', 'speed-swap', 'spicy-extract', 'spikes', 'spiky-shield', 'spite', 'splash', 'spore', 'stealth-rock', 'sticky-web', 'stockpile', 'strength-sap', 'string-shot', 'stuff-cheeks', 'stun-spore', 'substitute', 'sunny-day', 'supersonic', 'swagger', 'swallow', 'sweet-kiss', 'sweet-scent', 'switcheroo', 'swords-dance', 'synthesis', 'tail-glow', 'tail-whip', 'tailwind', 'take-heart', 'tar-shot', 'taunt', 'tearful-look', 'teatime', 'teeter-dance', 'teleport', 'thunder-wave', 'tickle', 'tidy-up', 'topsy-turvy', 'torment', 'toxic', 'toxic-spikes', 'toxic-thread', 'transform', 'trick', 'trick-room', 'victory-dance', 'whirlwind', 'wide-guard', 'will-o-wisp', 'wish', 'withdraw', 'wonder-room', 'work-up', 'worry-seed', 'yawn']
+    },
+    phazer: {
+      moves: ['roar', 'whirlwind', 'dragon-tail', 'circle-throw', 'haze', 'perish-song', 'topsy-turvy', 'clear-smog', 'heart-swap', 'spectral-thief', 'psych-up']
+    },
+    boosting: {
+      moves: ['ominous-wind', 'ancient-power', 'silver-wind', 'power-up-punch', 'acid-spray', 'leaf-tornado', 'psychic', 'earth-power', 'muddy-water', 'bubble-beam', 'skull-bash', 'crabhammer', 'night-slash', 'icy-wind', 'sand-tomb', 'close-combat', 'overheat', 'octazooka', 'mirror-shot', 'superpower', 'draco-meteor', 'psycho-boost', 'fell-stinger', 'nasty-plot', 'swords-dance', 'calm-mind', 'bulk-up', 'geomancy', 'quiver-dance', 'tail-glow', 'dragon-dance', 'shell-smash', 'cotton-guard', 'autotomize', 'shift-gear', 'work-up', 'cosmic-power', 'defend-order', 'hone-claws', 'coil', 'stockpile', 'growth', 'belly-drum', 'rock-polish', 'amnesia', 'agility', 'iron-defense'],
+      abilities: ['huge-power', 'blaze', 'chlorophyll', 'flash-fire', 'flower-gift', 'fur-coat', 'gorilla-tactics', 'grass-pelt', 'guts', 'hustle', 'ice-scales', 'marvel-scale', 'minus', 'orichalcum-pulse', 'overgrow', 'plus', 'protosynthesis', 'pure-power', 'quark-drive', 'quick-feet', 'sand-rush', 'slush-rush', 'solar-power', 'surge-surfer', 'swarm', 'swift-swim', 'torrent', 'unburden', 'defiant', 'adaptability', 'aerilate', 'analytic', 'battery', 'battle-bond', "dragon's-maw", 'galvanize', 'iron-fist', 'mega-launcher', 'normalize', 'pixilate', 'power-spot', 'punk-rock', 'reckless', 'refrigerate', 'rivalry', 'rocky-payload', 'sand-force', 'sharpness', 'sheer-force', 'stakeout', 'steelworker', 'steely-spirit', 'strong-jaw', 'supreme-overlord', 'technician', 'tough-claws', 'toxic-boost', 'transistor', 'water-bubble']
+    },
+    voltTurn: {
+      moves: ['baton-pass', 'chilly-reception', 'flip-turn', 'parting-shot', 'shed-tail', 'teleport', 'u-turn', 'volt-switch']
+    },
+    choiceItem: {
+      items: ['choice-band', 'choice-scarf', 'choice-specs']
+    }
+  };
   const MAX_EVS = 510;
   const MAX_SINGLE_EV = 255;
   const MAX_IV = 31;
@@ -209,6 +294,41 @@ function App() {
     if (!Number.isFinite(num) || num < 0) return 0;
     if (num > 1000) return 1000;
     return Math.floor(num);
+  };
+
+  // Timer input parsing and formatting helpers
+  const parseTimerInput = (input) => {
+    // Format: "H:MM" (hours:minutes) or ":MM" (minutes only)
+    // Examples: "8:00" = 480 minutes, ":30" = 30 minutes, ":05" = 5 minutes
+    if (!input || typeof input !== 'string') return null;
+    
+    const trimmed = input.trim();
+    if (trimmed.startsWith(':')) {
+      // Minutes only format ":MM"
+      const minutes = parseInt(trimmed.substring(1), 10);
+      if (isNaN(minutes) || minutes < 1) return null;
+      return Math.min(minutes, 10080); // Max 1 week (10080 minutes)
+    } else if (trimmed.includes(':')) {
+      // Hours:Minutes format "H:MM"
+      const parts = trimmed.split(':');
+      if (parts.length !== 2) return null;
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || minutes < 0 || minutes > 59) return null;
+      const totalMinutes = hours * 60 + minutes;
+      return Math.min(totalMinutes, 10080); // Max 1 week
+    }
+    return null;
+  };
+
+  const formatTimerMinutes = (minutes) => {
+    if (!minutes || minutes < 1) return ':00';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) {
+      return `:${mins.toString().padStart(2, '0')}`;
+    }
+    return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
   const sanitizeLobbyCode = (code) => {
@@ -587,6 +707,83 @@ function App() {
 
   // ========== TEAM BUILDER FUNCTIONS ==========
   
+  // Analyze team composition for checklist
+  const analyzeTeamComposition = () => {
+    if (!teamBuilderData || !teamBuilderData.slots) return {};
+    
+    const results = {};
+    const filledSlots = teamBuilderData.slots.filter(slot => slot && slot.pokemon);
+    
+    console.log('Analyzing team composition. Filled slots:', filledSlots.length);
+    
+    Object.keys(checklistData).forEach(category => {
+      const categoryData = checklistData[category];
+      const matchingPokemon = [];
+      
+      filledSlots.forEach(slot => {
+        let matches = false;
+        
+        console.log(`Checking ${slot.pokemon?.name}:`, {
+          moves: slot.moves,
+          ability: slot.ability,
+          heldItem: slot.heldItem
+        });
+        
+        // Check moves - slot.moves is an array of move names
+        if (categoryData.moves && slot.moves && Array.isArray(slot.moves) && slot.moves.length > 0) {
+          const slotMoves = slot.moves
+            .filter(m => m && typeof m === 'string')
+            .map(m => m.toLowerCase().trim())
+            .filter(m => m.length > 0);
+          
+          if (slotMoves.length > 0) {
+            matches = categoryData.moves.some(reqMove => 
+              slotMoves.includes(reqMove)
+            );
+            if (matches) {
+              console.log(`  ${category}: matched via moves`, slotMoves);
+            }
+          }
+        }
+        
+        // Check abilities - only if moves didn't match
+        if (!matches && categoryData.abilities && slot.ability) {
+          const slotAbility = String(slot.ability).toLowerCase().trim();
+          if (slotAbility.length > 0) {
+            matches = categoryData.abilities.includes(slotAbility);
+            if (matches) {
+              console.log(`  ${category}: matched via ability`, slotAbility);
+            }
+          }
+        }
+        
+        // Check items - only if neither moves nor abilities matched
+        if (!matches && categoryData.items && slot.heldItem) {
+          const slotItem = String(slot.heldItem).toLowerCase().trim();
+          if (slotItem.length > 0) {
+            matches = categoryData.items.includes(slotItem);
+            if (matches) {
+              console.log(`  ${category}: matched via item`, slotItem);
+            }
+          }
+        }
+        
+        if (matches) {
+          // Push the pokemon name
+          const pokemonName = slot.pokemon?.name || slot.pokemon || 'Unknown';
+          matchingPokemon.push(pokemonName);
+        }
+      });
+      
+      results[category] = matchingPokemon;
+    });
+    
+    console.log('Team composition results:', results);
+    return results;
+  };
+  
+  const teamComposition = useMemo(() => analyzeTeamComposition(), [teamBuilderData]);
+  
   const fetchItemsList = async () => {
     try {
       // Load from local JSON file instead of PokeAPI
@@ -677,10 +874,7 @@ function App() {
         return;
       }
       
-      console.log('Loading team from ongoing drafts, lobbyCode:', lobbyCode, 'username:', currentUsername);
-      
       const ongoingDrafts = readOngoingDraftsFromCookies();
-      console.log('Found ongoing drafts:', ongoingDrafts.length);
       
       const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === lobbyCode);
       
@@ -704,8 +898,6 @@ function App() {
       
       const playerData = draft.playerData[currentUsername];
       const selectedPokemon = playerData.selectedPokemon || [];
-      
-      console.log('Found selected Pokemon:', selectedPokemon.length);
       
       if (selectedPokemon.length === 0) {
         alert('No Pokemon in this team');
@@ -773,18 +965,10 @@ function App() {
         teamData.slots.push(slot);
       }
       
-      console.log('Team data prepared:', {
-        totalSlots: teamData.slots.length,
-        slotsWithPokemon: teamData.slots.filter(s => s.pokemon).length,
-        firstSlot: teamData.slots[0]
-      });
-      
       setTeamBuilderData(teamData);
       saveTeamBuilderData(teamData);
       setTeamBuilderLoaded(true);
       setView('teambuilder');
-      
-      console.log('Successfully loaded team into builder');
       
     } catch (err) {
       console.error('Failed to load team into builder:', err);
@@ -890,54 +1074,89 @@ function App() {
     return Object.values(slot.evs).reduce((sum, val) => sum + (val || 0), 0);
   };
   
-  const saveTeamToStorage = () => {
+  const saveTeamToStorage = async () => {
     if (!teamBuilderData) {
       alert('No team data to save');
       return;
     }
     
     try {
-      const teamName = prompt('Enter a name for this team:', `${teamBuilderData.playerName}'s Team`);
+      const defaultName = lobbyCode ? `${PokemonName}-${lobbyCode} team` : `${teamBuilderData.playerName}'s Team`;
+      const teamName = prompt('Enter a name for this team:', defaultName);
       if (!teamName) return;
       
-      const SAVED_TEAMS_KEY = 'pkmndraft_saved_teams';
-      let savedTeams = [];
-      try {
-        const raw = localStorage.getItem(SAVED_TEAMS_KEY);
-        if (raw) savedTeams = JSON.parse(raw) || [];
-      } catch (e) { savedTeams = []; }
+      // Check if a team with this name already exists
+      const existingTeamsResponse = await axios.get(`${socketUrl}/api/teams?username=${encodeURIComponent(PokemonName)}`);
+      const existingTeams = existingTeamsResponse.data.teams || [];
+      const existingTeam = existingTeams.find(t => t.name === teamName);
       
-      // Check if team with same name already exists
-      const existingIndex = savedTeams.findIndex(t => t.name === teamName);
-      if (existingIndex >= 0) {
-        const confirmOverwrite = window.confirm(`A team named "${teamName}" already exists. Do you want to overwrite it?`);
-        if (!confirmOverwrite) {
-          return; // User cancelled, don't save
-        }
+      if (existingTeam) {
+        const overwrite = window.confirm(`A team named "${teamName}" already exists. Do you want to overwrite it?`);
+        if (!overwrite) return;
       }
       
-      const teamToSave = {
-        id: existingIndex >= 0 ? savedTeams[existingIndex].id : Date.now(), // Keep original ID if overwriting
+      // Get filled slots (with pokemon)
+      const filledSlots = teamBuilderData.slots.filter(slot => slot && slot.pokemon);
+      
+      if (filledSlots.length === 0) {
+        alert('No Pokémon to save!');
+        return;
+      }
+
+      // Prepare pokemon array for database
+      const pokemonForDB = filledSlots.map(slot => ({
+        name: slot.pokemon.name,
+        moves: slot.moves || [],
+        ability: slot.ability || '',
+        item: slot.heldItem || '',
+        nature: slot.nature || 'Hardy',
+        teraType: slot.teraType || '',
+        evs: slot.evs || {
+          hp: 0, attack: 0, defense: 0,
+          specialAttack: 0, specialDefense: 0, speed: 0
+        },
+        ivs: slot.ivs || {
+          hp: 31, attack: 31, defense: 31,
+          specialAttack: 31, specialDefense: 31, speed: 31
+        },
+        level: 50,
+        gender: '',
+        shiny: false
+      }));
+
+      const teamData = {
+        username: PokemonName,
         name: teamName,
-        playerName: teamBuilderData.playerName,
-        data: teamBuilderData,
-        savedAt: Date.now()
+        pokemon: pokemonForDB,
+        format: 'Custom',
+        description: 'Team created in Team Builder',
+        isPublic: false,
+        teamBuilderData: teamBuilderData
       };
       
-      // Update or add team
-      if (existingIndex >= 0) {
-        savedTeams[existingIndex] = teamToSave;
-      } else {
-        savedTeams.push(teamToSave);
+      // Only include userId if user is logged in
+      if (user?._id) {
+        teamData.userId = user._id;
       }
+
+      // If overwriting, delete the old team first
+      if (existingTeam) {
+        await axios.delete(`${socketUrl}/api/teams/${existingTeam._id}`);
+      }
+
+      const response = await axios.post(`${socketUrl}/api/teams`, teamData);
       
-      localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(savedTeams));
-      
-      setExportMessage('Team saved!');
-      setTimeout(() => setExportMessage(''), 3000);
+      if (response.data.success) {
+        setExportMessage('Team saved to database!');
+        setTimeout(() => setExportMessage(''), 3000);
+        // Refresh the teams list if selector is open
+        if (showTeamSelector) {
+          fetchTeamsFromDB();
+        }
+      }
     } catch (err) {
       console.error('Failed to save team:', err);
-      alert('Failed to save team');
+      alert(err.response?.data?.error || 'Failed to save team');
     }
   };
   
@@ -1042,6 +1261,89 @@ function App() {
       return [];
     }
   };
+
+  const fetchTeamsFromDB = async () => {
+    try {
+      setLoadingTeams(true);
+      const currentUsername = PokemonName?.trim();
+      if (!currentUsername) {
+        console.error('No username set, cannot fetch teams');
+        setSavedTeamsFromDB([]);
+        setLoadingTeams(false);
+        return;
+      }
+
+      console.log('Fetching teams for username:', currentUsername, 'from:', `${socketUrl}/api/teams`);
+      const response = await axios.get(`${socketUrl}/api/teams?username=${encodeURIComponent(currentUsername)}`);
+      console.log('Teams response:', response.data);
+      if (response.data.success) {
+        setSavedTeamsFromDB(response.data.teams || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch teams from database:', error);
+      setSavedTeamsFromDB([]);
+    } finally {
+      setLoadingTeams(false);
+    }
+  };
+
+  const loadTeamFromDB = async (team) => {
+    try {
+      if (!team || !team.teamBuilderData || !team.teamBuilderData.slots) {
+        alert('Team data is missing or corrupted');
+        return;
+      }
+
+      // Ensure we have exactly 12 slots, filling missing ones with null
+      const slots = Array(12).fill(null).map((_, idx) => {
+        const slot = team.teamBuilderData.slots[idx];
+        if (slot && slot.pokemon) {
+          // Find the pokemon in the main list to get full data (abilities, moves, etc.)
+          const fullPokemonData = pokemonList.find(p => 
+            p.id === slot.pokemon.id || p.name.toLowerCase() === slot.pokemon.name.toLowerCase()
+          );
+
+          // Merge saved pokemon data with full data from pokemonList
+          const pokemon = {
+            ...slot.pokemon,
+            // Use full data abilities if available, otherwise fall back to saved data
+            abilities: fullPokemonData?.abilities || slot.pokemon.abilities || [],
+            moves: fullPokemonData?.moves || slot.pokemon.moves || [],
+            types: fullPokemonData?.types || slot.pokemon.types || []
+          };
+
+          // Ensure the slot has all required properties
+          return {
+            slotNumber: slot.slotNumber || idx + 1,
+            pokemon: pokemon,
+            heldItem: slot.heldItem || '',
+            ability: slot.ability || '',
+            nature: slot.nature || 'hardy',
+            teraType: slot.teraType || '',
+            moves: Array.isArray(slot.moves) && slot.moves.length === 4 ? slot.moves : ['', '', '', ''],
+            ivs: slot.ivs || { hp: 31, attack: 31, defense: 31, specialAttack: 31, specialDefense: 31, speed: 31 },
+            evs: slot.evs || { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+            isCaptain: slot.isCaptain || false
+          };
+        }
+        // Return null for empty slots
+        return null;
+      });
+
+      const teamData = {
+        playerName: team.teamBuilderData.playerName || team.username || 'Player',
+        slots: slots
+      };
+
+      setTeamBuilderData(teamData);
+      setTeamBuilderLoaded(true);
+      setShowTeamSelector(false);
+      setView('teambuilder');
+    } catch (error) {
+      console.error('Failed to load team from database:', error);
+      alert('Failed to load team: ' + error.message);
+    }
+  };
   
   const loadTeamFromStorage = async (teamId) => {
     try {
@@ -1071,9 +1373,6 @@ function App() {
         return;
       }
       
-      console.log('Raw team data from storage:', team.data);
-      console.log('Number of slots:', team.data.slots?.length);
-      console.log('Slots with pokemon:', pokemonCount);
       
       // Fetch pokemon_data.json to get moves and abilities
       const response = await fetch('/pokemon_data.json');
@@ -1081,18 +1380,11 @@ function App() {
         throw new Error(`Failed to fetch pokemon_data.json: ${response.status}`);
       }
       const allPokemon = await response.json();
-      console.log('Loaded pokemon data, count:', allPokemon?.length);
       
       // Process each slot and fetch full data including base stats from PokeAPI
       const processedSlots = await Promise.all(team.data.slots.map(async (slot, idx) => {
         // Check if slot has pokemon data
         if (slot && (slot.pokemon || slot.pokemonName)) {
-          console.log(`Processing slot ${idx}:`, { 
-            hasPokemon: !!slot.pokemon, 
-            pokemonType: typeof slot.pokemon,
-            hasPokemonName: !!slot.pokemonName 
-          });
-          
           // Get the pokemon name and ID - handle both old format (string) and new format (object)
           let pokemonName, pokemonId;
           
@@ -1100,12 +1392,10 @@ function App() {
             // New format - pokemon is an object
             pokemonName = (slot.pokemon.name || '').toLowerCase();
             pokemonId = slot.pokemon.id || 0;
-            console.log(`Slot ${idx} using new format:`, { pokemonName, pokemonId });
           } else {
             // Old format - pokemon is a string or pokemonName exists
             pokemonName = (slot.pokemonName || slot.pokemon || '').toLowerCase();
             pokemonId = slot.pokemonId || 0;
-            console.log(`Slot ${idx} using old format:`, { pokemonName, pokemonId });
           }
           
           // Find the full pokemon data from pokemon_data.json
@@ -1114,13 +1404,6 @@ function App() {
             (p.species_name || '').toLowerCase() === pokemonName ||
             p.id === pokemonId
           );
-          
-          console.log(`Slot ${idx} search result:`, { 
-            pokemonName, 
-            pokemonId, 
-            found: !!fullPokemonData,
-            fullPokemonData: fullPokemonData ? { id: fullPokemonData.id, form_name: fullPokemonData.form_name, species_name: fullPokemonData.species_name } : null
-          });
           
           let pokemonObj;
           
@@ -1217,13 +1500,6 @@ function App() {
         playerName: team.data.playerName || team.playerName || 'Player',
         slots: processedSlots
       };
-      
-      console.log('Team loaded successfully:', {
-        totalSlots: loadedData.slots.length,
-        slotsWithPokemon: loadedData.slots.filter(s => s.pokemon).length,
-        firstPokemonSlot: loadedData.slots.find(s => s.pokemon),
-        allSlotsPokemonStatus: loadedData.slots.map((s, i) => ({ index: i, hasPokemon: !!s.pokemon, pokemonName: s.pokemon?.name }))
-      });
       
       setTeamBuilderData(loadedData);
       setTeamBuilderLoaded(true);
@@ -1483,10 +1759,122 @@ function App() {
     }
   };
 
-  const deleteOngoingDraft = (code) => {
-    if (!code) return;
-    if (!window.confirm(`Delete ongoing draft ${code}? This cannot be undone.`)) return;
+  // Fetch ongoing drafts from MongoDB API
+  const fetchOngoingDraftsFromAPI = async (username, searchQuery = '') => {
+    if (!username || !username.trim()) {
+      console.warn('Cannot fetch drafts without username');
+      return [];
+    }
+
     try {
+      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+        (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+      
+      // Use search endpoint if there's a query, otherwise use username endpoint
+      const endpoint = searchQuery.trim() 
+        ? `${socketUrl}/api/drafts/search?username=${encodeURIComponent(username)}&query=${encodeURIComponent(searchQuery)}`
+        : `${socketUrl}/api/drafts/username/${encodeURIComponent(username)}`;
+      
+      const response = await axios.get(endpoint);
+      
+      // Handle both array response (search) and object response (username endpoint)
+      const draftsArray = Array.isArray(response.data) ? response.data : (response.data.sessions || []);
+      
+      if (draftsArray && Array.isArray(draftsArray)) {
+        // Transform MongoDB format to match the expected format
+        return draftsArray.map(draft => ({
+          lobbyCode: draft.lobbyCode,
+          code: draft.lobbyCode, // backward compatibility
+          draftName: draft.lobbyName || `Draft ${draft.lobbyCode}`,
+          hostUsername: draft.hostUsername,
+          playerList: draft.participants?.map(p => p.username) || [],
+          pickOrder: draft.turnOrder || [],
+          currentPick: draft.currentTurn || null,
+          playerData: draft.participants?.reduce((acc, participant) => {
+            acc[participant.username] = {
+              selectedPokemon: participant.selections?.map(s => ({
+                id: s.pokemonId,
+                name: s.pokemonName,
+                points: s.points || 0,
+                img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${s.pokemonId}.png`
+              })) || [],
+              pointsRemaining: participant.pointsRemaining
+            };
+            return acc;
+          }, {}) || {},
+          lobbySettings: draft.settings,
+          pokemonPointValues: draft.pointsMap || {},
+          savedAt: draft.updatedAt || draft.createdAt,
+          status: draft.status
+        }));
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch ongoing drafts from API:', error);
+      // Fallback to localStorage
+      return readOngoingDraftsFromCookies();
+    }
+  };
+
+  // Fetch specific draft by lobby code from MongoDB
+  const fetchDraftByCode = async (lobbyCode) => {
+    try {
+      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+        (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+      
+      const response = await axios.get(`${socketUrl}/api/drafts/${encodeURIComponent(lobbyCode)}`);
+      
+      if (response.data && response.data.session) {
+        const draft = response.data.session;
+        return {
+          lobbyCode: draft.lobbyCode,
+          code: draft.lobbyCode,
+          draftName: draft.lobbyName || `Draft ${draft.lobbyCode}`,
+          playerList: draft.participants?.map(p => p.username) || [],
+          pickOrder: draft.turnOrder || [],
+          currentPick: draft.currentTurn || null,
+          playerData: draft.participants?.reduce((acc, participant) => {
+            acc[participant.username] = {
+              selectedPokemon: participant.selections?.map(s => ({
+                id: s.pokemonId,
+                name: s.pokemonName,
+                points: s.points || 0,
+                img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${s.pokemonId}.png`
+              })) || [],
+              pointsRemaining: participant.pointsRemaining
+            };
+            return acc;
+          }, {}) || {},
+          lobbySettings: draft.settings,
+          pokemonPointValues: draft.pointsMap || {},
+          savedAt: draft.updatedAt || draft.createdAt,
+          status: draft.status,
+          _fullDraft: draft // Keep full draft data for reference
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch draft by code:', error);
+      return null;
+    }
+  };
+
+  const deleteOngoingDraft = async (code) => {
+    if (!code) return;
+    try {
+      // Try to delete from MongoDB first
+      try {
+        const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+          (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+        
+        await axios.delete(`${socketUrl}/api/drafts/${encodeURIComponent(code)}`);
+      } catch (apiError) {
+        console.warn('Failed to delete from MongoDB API (may not exist):', apiError);
+      }
+
+      // Also clean up localStorage
       const key = 'pkmndraft_ongoing_drafts';
       let list = [];
       try {
@@ -1639,6 +2027,222 @@ function App() {
     }
   };
 
+  // Rejoin draft from MongoDB - load draft state and go directly to draft view
+  const rejoinDraftFromMongo = async (code, draftEntry) => {
+    try {
+      const currentUsername = PokemonName?.trim();
+      if (!currentUsername) {
+        alert('Please set your username first');
+        return;
+      }
+
+      if (!draftEntry) {
+        alert('Draft data not found');
+        return;
+      }
+
+      // Get the full draft from the API response
+      const fullDraft = draftEntry._fullDraft || draftEntry;
+
+      // DON'T restore full list yet - we'll set the correct filtered list below
+      
+      // Hide saved/ongoing panels
+      setSavedTeamsVisible(false);
+      setOngoingDraftsVisible(false);
+
+      // Set lobby code and settings
+      setLobbyCode(code);
+      
+      const settings = fullDraft.settings || {};
+      setLobbySettings({
+        pointsLimit: settings.pointsLimit || 100,
+        teamSizeLimit: settings.teamSizeLimit || 6,
+        allowTrading: settings.allowTrading || false,
+        maxTradeLimit: settings.maxTradeLimit || 0,
+        unlimitedTrades: settings.unlimitedTrades || false
+      });
+
+      // Set points map
+      if (fullDraft.pointsMap) {
+        setPointsMap(normalizePointsMap(fullDraft.pointsMap));
+      }
+
+      // Set gen filter if available
+      if (settings.genFilter != null) {
+        setLobbyGenFilter(settings.genFilter);
+      }
+
+      // Reconstruct lobby users from participants (read-only, preserve MongoDB data)
+      const participants = fullDraft.participants || [];
+      const users = participants.map((participant) => ({
+        id: `mongo-${participant.username}`, // Use username-based ID for consistency
+        name: participant.username,
+        isConnected: participant.isConnected || false // Track connection status from MongoDB
+      }));
+      
+      // Mark current user as connected and use socket.id for them
+      const myUserIndex = users.findIndex(u => u.name === currentUsername);
+      if (myUserIndex >= 0 && socket && socket.id) {
+        users[myUserIndex] = {
+          ...users[myUserIndex],
+          id: socket.id, // Use socket.id for current user
+          isConnected: true
+        };
+      }
+      
+      setLobbyUsers(users);
+      setLocalPlayerName(currentUsername);
+
+      // Set host based on MongoDB data
+      const hostUsername = fullDraft.hostUsername;
+      const hostUser = users.find(u => u.name === hostUsername);
+      setHostId(hostUser?.id || users[0]?.id || socket?.id || `mongo-${currentUsername}`);
+
+      // Find my user ID from the users list
+      const myUser = users.find(u => u.name === currentUsername);
+      const myUserId = myUser?.id;
+
+      // Reconstruct all selections from all participants
+      const allSelections = {};
+      let myTeam = [];
+      
+      participants.forEach((participant) => {
+        const username = participant.username;
+        const userId = `mongo-${username}`; // Use username-based ID
+        const team = (participant.selections || []).map(s => ({
+          id: s.pokemonId,
+          name: s.pokemonName,
+          points: s.points || 0,
+          img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${s.pokemonId}.png`
+        }));
+        
+        // Store by username and mongo ID
+        allSelections[username] = team;
+        allSelections[userId] = team;
+        
+        // Also store by socket.id for current user
+        if (username === currentUsername && socket && socket.id) {
+          allSelections[socket.id] = team;
+        }
+        
+        if (username === currentUsername) {
+          myTeam = team;
+        }
+      });
+      
+      setRemoteSelections(allSelections);
+
+      // Set points remaining for all participants
+      const pointsRemainingMap = {};
+      participants.forEach((participant) => {
+        const username = participant.username;
+        const userId = `mongo-${username}`;
+        if (participant.pointsRemaining != null) {
+          pointsRemainingMap[username] = participant.pointsRemaining;
+          pointsRemainingMap[userId] = participant.pointsRemaining;
+          
+          // Also store by socket.id for current user
+          if (username === currentUsername && socket && socket.id) {
+            pointsRemainingMap[socket.id] = participant.pointsRemaining;
+          }
+        }
+      });
+      setPointsRemaining(pointsRemainingMap);
+
+      // Set the available pokemon list (remove already selected ones)
+      const allSelectedIds = Object.values(allSelections).flat().map(p => p.id).filter(Boolean);
+      
+      // Use draftPokemon from MongoDB if available, otherwise calculate from full list
+      if (fullDraft.draftPokemon && Array.isArray(fullDraft.draftPokemon) && fullDraft.draftPokemon.length > 0) {
+        // MongoDB has the remaining available pokemon - use it directly
+        setDraftPokemonList(fullDraft.draftPokemon);
+        setPokemonList(fullDraft.draftPokemon);
+      } else {
+        // Calculate: restore full list, apply gen filter, remove selected and banned
+        restoreFullPokemonList();
+        
+        // Wait for state to update, then filter
+        setTimeout(() => {
+          setPokemonList((prev) => {
+            let filtered = prev.filter(p => !allSelectedIds.includes(p.id));
+            // Apply points map filter (remove 0-point pokemon)
+            if (fullDraft.pointsMap) {
+              filtered = filtered.filter(p => {
+                const cost = fullDraft.pointsMap[p.name?.toLowerCase()] ?? 1;
+                return cost !== 0;
+              });
+            }
+            return filtered;
+          });
+          setDraftPokemonList((prev) => {
+            let filtered = prev.filter(p => !allSelectedIds.includes(p.id));
+            // Apply points map filter (remove 0-point pokemon)
+            if (fullDraft.pointsMap) {
+              filtered = filtered.filter(p => {
+                const cost = fullDraft.pointsMap[p.name?.toLowerCase()] ?? 1;
+                return cost !== 0;
+              });
+            }
+            return filtered;
+          });
+        }, 0);
+      }
+
+      // Set draft order (turn order) - read from MongoDB, use socket.id for current player
+      if (fullDraft.turnOrder && fullDraft.turnOrder.length > 0) {
+        // Turn order from MongoDB contains usernames
+        // Map them to our user IDs, using socket.id for current player
+        const mappedTurnOrder = fullDraft.turnOrder.map(turn => {
+          // Check if this turn is for the current user
+          if (turn === currentUsername) {
+            return socket?.id || `mongo-${turn}`;
+          }
+          // Find user by name
+          const user = users.find(u => u.name === turn);
+          return user ? user.id : `mongo-${turn}`;
+        }).filter(Boolean);
+        setLobbyDraftOrder(mappedTurnOrder);
+      }
+
+      // Set current turn if available - use socket.id if it's current player's turn
+      if (fullDraft.currentTurn) {
+        // Check if it's the current user's turn
+        if (fullDraft.currentTurn === currentUsername) {
+          setCurrentTurn(socket?.id || `mongo-${currentUsername}`);
+        } else {
+          // Find the user and use their ID
+          const turnUser = users.find(u => u.name === fullDraft.currentTurn);
+          const mappedCurrentTurn = turnUser?.id || `mongo-${fullDraft.currentTurn}`;
+          setCurrentTurn(mappedCurrentTurn);
+        }
+      }
+
+      // Update connection status in MongoDB
+      try {
+        const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+          (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+        
+        await axios.post(`${socketUrl}/api/drafts/${encodeURIComponent(code)}/connection-status`, {
+          username: currentUsername,
+          isConnected: true
+        });
+      } catch (error) {
+        console.error('Failed to update connection status:', error);
+      }
+
+      // Go to draft view
+      setView('draft');
+
+      setExportMessage('Rejoined draft successfully');
+      setTimeout(() => setExportMessage(''), 2500);
+
+    } catch (error) {
+      console.error('Failed to rejoin draft - detailed error:', error);
+      console.error('Error stack:', error.stack);
+      alert(`Failed to rejoin draft: ${error.message}`);
+    }
+  };
+
   // Export current pointsMap to a downloadable text file (CSV: name,points)
   const exportPoints = () => {
     // Create comprehensive settings export including all lobby settings
@@ -1699,7 +2303,6 @@ function App() {
                 maxTradeLimit: jsonData.settings.maxTradeLimit ?? 0,
                 unlimitedTrades: jsonData.settings.unlimitedTrades ?? false
               };
-              console.log('Importing new format with settings:', importedSettings);
             }
             
             // Extract ban list if present
@@ -1734,12 +2337,6 @@ function App() {
       if (parsed) {
         // emit to server as bulk import
         if (socket && lobbyCode) {
-          console.log('Importing to lobby:', lobbyCode, { 
-            hasSettings: !!importedSettings, 
-            hasBanList: !!importedBanList,
-            pointsCount: Object.keys(parsed).length 
-          });
-          
           // If we have imported settings, apply them first
           if (importedSettings) {
             const newSettings = {
@@ -1768,7 +2365,6 @@ function App() {
               if (!resp || !resp.ok) {
                 console.warn('Failed to update lobby settings:', resp?.error);
               } else {
-                console.log('Lobby settings updated successfully');
               }
             });
           }
@@ -1780,7 +2376,6 @@ function App() {
           
           // Import points map
           socket.emit('import_points', { code: lobbyCode, pointsMap: parsed }, (resp) => {
-            console.log('Import points response:', resp);
             if (!resp || !resp.ok) {
               alert(resp && resp.error ? resp.error : 'Failed to import points');
             } else {
@@ -1848,10 +2443,7 @@ function App() {
     fetch('/pokemon_data.json')
       .then(response => response.json())
       .then((data) => {
-        console.log('Raw pokemon_data.json loaded. Total entries:', data.length);
         const sampleParadox = data.find(p => p.form_name === 'great-tusk');
-        console.log('Sample paradox pokemon from JSON (great-tusk):', sampleParadox);
-        console.log('Does it have paradox field?', 'paradox' in (sampleParadox || {}), 'Value:', sampleParadox?.paradox);
         
         // Filter out unwanted forms (same logic as PokeAPI fallback)
         const excludeTokens = [
@@ -1918,7 +2510,6 @@ function App() {
       .catch((err) => {
         console.error('Failed to load pokemon data from local file:', err);
         // Fallback to PokeAPI if local file fails
-        console.log('Falling back to PokeAPI...');
         axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000')
           .then((res) => {
             const rawList = res.data.results
@@ -2027,6 +2618,50 @@ function App() {
     }
   }, []);
 
+  // Timer countdown effect
+  useEffect(() => {
+    if (!lobbySettings.timerEnabled || view !== 'draft') {
+      setTimeRemaining(null);
+      return;
+    }
+
+    // If we're in draft mode with timer enabled but no start time, initialize it
+    if (!currentTurnStartTime && currentTurn) {
+      setCurrentTurnStartTime(new Date().toISOString());
+      return;
+    }
+
+    if (!currentTurnStartTime) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const turnStart = new Date(currentTurnStartTime).getTime();
+      const elapsed = Math.floor((now - turnStart) / 1000); // seconds elapsed
+      
+      // Determine which timer to use based on round
+      const totalPicks = Object.values(remoteSelections).reduce((sum, picks) => sum + (picks?.length || 0), 0);
+      const playersCount = lobbyUsers.length || 1;
+      const roundNumber = Math.floor(totalPicks / playersCount) + 1;
+      
+      const timerMinutes = roundNumber === 1 ? lobbySettings.firstRoundTimer : lobbySettings.subsequentRoundTimer;
+      const timerSeconds = timerMinutes * 60;
+      
+      const remaining = Math.max(0, timerSeconds - elapsed);
+      setTimeRemaining(remaining);
+      
+      // If time runs out and we haven't been notified, the server should skip turn
+      // (We'll handle this on the server side)
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    
+    return () => clearInterval(interval);
+  }, [lobbySettings.timerEnabled, lobbySettings.firstRoundTimer, lobbySettings.subsequentRoundTimer, currentTurnStartTime, view, remoteSelections, lobbyUsers.length, currentTurn]);
+
   // on mount, perform one-time validation and cleanup of saved data
   useEffect(() => {
     try {
@@ -2115,6 +2750,12 @@ function App() {
       if (!p) return false;
       if (gen > 0 && p.id > genLimits[gen]) return false;
       const name = (p.name || '').toLowerCase();
+      // Multi-search: if there are selected terms, Pokemon must match at least one
+      if (searchTerms.length > 0) {
+        const matchesAnyTerm = searchTerms.some(term => name.includes(term.toLowerCase()));
+        if (!matchesAnyTerm) return false;
+      }
+      // Single search term (typing in progress)
       if (searchTerm && !name.includes(searchTerm)) return false;
       if (hideLegendaries && p.legendary) return false;
       if (pointsMap && Number(pointsMap[name]) === 0) return false;
@@ -2187,6 +2828,45 @@ function App() {
     }
     return sorted;
   };
+
+  // Memoize the visible pokemon list to avoid recalculating on every render
+  const visiblePokemonList = useMemo(() => getVisiblePokemonList(), [
+    draftPokemonList, 
+    pokemonList, 
+    lobbyGenFilter, 
+    searchTerm,
+    searchTerms, 
+    hideLegendaries, 
+    pointsMap, 
+    filterTypes, 
+    filterTypesInclusive, 
+    filterGeneration, 
+    filterPointsMin, 
+    filterPointsMax, 
+    filterAbility, 
+    pokemonWithAbility, 
+    filterMoves, 
+    sortOption
+  ]);
+
+  // Memoize filtered suggestions for points search to avoid filtering on every render
+  const pointsSearchSuggestions = useMemo(() => {
+    if (!pointsSearchName) return [];
+    return pokemonList.filter(p => {
+      const gen = lobbyGenFilter || 0;
+      if (gen > 0 && p.id > genLimits[gen]) return false;
+      const name = p.name.toLowerCase();
+      if (hideLegendaries && p.legendary) return false;
+      return name.includes(pointsSearchName);
+    }).slice(0, 10);
+  }, [pointsSearchName, pokemonList, lobbyGenFilter, hideLegendaries]);
+
+  // Memoize draft search suggestions to avoid filtering on every render
+  const draftSearchSuggestions = useMemo(() => {
+    if (!searchTerm) return [];
+    const list = draftPokemonList.length > 0 ? draftPokemonList : pokemonList;
+    return list.filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0, 8);
+  }, [searchTerm, draftPokemonList, pokemonList]);
 
   // Fetch all abilities from PokeAPI and filter by what's in our pokemon_data.json
   const fetchAllAbilities = async () => {
@@ -2325,31 +3005,20 @@ function App() {
     // local guard: if in draft view ensure it's user's turn and they have enough points
     const listSource = (view === 'draft' && draftPokemonList && draftPokemonList.length > 0) ? draftPokemonList : pokemonList;
     if (view === 'draft' && (!draftPokemonList || draftPokemonList.length === 0)) {
-      console.debug('removePokemon: draft snapshot empty, falling back to full pokemonList');
     }
-    console.debug('removePokemon called', { id, view, currentTurn, socketId: socket && socket.id, lobbyCode });
     const toRemove = listSource.find((p) => Number(p.id) === Number(id));
     if (!toRemove) {
       // log some diagnostics: which source we used and the first few entries
       const sample = (listSource || []).slice(0, 20).map(p => ({ id: p && p.id, name: p && p.name, type: typeof (p && p.id) }));
-      console.debug('removePokemon: toRemove not found', { id, idType: typeof id, listSourceLength: listSource.length, usingDraftList: view === 'draft' && draftPokemonList && draftPokemonList.length > 0, sample });
       return;
     }
-    console.debug('removePokemon: found candidate', { id: toRemove.id, name: toRemove.name, idType: typeof toRemove.id });
     if (view === 'draft' && socket && lobbyCode) {
-      // if we're waiting for other players during a rejoin, prevent picking
-      if (waitingForPlayers) {
-        console.debug('removePokemon: waiting for other players to join, cannot pick yet');
-        return;
-      }
       // enforce team size limit for local player
       try {
         const localUser = (socket && lobbyUsers) ? lobbyUsers.find(u => u.id === socket.id) : null;
         const merged = getMergedSelectionsForUser(localUser || { id: socket && socket.id, name: localPlayerName || PokemonName || 'You' });
         const teamLimit = (lobbySettings && lobbySettings.teamSizeLimit) ? Number(lobbySettings.teamSizeLimit) : 10;
-        console.debug('removePokemon: team size check', { currentCount: merged.length, teamLimit });
         if (merged.length >= teamLimit) {
-          console.debug('removePokemon: team already full, refusing pick');
           return;
         }
       } catch (err) {
@@ -2357,14 +3026,11 @@ function App() {
       }
       // ensure current turn is this client
       if (currentTurn && socket.id !== currentTurn) {
-        console.debug('removePokemon: not your turn', { socketId: socket.id, currentTurn });
         return;
       }
       const cost = (pointsMap[toRemove.name] == null) ? 1 : Number(pointsMap[toRemove.name]);
       const rem = pointsRemaining && pointsRemaining[socket.id] != null ? pointsRemaining[socket.id] : lobbySettings.pointsLimit;
-      console.debug('removePokemon: cost/rem', { cost, rem, pointsMapEntry: pointsMap[toRemove.name] });
       if (rem < cost) {
-        console.debug('removePokemon: insufficient points', { rem, cost });
         return;
       }
     }
@@ -2374,7 +3040,6 @@ function App() {
       const localName = localPlayerName || PokemonName || 'You';
       const myId = socket ? socket.id : (`local-${Date.now()}`);
       // Optimistically add pick under our id
-      console.debug('removePokemon: adding optimistic pick', { myId, pokemon: toRemove });
       setOptimisticSelections((prev) => {
         const copy = { ...(prev || {}) };
         copy[myId] = copy[myId] ? [...copy[myId], toRemove] : [toRemove];
@@ -2385,7 +3050,6 @@ function App() {
       setDraftPokemonList((prev) => prev.filter(p => Number(p.id) !== Number(toRemove.id)));
 
       if (socket && lobbyCode) {
-        console.debug('removePokemon: emitting select_pokemon', { code: lobbyCode, name: localName, pokemonId: toRemove.id });
         socket.emit('select_pokemon', { code: lobbyCode, name: localName, pokemon: toRemove });
       }
     } catch (e) {
@@ -2500,6 +3164,12 @@ function App() {
   };
 
   const createLobby = () => {
+    // Require authentication or username
+    if (!user && !PokemonName?.trim()) {
+      setShowAuthModal(true);
+      return;
+    }
+    
     // Restore full Pokemon list before creating lobby
     restoreFullPokemonList();
     // hide saved/ongoing panels when creating a lobby
@@ -2536,6 +3206,12 @@ function App() {
   };
 
   const joinLobby = (code, savedPoints = null, savedSelections = null) => {
+    // Require authentication or username
+    if (!user && !PokemonName?.trim()) {
+      setShowAuthModal(true);
+      return;
+    }
+    
     // Restore full Pokemon list before joining lobby
     restoreFullPokemonList();
     // hide saved/ongoing panels when joining a lobby
@@ -2608,35 +3284,9 @@ function App() {
   };
 
   const handleLeaveDraftButton = () => {
-    // show a confirmation UI before performing the save+leave sequence
-    setLeaveDraftConfirmVisible(true);
-  };
-
-  const cancelLeaveDraft = () => {
-    setLeaveDraftConfirmVisible(false);
-  };
-
-  const confirmLeaveDraft = () => {
-    setLeaveDraftConfirmVisible(false);
-    if (!lobbyCode) {
-      leaveLobby();
-      return;
-    }
-    try {
-      const otherNames = (lobbyUsers || []).filter(u => u.id !== (socket && socket.id)).map(u => u.name);
-      addOngoingDraftToCookies(lobbyCode, otherNames, { 
-        settings: lobbySettings, 
-        draftOrder: lobbyDraftOrder, 
-        currentTurn, 
-        pointsRemaining,
-        pointsMap 
-      });
-      // leave but skip the auto-save inside leaveLobby since we've already saved
-      leaveLobby(true);
-    } catch (err) {
-      console.error('Failed while leaving draft', err);
-      leaveLobby();
-    }
+    // MongoDB handles persistence automatically when leaving
+    // Just leave the lobby and return to main page
+    leaveLobby();
   };
 
   // ========== TRADING FUNCTIONS ==========
@@ -2717,11 +3367,9 @@ function App() {
   const confirmOfferTrade = () => {
     if (!pendingTradeOffer || !socket) return;
     
-    console.log('Sending trade offer:', pendingTradeOffer);
     
     // Set a timeout to close modal even if server doesn't respond
     const timeout = setTimeout(() => {
-      console.log('Trade offer sent (no response from server, assuming success)');
       setPendingTradeOffer(null);
       setSelectedForTrade([]);
     }, 1000);
@@ -2734,7 +3382,6 @@ function App() {
       pokemon2: pendingTradeOffer.theirPokemon
     }, (response) => {
       clearTimeout(timeout);
-      console.log('Trade offer response:', response);
       if (response && response.ok) {
         // Clear the modal and selections after successful send
         setPendingTradeOffer(null);
@@ -2798,11 +3445,9 @@ function App() {
     // Find the full Pokemon object from pokemonList
     const newPokemon = pokemonList.find(p => p.name === newPokemonName);
     
-    console.log('Sending unpicked trade:', showUnpickedModal, '->', newPokemonName, 'Full Pokemon:', newPokemon);
     
     // Set a timeout to close modal even if server doesn't respond
     const timeout = setTimeout(() => {
-      console.log('Unpicked trade sent (no response from server, assuming success)');
       setShowUnpickedModal(null);
       setUnpickedSearchQuery('');
     }, 1000);
@@ -2815,7 +3460,6 @@ function App() {
       newPokemonData: newPokemon // Send full Pokemon data
     }, (response) => {
       clearTimeout(timeout);
-      console.log('Unpicked trade response:', response);
       if (response && response.ok) {
         setShowUnpickedModal(null);
         setUnpickedSearchQuery('');
@@ -2873,10 +3517,8 @@ function App() {
     const speciesList = Object.keys(speciesToOrig);
     const concurrency = 50;
     const result = {};
-    console.log(`Fetching legendary status for ${speciesList.length} unique species...`);
     for (let i = 0; i < speciesList.length; i += concurrency) {
       const chunk = speciesList.slice(i, i + concurrency);
-      console.log(`Progress: ${Math.min(i + concurrency, speciesList.length)}/${speciesList.length}`);
       await Promise.all(chunk.map(async (species) => {
         try {
           const res = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${species}`);
@@ -2890,7 +3532,6 @@ function App() {
       // update shared state incrementally for responsiveness
       setLegendaryMap((prev) => ({ ...prev, ...result }));
     }
-    console.log('Legendary status fetch complete!');
     // Build final mapping for all requested names (use cached values when available)
     const finalMap = {};
     for (const n of names) {
@@ -2913,7 +3554,6 @@ function App() {
       return;
     }
     
-    console.log(`Banning ${legendaryPokemon.length} legendary Pokémon`);
     
     const pm = {};
     for (const p of legendaryPokemon) {
@@ -2932,13 +3572,7 @@ function App() {
   // Ban all Paradox Pokémon visible in the current pokemonList (host-only)
   const banAllParadox = () => {
     if (!socket || !lobbyCode) return;
-    console.log('Checking for Paradox Pokémon. Total pokemonList:', pokemonList.length);
-    console.log('Sample pokemon (first):', pokemonList[0]);
-    console.log('Sample pokemon (id 984 - great-tusk):', pokemonList.find(p => p.id === 984));
-    console.log('Checking if paradox field exists on any pokemon:', pokemonList.some(p => 'paradox' in p));
-    console.log('Checking if any have paradox=true:', pokemonList.some(p => p.paradox === true));
     const paradoxPokemon = pokemonList.filter(p => p.paradox);
-    console.log('Found paradox pokemon:', paradoxPokemon.length, paradoxPokemon.map(p => ({ id: p.id, name: p.name, paradox: p.paradox })));
     if (!paradoxPokemon || paradoxPokemon.length === 0) {
       alert('No Paradox Pokémon found to ban. Make sure to do a hard refresh (Ctrl+Shift+R) to reload pokemon_data.json');
       return;
@@ -2988,19 +3622,50 @@ function App() {
     );
     const s = io(socketUrl);
     setSocket(s);
-    s.on('connect', () => console.log('socket connected', s.id));
     s.on('lobby_update', (data) => {
-      if (data && data.users) setLobbyUsers(data.users);
+      // When rejoined from MongoDB, preserve participant list and only update connection status
+      if (data && data.users) {
+        setLobbyUsers(prev => {
+          // If we have no users yet, just use the socket data
+          if (prev.length === 0) {
+            return data.users;
+          }
+          
+          // If we have users with mongo- IDs, we're in MongoDB mode - preserve all participants
+          const hasMongoUsers = prev.some(u => u.id && u.id.toString().startsWith('mongo-'));
+          
+          if (hasMongoUsers) {
+            // Keep all existing users, just update connection status based on socket data
+            return prev.map(user => {
+              const socketUser = data.users.find(su => su.name === user.name);
+              if (socketUser) {
+                // User is connected via socket - use their socket.id and mark connected
+                return {
+                  ...user,
+                  id: socketUser.id,
+                  isConnected: true
+                };
+              }
+              // User not in socket - keep their mongo ID and mark disconnected
+              return {
+                ...user,
+                isConnected: false
+              };
+            });
+          }
+          
+          // Normal socket-only mode - just replace
+          return data.users;
+        });
+      }
       if (data && data.code) setLobbyCode(data.code);
       if (data && data.host) setHostId(data.host);
       if (data && data.settings) {
-        console.log('lobby_update received settings:', data.settings);
         setLobbySettings(data.settings);
         // Immediately cache settings to localStorage for draft_complete fallback
         if (data.code) {
           try {
             localStorage.setItem('draftSettings_' + data.code, JSON.stringify(data.settings));
-            console.log('Cached settings from lobby_update:', data.settings);
           } catch (err) {
             console.warn('Failed to cache settings from lobby_update:', err);
           }
@@ -3017,24 +3682,14 @@ function App() {
         const allSelectedIds = Object.values(data.selections).flat().map(p => p.id).filter(Boolean);
         setPokemonList((prev) => prev.filter(p => !allSelectedIds.includes(p.id)));
       }
-      if (data && data.currentTurn) setCurrentTurn(data.currentTurn);
-      // If we're in a rejoin flow, check whether all expected players have arrived
-      try {
-        if (rejoinPending && data && data.code && data.code === rejoinPending.code) {
-          const names = (data.users || []).map(u => u.name);
-          const missing = (rejoinPending.expectedPlayers || []).filter(n => !names.includes(n));
-          if (missing.length > 0) {
-            setWaitingForPlayers(true);
-          } else {
-            setWaitingForPlayers(false);
-            // all present — load saved team for this lobby if available and restore points
-            handleRejoinComplete(rejoinPending.code, rejoinPending.draftEntry || null);
-            setRejoinPending(null);
-          }
+      if (data && data.currentTurn) {
+        setCurrentTurn(data.currentTurn);
+        // If timer is enabled but server doesn't send currentTurnStartTime, set it client-side
+        if (lobbySettings.timerEnabled && !data.currentTurnStartTime) {
+          setCurrentTurnStartTime(new Date().toISOString());
         }
-      } catch (err) {
-        console.error('Error handling rejoinPending check', err);
       }
+      if (data && data.currentTurnStartTime) setCurrentTurnStartTime(data.currentTurnStartTime);
       if (data && data.draftStarted) {
         setView('draft');
         if (data.pointsMap && typeof data.pointsMap === 'object') {
@@ -3049,7 +3704,6 @@ function App() {
     });
     s.on('pointsMap_update', (data) => {
       if (data && data.pointsMap) {
-        console.log('pointsMap_update received:', data.pointsMap);
         setPointsMap(normalizePointsMap(data.pointsMap || {}));
       }
     });
@@ -3060,7 +3714,6 @@ function App() {
       if (data && data.currentTurn) setCurrentTurn(data.currentTurn);
     });
     s.on('draft_started', (data) => {
-      console.log('draft_started, current lobbySettings:', lobbySettings);
       if (data && data.code) {
         setLobbyCode(data.code);
         if (data.pointsMap) setPointsMap(normalizePointsMap(data.pointsMap || {}));
@@ -3069,7 +3722,6 @@ function App() {
         // Save ongoing draft with current lobby settings (for ALL players)
         try {
           const currentSettings = lobbySettingsRef.current;
-          console.log('Saving draft with current settings from ref:', currentSettings);
           addOngoingDraftToCookies(data.code, [], {
             settings: currentSettings,
             draftOrder: data.draftOrder,
@@ -3077,7 +3729,6 @@ function App() {
             pointsRemaining: {},
             pointsMap: data.pointsMap
           });
-          console.log('Saved draft with settings:', currentSettings);
         } catch (err) {
           console.warn('Failed to save draft on start:', err);
         }
@@ -3093,7 +3744,6 @@ function App() {
               hostSocketId: s.id
             };
             localStorage.setItem('hostDraftSettings_' + data.code, JSON.stringify(settingsCache));
-            console.log('Host cached draft settings:', settingsCache);
           } catch (err) {
             console.warn('Failed to cache host settings:', err);
           }
@@ -3114,7 +3764,6 @@ function App() {
       }
     });
     s.on('user_selected', (data) => {
-      console.debug('socket event: user_selected', data);
       if (!data) return;
       setRemoteSelections((prev) => {
         const copy = { ...prev };
@@ -3154,7 +3803,6 @@ function App() {
       }
     });
     s.on('selections_update', (data) => {
-      console.debug('socket event: selections_update', data);
       if (!data) return;
       setRemoteSelections(data.selections || {});
       const allSelectedIds = Object.values(data.selections || {}).flat().map(p => Number(p.id)).filter(Boolean);
@@ -3191,7 +3839,6 @@ function App() {
       }
     });
     s.on('select_rejected', (data) => {
-      console.debug('socket event: select_rejected', data);
       if (!data || !data.pokemon) return;
       const pk = data.pokemon;
       // Selection was rejected by server. No optimistic state is kept
@@ -3232,8 +3879,6 @@ function App() {
       if (data.reason === 'not_host') alert('Only the lobby host may start the draft.');
     });
     s.on('draft_complete', (data) => {
-      console.log('Draft complete!', data);
-      console.log('Current lobbySettings:', lobbySettings);
       setDraftComplete(true);
       setFinalTeams(data);
       
@@ -3245,36 +3890,23 @@ function App() {
       // Determine trading status: server > cached host settings > local state
       let tradingEnabled = data.settings?.allowTrading ?? lobbySettings.allowTrading;
       
-      console.log('Checking cache conditions:', {
-        hasServerSettings: !!data.settings,
-        hasSocket: !!s,
-        socketId: s?.id,
-        hostId: hostIdRef.current,
-        isHost: s?.id === hostIdRef.current
-      });
-      
       // Try to get settings from saved ongoing draft first, or from lobby cache
       let savedDraftSettings = null;
       try {
         const code = lobbyCodeRef.current;
-        console.log('Looking for settings with lobby code:', code);
         if (code) {
           // Try ongoing draft first
           const ongoingDrafts = readOngoingDraftsFromCookies();
           const draft = ongoingDrafts.find(d => (d.lobbyCode || d.code) === code);
-          console.log('Found ongoing draft:', draft);
           if (draft && draft.lobbySettings) {
             savedDraftSettings = draft.lobbySettings;
-            console.log('Found saved draft settings:', savedDraftSettings);
           }
           
           // If no trading settings in draft, try direct cache from lobby_update
           if (!savedDraftSettings || savedDraftSettings.allowTrading === undefined) {
             const cachedStr = localStorage.getItem('draftSettings_' + code);
-            console.log('Checking direct cache, raw value:', cachedStr);
             if (cachedStr) {
               const cachedSettings = JSON.parse(cachedStr);
-              console.log('Found cached settings from lobby_update:', cachedSettings);
               // Merge with draft settings if they exist
               savedDraftSettings = savedDraftSettings 
                 ? { ...savedDraftSettings, ...cachedSettings }
@@ -3284,7 +3916,6 @@ function App() {
           
           if (savedDraftSettings) {
             tradingEnabled = savedDraftSettings.allowTrading || false;
-            console.log('Final trading enabled value:', tradingEnabled);
             // Update local state
             setLobbySettings(prev => ({
               ...prev,
@@ -3301,26 +3932,21 @@ function App() {
       // If host and we have trading enabled, broadcast to all players
       if (s && s.id === hostIdRef.current && tradingEnabled && savedDraftSettings) {
         const code = lobbyCodeRef.current;
-        console.log('Host broadcasting trading phase start to all players');
         if (code) {
           s.emit('start_trading_phase', { code: code, settings: savedDraftSettings });
         }
       }
       
-      console.log('Trading enabled:', tradingEnabled, 'from data:', data.settings?.allowTrading, 'from saved draft:', savedDraftSettings?.allowTrading);
       
       if (tradingEnabled) {
-        console.log('Setting trading phase active to true');
         setTradingPhaseActive(true);
       } else {
-        console.log('Trading is disabled, going directly to final teams');
       }
       // Team is already saved in ongoing draft, no need to auto-save separately
     });
     
     // Trading socket handlers
     s.on('trading_phase_start', (data) => {
-      console.log('Received trading_phase_start from host:', data);
       if (data && data.settings) {
         setLobbySettings(prev => ({
           ...prev,
@@ -3329,7 +3955,6 @@ function App() {
           unlimitedTrades: data.settings.unlimitedTrades
         }));
         setTradingPhaseActive(true);
-        console.log('Non-host entering trading phase');
       }
     });
     
@@ -3366,12 +3991,10 @@ function App() {
     });
     
     s.on('all_players_finished_trading', () => {
-      console.log('All players finished trading - transitioning to final teams view');
       setTradingPhaseActive(false);
     });
     
     s.on('unpicked_trade_completed', (data) => {
-      console.log('Unpicked trade completed:', data);
       
       // Reconstruct the Pokemon data from our local list
       if (data.updatedSelections && data.playerId && data.newPokemonName !== undefined) {
@@ -3439,6 +4062,56 @@ function App() {
     };
   }, []);
 
+  // Handle browser close/refresh - auto-save draft and notify server
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // If in an active draft, save to localStorage
+      if (view === 'draft' && lobbyCode) {
+        try {
+          const otherNames = (lobbyUsers || []).filter(u => u.id !== (socket && socket.id)).map(u => u.name);
+          addOngoingDraftToCookies(lobbyCode, otherNames, { 
+            settings: lobbySettings, 
+            draftOrder: lobbyDraftOrder, 
+            currentTurn, 
+            pointsRemaining,
+            pointsMap 
+          });
+        } catch (err) {
+          console.error('Error auto-saving draft on unload:', err);
+        }
+        
+        // Notify server that user is disconnecting
+        if (socket && lobbyCode) {
+          // Use sendBeacon for more reliable delivery during page unload
+          const apiUrl = process.env.REACT_APP_API_URL || 
+            (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+          
+          try {
+            // Send connection status update via beacon (more reliable than socket during unload)
+            const currentUsername = PokemonName?.trim();
+            if (currentUsername) {
+              navigator.sendBeacon(
+                `${apiUrl}/api/drafts/${lobbyCode}/connection-status`,
+                JSON.stringify({ username: currentUsername, isConnected: false })
+              );
+            }
+          } catch (err) {
+            console.warn('Failed to send disconnect beacon:', err);
+          }
+          
+          // Also try socket emit as fallback
+          socket.emit('leave_lobby', { code: lobbyCode });
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [view, lobbyCode, lobbyUsers, socket, PokemonName, lobbySettings, lobbyDraftOrder, currentTurn, pointsRemaining, pointsMap]);
+
   // Helper: get selections for a given lobby user by checking multiple
   // possible keys the server/client might use (display name or socket id).
   const getSelectionsForUser = (u) => {
@@ -3478,6 +4151,28 @@ function App() {
   const _localUserForRender = (socket && lobbyUsers) ? lobbyUsers.find(u => u.id === socket.id) : null;
   const localTeamForRender = getMergedSelectionsForUser(_localUserForRender || { id: socket && socket.id, name: localPlayerName || PokemonName || 'You' });
 
+  // Memoize whether cards should be disabled (prevents recalculating on every render)
+  const areCardsDisabled = useMemo(() => {
+    if (view !== 'draft') return false;
+    if (currentTurn && socket && socket.id !== currentTurn) return true;
+    if (socket && socket.id === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10)) return true;
+    return false;
+  }, [view, currentTurn, socket, localTeamForRender.length, lobbySettings.teamSizeLimit]);
+
+  // Use callback to avoid recreating the handler on every render
+  const handlePokemonCardClick = useCallback((pokemonId, pokemon) => {
+    if (areCardsDisabled) return;
+    setPendingDraftSelection({ id: pokemonId, pokemon });
+  }, [areCardsDisabled]);
+
+  // Memoize ordered players list to avoid recalculating on every render
+  const orderedPlayers = useMemo(() => {
+    if (lobbyDraftOrder && lobbyDraftOrder.length > 0) {
+      return lobbyDraftOrder.map((id) => lobbyUsers.find(u => u.id === id)).filter(Boolean);
+    }
+    return lobbyUsers;
+  }, [lobbyDraftOrder, lobbyUsers]);
+
   return (
     <div className="App">
       <div className= "TitleSection">
@@ -3486,17 +4181,21 @@ function App() {
         {/* Navigation Panel */}
         <div className="navigation-panel">
           <button className="nav-button" onClick={() => {
-            // Initialize team builder with empty team
-            const emptyTeam = {
-              playerName: PokemonName || 'Player',
-              slots: Array(12).fill(null).map((_, idx) => createEmptySlot(idx))
-            };
-            setTeamBuilderData(emptyTeam);
-            setTeamBuilderLoaded(true);
             setView('teambuilder');
+            setShowTeamSelector(true);
           }}>Team Builder</button>
-          <button className="nav-button" onClick={() => {
-            const drafts = readOngoingDraftsFromCookies();
+          <button className="nav-button" onClick={async () => {
+            if (!user && !PokemonName?.trim()) {
+              setShowAuthModal(true);
+              return;
+            }
+            const currentUsername = PokemonName?.trim();
+            if (!currentUsername) {
+              alert('Please log in or enter a username first');
+              return;
+            }
+            setDraftSearchQuery(''); // Clear search when opening
+            const drafts = await fetchOngoingDraftsFromAPI(currentUsername);
             setOngoingDrafts(drafts);
             setView('ongoingdrafts');
           }}>Ongoing Drafts</button>
@@ -3511,8 +4210,42 @@ function App() {
             {!lobbyCode && (
               <div className="LobbyControlsRow">
                 <div className="control-group">
-                  <input placeholder="Enter your name" id="name-input" className="JoinCodeInput" value={PokemonName} onChange={(e) => setPokemonName(e.target.value)} />
-                  <button className="gen-button ml-8" onClick={() => { const val = (PokemonName || '').trim(); if (val) saveUsernameToCookie(val); else alert('Please enter a username before saving'); }}>Save Username</button>
+                  {user ? (
+                    <>
+                      <span style={{ marginRight: '10px' }}>Logged in as: <strong>{user.username}</strong></span>
+                      <button className="gen-button" onClick={logout}>Logout</button>
+                    </>
+                  ) : (
+                    <button className="gen-button" onClick={() => setShowAuthModal(true)}>Login</button>
+                  )}
+                  <button className="gen-button warning ml-8" onClick={() => {
+                    const confirmed = window.confirm(
+                      'Clear all cached data?\n\n' +
+                      'This will delete:\n' +
+                      '• All saved teams from localStorage\n' +
+                      '• All ongoing draft data from localStorage\n\n' +
+                      'This does NOT affect data saved in the database.\n\n' +
+                      'Continue?'
+                    );
+                    if (!confirmed) return;
+                    
+                    try {
+                      // Clear saved teams
+                      localStorage.removeItem('pkmndraft_saved_teams');
+                      // Clear ongoing drafts
+                      localStorage.removeItem('pkmndraft_ongoing_drafts');
+                      // Clear any draft settings
+                      Object.keys(localStorage).forEach(key => {
+                        if (key.startsWith('draftSettings_')) {
+                          localStorage.removeItem(key);
+                        }
+                      });
+                      alert('Cache cleared successfully!');
+                    } catch (e) {
+                      console.error('Failed to clear cache:', e);
+                      alert('Failed to clear cache');
+                    }
+                  }}>Clear Cache</button>
                 </div>
                 
                 <div className="control-group">
@@ -3527,16 +4260,17 @@ function App() {
                 
                 <div className="control-group">
                   <button className="nav-button" onClick={() => {
-                    const emptyTeam = {
-                      playerName: PokemonName || 'Player',
-                      slots: Array(12).fill(null).map((_, idx) => createEmptySlot(idx))
-                    };
-                    setTeamBuilderData(emptyTeam);
-                    setTeamBuilderLoaded(true);
                     setView('teambuilder');
+                    setShowTeamSelector(true);
                   }}>Team Builder</button>
-                  <button className="nav-button ml-8" onClick={() => {
-                    const drafts = readOngoingDraftsFromCookies();
+                  <button className="nav-button ml-8" onClick={async () => {
+                    const currentUsername = PokemonName?.trim();
+                    if (!currentUsername) {
+                      alert('Please log in or enter a username first');
+                      return;
+                    }
+                    setDraftSearchQuery(''); // Clear search when opening
+                    const drafts = await fetchOngoingDraftsFromAPI(currentUsername);
                     setOngoingDrafts(drafts);
                     setView('ongoingdrafts');
                   }}>Ongoing Drafts</button>
@@ -3564,6 +4298,28 @@ function App() {
                     <button className="toggle-button btn-mr8" onClick={leaveLobby}>Leave</button>
                   </div>
                 </div>
+                {socket && hostId && socket.id === hostId && (
+                  <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                    <label className="label-small" style={{ marginRight: '8px' }}>Lobby Name (optional):</label>
+                    <input 
+                      type="text" 
+                      defaultValue={lobbyName} 
+                      onBlur={(e) => {
+                        const newName = e.target.value;
+                        setLobbyName(newName);
+                        if (socket && lobbyCode) {
+                          socket.emit('update_lobby_name', { code: lobbyCode, lobbyName: newName }, (resp) => {
+                            if (!resp || !resp.ok) {
+                              console.warn('Failed to update lobby name:', resp?.error);
+                            }
+                          });
+                        }
+                      }}
+                      placeholder="Enter a name for this draft..." 
+                      style={{ width: '300px', padding: '4px 8px' }}
+                    />
+                  </div>
+                )}
                 <div className="LobbyMeta">Max players: 12</div>
 
               <div className="LobbyMainRow">
@@ -3572,7 +4328,20 @@ function App() {
                   <ul className="PlayerList">
                     {lobbyUsers.map((u) => (
                       <li key={u.id} className="player-list-item">
-                        <strong>{u.name}</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span 
+                            className="connection-dot" 
+                            style={{ 
+                              width: '8px', 
+                              height: '8px', 
+                              borderRadius: '50%', 
+                              backgroundColor: u.isConnected ? '#10b981' : '#6b7280',
+                              flexShrink: 0
+                            }}
+                            title={u.isConnected ? 'Connected' : 'Disconnected'}
+                          />
+                          <strong>{u.name}</strong>
+                        </div>
                         <span className="player-points">Points: {pointsRemaining && pointsRemaining[u.id] != null ? pointsRemaining[u.id] : lobbySettings.pointsLimit}</span>
                       </li>
                     ))}
@@ -3588,12 +4357,16 @@ function App() {
                       <div className="row">
                         <div className="col-1">
                           <label className="label-small">Points Limit</label>
-                          <input type="number" value={lobbySettings.pointsLimit} onChange={(e) => {
+                          <input type="number" defaultValue={lobbySettings.pointsLimit} onBlur={(e) => {
                               const newLimit = Number(e.target.value);
+                              if (newLimit === lobbySettings.pointsLimit) return;
                               setLobbySettings((s) => ({...s, pointsLimit: newLimit}));
                               if (socket && lobbyCode && socket.id === hostId) {
                                 socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: newLimit, genFilter: lobbyGenFilter, teamSizeLimit: lobbySettings.teamSizeLimit } }, (resp) => {
-                                  if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                  if (!resp || !resp.ok) {
+                                    alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    e.target.value = lobbySettings.pointsLimit;
+                                  }
                                 });
                               }
                             }} className="input-full" />
@@ -3602,12 +4375,16 @@ function App() {
                       <div className="row mt-8">
                         <div className="col-1">
                           <label className="label-small">Team Size Limit</label>
-                          <input type="number" min={1} max={60} value={lobbySettings.teamSizeLimit} onChange={(e) => {
+                          <input type="number" min={1} max={60} defaultValue={lobbySettings.teamSizeLimit} onBlur={(e) => {
                               const newSize = Math.max(1, Math.min(60, Number(e.target.value) || 0));
+                              if (newSize === lobbySettings.teamSizeLimit) return;
                               setLobbySettings((s) => ({...s, teamSizeLimit: newSize}));
                               if (socket && lobbyCode && socket.id === hostId) {
                                 socket.emit('update_settings', { code: lobbyCode, settings: { teamSizeLimit: newSize, pointsLimit: lobbySettings.pointsLimit, genFilter: lobbyGenFilter } }, (resp) => {
-                                  if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                  if (!resp || !resp.ok) {
+                                    alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    e.target.value = lobbySettings.teamSizeLimit;
+                                  }
                                 });
                               }
                             }} className="input-full" />
@@ -3731,7 +4508,6 @@ function App() {
                                     cached.lobbyCode = lobbyCode;
                                     cached.hostSocketId = socket.id;
                                     localStorage.setItem(cacheKey, JSON.stringify(cached));
-                                    console.log('Updated cache:', cacheKey, cached);
                                   } catch (err) {
                                     console.warn('Failed to cache setting update:', err);
                                   }
@@ -3810,6 +4586,87 @@ function App() {
                           </div>
                         </>
                       )}
+                      
+                      {/* Timer Settings */}
+                      <div className="row mt-8">
+                        <div className="col-1">
+                          <label className="label-small">
+                            <input 
+                              type="checkbox" 
+                              checked={lobbySettings.timerEnabled} 
+                              onChange={(e) => {
+                                const newValue = e.target.checked;
+                                const updatedSettings = {
+                                  ...lobbySettings,
+                                  timerEnabled: newValue
+                                };
+                                setLobbySettings(updatedSettings);
+                                if (socket && lobbyCode && socket.id === hostId) {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...updatedSettings, genFilter: lobbyGenFilter } }, (resp) => {
+                                    if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                  });
+                                }
+                              }}
+                            />
+                            {' '}Enable Draft Timer
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {lobbySettings.timerEnabled && (
+                        <>
+                          <div className="row mt-8">
+                            <div className="col-1">
+                              <label className="label-small">1st Round Timer (format: H:MM or :MM)</label>
+                              <input 
+                                type="text" 
+                                defaultValue={formatTimerMinutes(lobbySettings.firstRoundTimer)}
+                                placeholder="8:00 (8 hours)"
+                                onBlur={(e) => {
+                                  const minutes = parseTimerInput(e.target.value);
+                                  if (minutes !== null) {
+                                    setLobbySettings((s) => ({...s, firstRoundTimer: minutes}));
+                                    if (socket && lobbyCode && socket.id === hostId) {
+                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, firstRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
+                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                      });
+                                    }
+                                  } else {
+                                    // Reset to current value if invalid
+                                    e.target.value = formatTimerMinutes(lobbySettings.firstRoundTimer);
+                                  }
+                                }}
+                                className="input-full" 
+                              />
+                            </div>
+                          </div>
+                          <div className="row mt-8">
+                            <div className="col-1">
+                              <label className="label-small">Subsequent Rounds Timer (format: H:MM or :MM)</label>
+                              <input 
+                                type="text" 
+                                defaultValue={formatTimerMinutes(lobbySettings.subsequentRoundTimer)}
+                                placeholder="8:00 (8 hours)"
+                                onBlur={(e) => {
+                                  const minutes = parseTimerInput(e.target.value);
+                                  if (minutes !== null) {
+                                    setLobbySettings((s) => ({...s, subsequentRoundTimer: minutes}));
+                                    if (socket && lobbyCode && socket.id === hostId) {
+                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, subsequentRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
+                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                      });
+                                    }
+                                  } else {
+                                    // Reset to current value if invalid
+                                    e.target.value = formatTimerMinutes(lobbySettings.subsequentRoundTimer);
+                                  }
+                                }}
+                                className="input-full" 
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     // Non-host read-only view: show settings summary
@@ -3830,13 +4687,7 @@ function App() {
                           <input className="points-search-input" placeholder="Search Pokémon" value={pointsSearchName} onChange={(e) => { setPointsSearchName(e.target.value.toLowerCase()); setSuggestionsVisible(true); }} />
                           {suggestionsVisible && pointsSearchName && (
                             <div className="points-suggestions suggestions-dropdown">
-                              {pokemonList.filter(p => {
-                                const gen = lobbyGenFilter || 0;
-                                if (gen > 0 && p.id > genLimits[gen]) return false;
-                                const name = p.name.toLowerCase();
-                                if (hideLegendaries && p.legendary) return false;
-                                return name.includes(pointsSearchName);
-                              }).slice(0, 10).map(p => (
+                              {pointsSearchSuggestions.map(p => (
                                 <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
                                   // Add to selected Pokemon list if not already there
                                   if (!selectedPokemonForPoints.find(sp => sp.id === p.id)) {
@@ -3935,7 +4786,6 @@ function App() {
                           
                           const pokemonName = e.dataTransfer.getData('pokemon-name');
                           if (pokemonName) {
-                            console.log(`Dropping ${pokemonName} into column ${val}`);
                             socket.emit('set_points', { code: lobbyCode, name: pokemonName, value: val }, (resp) => {
                               if (!resp || !resp.ok) {
                                 alert(resp && resp.error ? resp.error : 'Failed to set points');
@@ -4002,6 +4852,32 @@ function App() {
               <h2>Ongoing Drafts</h2>
               <button className="gen-button" onClick={() => setView('lobby')}>Back to Lobby</button>
             </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <input 
+                type="text" 
+                placeholder="Search by lobby name, code, or player..." 
+                value={draftSearchQuery}
+                onChange={(e) => setDraftSearchQuery(e.target.value)}
+                style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+              />
+              <button 
+                className="gen-button" 
+                style={{ marginTop: '8px' }}
+                onClick={async () => {
+                  const currentUsername = PokemonName?.trim();
+                  if (!currentUsername) {
+                    alert('Please enter your username first');
+                    return;
+                  }
+                  const drafts = await fetchOngoingDraftsFromAPI(currentUsername, draftSearchQuery);
+                  setOngoingDrafts(drafts);
+                }}
+              >
+                Search
+              </button>
+            </div>
+            
             {ongoingDrafts && ongoingDrafts.length > 0 ? (
               <>
             {ongoingDrafts.map((d) => {
@@ -4039,74 +4915,119 @@ function App() {
                   </div>
                 )}
                   <div className="ongoing-draft-actions">
-                    <button className="gen-button" onClick={() => { 
+                    {d.status !== 'completed' && (
+                      <button className="gen-button" onClick={async () => { 
                       const currentUsername = PokemonName?.trim();
-                      const savedPoints = d.playerData && d.playerData[currentUsername]?.pointsRemaining != null 
-                        ? d.playerData[currentUsername].pointsRemaining 
-                        : (d._legacy?.pointsRemainingByName && d._legacy.pointsRemainingByName[currentUsername] != null 
-                          ? d._legacy.pointsRemainingByName[currentUsername] 
-                          : null);
-                      const savedSelections = d.playerData && d.playerData[currentUsername]?.selectedPokemon 
-                        ? d.playerData[currentUsername].selectedPokemon 
-                        : null;
-                      setRejoinPending({ code: code, expectedPlayers: d.playerList || d.players || [], draftEntry: d }); 
-                      joinLobby(code, savedPoints, savedSelections); 
+                      if (!currentUsername) {
+                        alert('Please enter your username first');
+                        return;
+                      }
+                      
+                      // Fetch latest draft data from MongoDB
+                      const latestDraft = await fetchDraftByCode(code);
+                      
+                      if (!latestDraft) {
+                        alert('Draft not found in database. It may have expired or been deleted.');
+                        // Refresh the list
+                        const drafts = await fetchOngoingDraftsFromAPI(currentUsername);
+                        setOngoingDrafts(drafts);
+                        return;
+                      }
+                      
+                      // Rejoin directly by loading the draft state from MongoDB
+                      await rejoinDraftFromMongo(code, latestDraft);
                     }}>Rejoin</button>
+                    )}
                     <button className="gen-button ml-8" onClick={() => {
                       const currentUsername = PokemonName?.trim();
-                      console.log('View Team clicked:', {
-                        currentUsername,
-                        hasPlayerData: !!d.playerData,
-                        playerDataKeys: d.playerData ? Object.keys(d.playerData) : [],
-                        hasUserData: d.playerData && d.playerData[currentUsername],
-                        selectedPokemon: d.playerData?.[currentUsername]?.selectedPokemon
-                      });
                       
-                      if (d.playerData && d.playerData[currentUsername]) {
-                        const team = d.playerData[currentUsername].selectedPokemon || [];
-                        console.log('Setting viewedOngoingTeam:', {
-                          name: d.draftName || `Team Lobby#: ${code}`,
-                          lobbyCode: code,
-                          teamLength: team.length,
-                          team
-                        });
-                        
-                        setViewedOngoingTeam({
-                          name: d.draftName || `Team Lobby#: ${code}`,
-                          lobbyCode: code,
-                          team: team
-                        });
+                      // Toggle team visibility
+                      if (viewedOngoingTeam && viewedOngoingTeam.lobbyCode === code) {
+                        setViewedOngoingTeam(null);
                       } else {
-                        alert('No team found for your username in this draft');
+                        if (d.playerData && d.playerData[currentUsername]) {
+                          const team = d.playerData[currentUsername].selectedPokemon || [];
+                          
+                          setViewedOngoingTeam({
+                            name: d.draftName || `Team Lobby#: ${code}`,
+                            lobbyCode: code,
+                            team: team
+                          });
+                        } else {
+                          alert('No team found for your username in this draft');
+                        }
                       }
-                    }}>View Team</button>
-                    <button className="gen-button danger ml-8" onClick={() => {
-                      deleteOngoingDraft(code);
-                      // Refresh the list
-                      const drafts = readOngoingDraftsFromCookies();
-                      setOngoingDrafts(drafts);
-                    }}>Delete</button>
+                    }}>{viewedOngoingTeam && viewedOngoingTeam.lobbyCode === code ? 'Hide Team' : 'View Team'}</button>
+                    <button className="gen-button warning ml-8" onClick={async () => {
+                      const currentUsername = PokemonName?.trim();
+                      if (!currentUsername) {
+                        alert('Please enter your username first');
+                        return;
+                      }
+                      
+                      const confirmed = window.confirm(
+                        `Leave draft "${d.draftName || code}"?\n\n` +
+                        'WARNING: Leaving will permanently remove you from this draft. ' +
+                        'You will NOT be able to rejoin, and your picks will be lost.\n\n' +
+                        'Are you sure you want to leave?'
+                      );
+                      
+                      if (!confirmed) return;
+                      
+                      try {
+                        const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+                          (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+                        
+                        const response = await axios.post(
+                          `${socketUrl}/api/drafts/${encodeURIComponent(code)}/participant/${encodeURIComponent(currentUsername)}/leave`
+                        );
+                        
+                        if (response.data.success) {
+                          alert('Successfully left the draft');
+                          // Refresh the list
+                          const drafts = await fetchOngoingDraftsFromAPI(currentUsername, draftSearchQuery);
+                          setOngoingDrafts(drafts);
+                        }
+                      } catch (error) {
+                        console.error('Failed to leave draft:', error);
+                        alert(error.response?.data?.error || 'Failed to leave draft');
+                      }
+                    }}>Leave Draft</button>
+                    {d.hostUsername === PokemonName?.trim() && (
+                      <button className="gen-button danger ml-8" onClick={async () => {
+                        if (!window.confirm(`Delete draft "${d.draftName || code}"? This cannot be undone.`)) return;
+                        
+                        await deleteOngoingDraft(code);
+                        // Refresh the list from API
+                        const currentUsername = PokemonName?.trim();
+                        if (currentUsername) {
+                          const drafts = await fetchOngoingDraftsFromAPI(currentUsername, draftSearchQuery);
+                          setOngoingDrafts(drafts);
+                        }
+                      }}>Delete</button>
+                    )}
                   </div>
+                  
+                  {/* Show team inline within the draft card */}
+                  {viewedOngoingTeam && viewedOngoingTeam.lobbyCode === code && (
+                    <div className="viewed-ongoing-team" style={{ marginTop: '15px' }}>
+                      <h5>{viewedOngoingTeam.name || `Team Lobby#: ${viewedOngoingTeam.lobbyCode}`}</h5>
+                      <div className="saved-team-list">
+                        {Array.isArray(viewedOngoingTeam.team) && viewedOngoingTeam.team.length > 0 ? (
+                          <div className="saved-team-grid">
+                            {normalizeSavedTeamEntries(viewedOngoingTeam.team).map((p) => (
+                              <div key={p.id || p.name} className="saved-team-card">
+                                {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                                <div className="pokemon-name">{p.name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : <em>No entries</em>}
+                      </div>
+                    </div>
+                  )}
               </div>
             )})}
-            {viewedOngoingTeam && (
-              <div className="viewed-ongoing-team">
-                <h5>{viewedOngoingTeam.name || `Team Lobby#: ${viewedOngoingTeam.lobbyCode}`}</h5>
-                <div className="saved-team-list">
-                  {Array.isArray(viewedOngoingTeam.team) && viewedOngoingTeam.team.length > 0 ? (
-                    <div className="saved-team-grid">
-                      {normalizeSavedTeamEntries(viewedOngoingTeam.team).map((p) => (
-                        <div key={p.id || p.name} className="saved-team-card">
-                          {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
-                          <div className="pokemon-name">{p.name}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : <em>No entries</em>}
-                </div>
-                <button className="gen-button mt-8" onClick={() => setViewedOngoingTeam(null)}>Close</button>
-              </div>
-            )}
             </>
             ) : (
               <div className="muted-text">No ongoing drafts found.</div>
@@ -4229,24 +5150,36 @@ function App() {
                   })}
                 </div>
                 <div style={{ textAlign: 'center', marginTop: 30 }}>
-                  <button className="export-button" onClick={() => {
-                    // Save draft team to localStorage
+                  <button className="export-button" onClick={async () => {
+                    // Save draft team to database
                     const myTeam = finalTeams.selections[socket?.id] || [];
-                    const teamName = prompt('Enter a name for this team:', `${PokemonName}'s Draft Team`);
+                    const defaultName = lobbyCode ? `${PokemonName}-${lobbyCode} team` : `${PokemonName}'s Draft Team`;
+                    const teamName = prompt('Enter a name for this team:', defaultName);
                     if (!teamName) return;
                     
                     try {
-                      const SAVED_TEAMS_KEY = 'pkmndraft_saved_teams';
-                      let savedTeams = [];
-                      try {
-                        const raw = localStorage.getItem(SAVED_TEAMS_KEY);
-                        if (raw) savedTeams = JSON.parse(raw) || [];
-                      } catch (e) { savedTeams = []; }
+                      // Check if a team with this name already exists
+                      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+                        (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
                       
-                      // Convert to team builder format
+                      const existingTeamsResponse = await axios.get(`${socketUrl}/api/teams?username=${encodeURIComponent(PokemonName)}`);
+                      const existingTeams = existingTeamsResponse.data.teams || [];
+                      const existingTeam = existingTeams.find(t => t.name === teamName);
+                      
+                      if (existingTeam) {
+                        const overwrite = window.confirm(`A team named "${teamName}" already exists. Do you want to overwrite it?`);
+                        if (!overwrite) return;
+                      }
+                      // Convert to team builder format for database
                       const teamBuilderSlots = Array(12).fill(null).map((_, idx) => {
                         if (idx < myTeam.length) {
                           const p = myTeam[idx];
+                          
+                          // Look up full pokemon data from the list to get complete abilities/moves
+                          const fullPokemonData = (draftPokemonList.length > 0 ? draftPokemonList : pokemonList).find(pk => 
+                            pk.id === p.id || pk.name.toLowerCase() === p.name.toLowerCase()
+                          );
+                          
                           // Ensure Pokemon has the correct structure for team builder
                           const pokemonForBuilder = {
                             id: p.id,
@@ -4263,9 +5196,10 @@ function App() {
                             } : {
                               hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0
                             }),
-                            abilities: p.abilities || [],
-                            moves: p.moves || [],
-                            types: p.types || []
+                            // Use full data if available, otherwise fall back to what we have
+                            abilities: fullPokemonData?.abilities || p.abilities || [],
+                            moves: fullPokemonData?.moves || p.moves || [],
+                            types: fullPokemonData?.types || p.types || []
                           };
                           
                           return {
@@ -4283,33 +5217,89 @@ function App() {
                         return null;
                       });
                       
-                      const teamToSave = {
-                        id: Date.now(),
+                      // Prepare pokemon array for database (matching schema)
+                      const pokemonForDB = myTeam.map(p => ({
+                        name: p.name,
+                        moves: p.moves || [],
+                        ability: p.abilities?.[0] || '',
+                        item: '',
+                        nature: 'Hardy',
+                        teraType: '',
+                        evs: {
+                          hp: 0,
+                          attack: 0,
+                          defense: 0,
+                          specialAttack: 0,
+                          specialDefense: 0,
+                          speed: 0
+                        },
+                        ivs: {
+                          hp: 31,
+                          attack: 31,
+                          defense: 31,
+                          specialAttack: 31,
+                          specialDefense: 31,
+                          speed: 31
+                        },
+                        level: 50,
+                        gender: '',
+                        shiny: false
+                      }));
+
+                      const teamData = {
+                        username: PokemonName,
                         name: teamName,
-                        playerName: PokemonName,
-                        data: {
+                        pokemon: pokemonForDB,
+                        format: 'Draft',
+                        description: `Draft team from ${lobbyCode || 'draft session'}`,
+                        isPublic: false,
+                        teamBuilderData: {
                           playerName: PokemonName,
                           slots: teamBuilderSlots
-                        },
-                        savedAt: Date.now()
+                        }
                       };
                       
-                      // Check if updating existing team
-                      const existingIndex = savedTeams.findIndex(t => t.name === teamName);
-                      if (existingIndex >= 0) {
-                        savedTeams[existingIndex] = teamToSave;
-                      } else {
-                        savedTeams.push(teamToSave);
+                      // Only include userId if user is logged in
+                      if (user?._id) {
+                        teamData.userId = user._id;
                       }
+
+                      // If overwriting, delete the old team first
+                      if (existingTeam) {
+                        await axios.delete(`${socketUrl}/api/teams/${existingTeam._id}`);
+                      }
+
+                      const response = await axios.post(`${socketUrl}/api/teams`, teamData);
                       
-                      localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(savedTeams));
-                      alert('Team saved!');
+                      if (response.data.success) {
+                        alert('Team saved to database!');
+                        // Return to lobby
+                        setDraftComplete(false);
+                        setFinalTeams(null);
+                        setTradingPhaseActive(false);
+                        setView('lobby');
+                      }
                     } catch (err) {
-                      console.error('Failed to save team:', err);
-                      alert('Failed to save team');
+                      console.error('Failed to save team - Full error:', err);
+                      console.error('Error response:', err.response?.data);
+                      alert(err.response?.data?.error || 'Failed to save team');
                     }
                   }}>Save Team</button>
-                  <button className="gen-button ml-8" onClick={() => { 
+                  <button className="gen-button ml-8" onClick={async () => {
+                    // Mark draft as completed in MongoDB
+                    if (lobbyCode) {
+                      try {
+                        const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+                          (process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:4000');
+                        
+                        await axios.patch(`${socketUrl}/api/drafts/${encodeURIComponent(lobbyCode)}/status`, {
+                          status: 'completed'
+                        });
+                      } catch (error) {
+                        console.error('Failed to mark draft as completed:', error);
+                      }
+                    }
+                    
                     leaveLobby(true); 
                     setDraftComplete(false); 
                     setFinalTeams(null); 
@@ -4325,6 +5315,16 @@ function App() {
                     <div className="draft-header">
                     <h2>Available Pokémon ({draftPokemonList.length > 0 ? draftPokemonList.length : pokemonList.length}) — click to select</h2>
               <div className="lobby-label">Lobby: <strong>{lobbyCode || '—'}</strong></div>
+              {lobbySettings.timerEnabled && currentTurnStartTime && timeRemaining !== null && (
+                <div className="timer-display" style={{ 
+                  marginTop: '10px', 
+                  fontSize: '16px', 
+                  fontWeight: 'bold',
+                  color: timeRemaining < 300 ? '#ff4444' : '#16a34a' 
+                }}>
+                  Time Remaining: {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                </div>
+              )}
             </div>
             {(draftPokemonList.length === 0 && pokemonList.length === 0) ? (
               <h3>No Pokémon available</h3>
@@ -4619,32 +5619,58 @@ function App() {
                       <option value="cost-asc">Cost ↑</option>
                       <option value="cost-desc">Cost ↓</option>
                     </select>
-                    <input placeholder="Search Pokémon" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value.toLowerCase()); setDraftSuggestionsVisible(true); }} onBlur={() => setTimeout(() => setDraftSuggestionsVisible(false), 150)} onFocus={() => { if (searchTerm) setDraftSuggestionsVisible(true); }} />
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <input placeholder="Search Pokémon" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value.toLowerCase()); setDraftSuggestionsVisible(true); }} onBlur={() => setTimeout(() => setDraftSuggestionsVisible(false), 150)} onFocus={() => { if (searchTerm) setDraftSuggestionsVisible(true); }} style={{ width: '100%' }} />
+                      {draftSuggestionsVisible && searchTerm && (
+                        <div className="suggestions-dropdown" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: '#fff', border: '1px solid #ddd', boxShadow: '0 6px 16px rgba(16,24,40,0.06)', maxWidth: '400px', maxHeight: '220px', overflowY: 'auto', borderRadius: '6px', marginTop: '4px' }}>
+                          {draftSearchSuggestions.map(p => (
+                            <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', cursor: 'pointer' }} onMouseDown={(ev) => { 
+                              ev.preventDefault(); 
+                              // Add to searchTerms if not already there
+                              if (!searchTerms.some(term => term.toLowerCase() === p.name.toLowerCase())) {
+                                setSearchTerms([...searchTerms, p.name]);
+                              }
+                              setSearchTerm('');
+                              setDraftSuggestionsVisible(false); 
+                            }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}>
+                              <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
+                              <span>{p.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {loadingLegendaries && (<span className="ml-8">Loading...</span>)}
-                  {draftSuggestionsVisible && searchTerm && (
-                    <div className="suggestions-dropdown" style={{ position: 'absolute', top: '36px', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto' }}>
-                      {(draftPokemonList.length > 0 ? draftPokemonList : pokemonList).filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0,8).map(p => (
-                        <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', padding: '8px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
-                          <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
-                          <span>{p.name}</span>
+                  {/* Display selected search terms as removable chips */}
+                  {searchTerms.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                      {searchTerms.map((term, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#e0e7ff', padding: '4px 8px', borderRadius: '4px', fontSize: '14px' }}>
+                          <span>{term}</span>
+                          <button 
+                            onClick={() => setSearchTerms(searchTerms.filter((_, i) => i !== idx))}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: 0, lineHeight: 1, color: '#6366f1' }}
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
+                      <button 
+                        onClick={() => setSearchTerms([])}
+                        style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer' }}
+                      >
+                        Clear All
+                      </button>
                     </div>
                   )}
+                  {loadingLegendaries && (<span className="ml-8">Loading...</span>)}
                 </div>
 
                 <div className="pokemon-grid">
-                      {getVisiblePokemonList().map((p) => {
-                      const isDisabled = (view === 'draft' && ((currentTurn && socket && socket.id !== currentTurn) || (socket && socket.id === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10))));
+                      {visiblePokemonList.map((p) => {
                       const cost = pointsMap && pointsMap[p.name] !== undefined ? Number(pointsMap[p.name]) : 1;
                         return (
-                          <div key={p.id} className={`pokemon-card ${isDisabled ? 'disabled' : ''}`} onClick={() => { 
-                            console.debug('card click', { id: p.id, isDisabled, socketId: socket && socket.id, currentTurn, view }); 
-                            if (isDisabled) return; 
-                            // Show confirmation modal instead of immediately selecting
-                            setPendingDraftSelection({ id: p.id, pokemon: p });
-                          }}>
+                          <div key={p.id} className={`pokemon-card ${areCardsDisabled ? 'disabled' : ''}`} onClick={() => handlePokemonCardClick(p.id, p)}>
                             <div className="pokemon-cost-badge">{cost}</div>
                             <img className="pokemon-img" src={p.img} alt={p.name} />
                             <div className="pokemon-name">{p.name}</div>
@@ -4658,41 +5684,56 @@ function App() {
             <aside className="Sidebar">
               <h3>Selected Pokémon ({localTeamForRender.length} / {lobbySettings && lobbySettings.teamSizeLimit ? lobbySettings.teamSizeLimit : 10})</h3>
             <div className="mb-8">
-              <button className="export-button" onClick={exportRemoved}>Export Team</button>
-              <button className="gen-button ml-8" onClick={handleLeaveDraftButton}>Leave Draft</button>
+              <button className="gen-button" onClick={handleLeaveDraftButton}>Leave Draft</button>
               {exportMessage && (<div className="export-msg">{exportMessage}</div>)}
             </div>
 
-            {leaveDraftConfirmVisible && (
-              <div style={{position:'fixed',left:0,top:0,right:0,bottom:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
-                <div style={{background:'#fff',padding:20,borderRadius:8,maxWidth:520,width:'90%',boxShadow:'0 6px 30px rgba(0,0,0,0.3)'}}>
-                  <h3>Leave Draft?</h3>
-                  <p>The ongoing draft will be saved for you to rejoin later. Your current team will also be saved locally. Do you want to continue and leave the draft now?</p>
-                  <div style={{display:'flex',justifyContent:'flex-end',marginTop:12}}>
-                    <button className="gen-button" onClick={cancelLeaveDraft}>Cancel</button>
-                    <button className="gen-button ml-8" onClick={confirmLeaveDraft}>Yes, Save & Leave</button>
-                  </div>
-                </div>
-              </div>
-            )}
               {lobbyUsers.length > 0 && (
                 <div className="mb-10">
                   <strong>Players & Picks</strong>
                   <ul>
-                    {(
-                      (lobbyDraftOrder && lobbyDraftOrder.length > 0) ?
-                        lobbyDraftOrder.map((id) => lobbyUsers.find(u => u.id === id) ).filter(Boolean)
-                      : lobbyUsers
-                    ).map((u) => (
+                    {orderedPlayers.map((u) => {
+                      const sel = (socket && u.id === socket.id) ? getMergedSelectionsForUser(u) : getSelectionsForUser(u);
+                      const teamDisplay = (sel && sel.length > 0) ? sel.map(p => p.name || p).join(', ') : null;
+                      return (
                       <li key={u.id} className={currentTurn === u.id ? 'player-item current' : 'player-item'}>
-                          <div className={currentTurn === u.id ? 'player-name current' : 'player-name'}>{u.name} {currentTurn === u.id && (<span className="player-current"> (Picking)</span>)}</div>
+                          <div className={currentTurn === u.id ? 'player-name current' : 'player-name'} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span 
+                              className="connection-dot" 
+                              style={{ 
+                                width: '8px', 
+                                height: '8px', 
+                                borderRadius: '50%', 
+                                backgroundColor: u.isConnected ? '#10b981' : '#6b7280',
+                                flexShrink: 0
+                              }}
+                              title={u.isConnected ? 'Connected' : 'Disconnected'}
+                            />
+                            {u.name} 
+                            {currentTurn === u.id && (
+                              <>
+                                <span className="player-current"> (Picking)</span>
+                                {lobbySettings.timerEnabled && timeRemaining !== null && (
+                                  <span style={{ 
+                                    marginLeft: '8px',
+                                    fontWeight: 'bold',
+                                    color: timeRemaining < 300 ? '#ff4444' : '#16a34a',
+                                    fontSize: '14px'
+                                  }}>
+                                    ⏱ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
                           <div className="player-meta">
                             <div className="fs-12 muted">Team:</div>
-                            <div>{(() => { const sel = (socket && u.id === socket.id) ? getMergedSelectionsForUser(u) : getSelectionsForUser(u); return (sel && sel.length > 0) ? sel.map(p => p.name || p).join(', ') : <em className="muted">—</em>; })()}</div>
+                            <div>{teamDisplay || <em className="muted">—</em>}</div>
                             <div className="fs-12 muted mt-4">Points: {pointsRemaining && pointsRemaining[u.id] != null ? pointsRemaining[u.id] : lobbySettings.pointsLimit}</div>
                           </div>
                         </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -4917,7 +5958,9 @@ function App() {
               )}
             </div>
             <div className="team-builder-header-buttons">
-              <button className="gen-button" onClick={saveTeamToStorage}>Save Team</button>
+              {teamBuilderLoaded && (
+                <button className="gen-button" onClick={saveTeamToStorage}>Save Team</button>
+              )}
               <button className="gen-button ml-8" onClick={() => setShowTeamSelector(true)}>Load Team</button>
               {selectedForExport.length > 0 && (
                 <button className="export-button ml-8" onClick={exportToShowdown}>Export to Showdown</button>
@@ -4927,8 +5970,148 @@ function App() {
             </div>
           </div>
 
+          {/* Team Composition Checklist */}
+          <div className="team-composition-panel" style={{ 
+            background: '#f9fafb', 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            padding: '16px', 
+            marginBottom: '20px' 
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+              {/* General Section */}
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>General</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.entryHazard && teamComposition.entryHazard.length > 0}
+                      readOnly
+                    />
+                    <span>Entry Hazard</span>
+                    {teamComposition.entryHazard?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.entryHazard.join(', ')})</span>
+                    )}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.spinner && teamComposition.spinner.length > 0}
+                      readOnly
+                    />
+                    <span>Spinner/Defogger</span>
+                    {teamComposition.spinner?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.spinner.join(', ')})</span>
+                    )}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.recovery && teamComposition.recovery.length > 0}
+                      readOnly
+                    />
+                    <span>Reliable Recovery</span>
+                    {teamComposition.recovery?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.recovery.join(', ')})</span>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Defensive Section */}
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Defensive</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.cleric && teamComposition.cleric.length > 0}
+                      readOnly
+                    />
+                    <span>Cleric</span>
+                    {teamComposition.cleric?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.cleric.join(', ')})</span>
+                    )}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.statusMove && teamComposition.statusMove.length > 0}
+                      readOnly
+                    />
+                    <span>Status Move</span>
+                    {teamComposition.statusMove?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.statusMove.join(', ')})</span>
+                    )}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.phazer && teamComposition.phazer.length > 0}
+                      readOnly
+                    />
+                    <span>Phazer</span>
+                    {teamComposition.phazer?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.phazer.join(', ')})</span>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Offensive Section */}
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Offensive</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.boosting && teamComposition.boosting.length > 0}
+                      readOnly
+                    />
+                    <span>Boosting Move</span>
+                    {teamComposition.boosting?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.boosting.join(', ')})</span>
+                    )}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.voltTurn && teamComposition.voltTurn.length > 0}
+                      readOnly
+                    />
+                    <span>Volt-turn Move</span>
+                    {teamComposition.voltTurn?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.voltTurn.join(', ')})</span>
+                    )}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}>
+                    <input 
+                      type="checkbox" 
+                      className="team-composition-checkbox"
+                      checked={teamComposition.choiceItem && teamComposition.choiceItem.length > 0}
+                      readOnly
+                    />
+                    <span>Choice Item</span>
+                    {teamComposition.choiceItem?.length > 0 && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>({teamComposition.choiceItem.join(', ')})</span>
+                    )}
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="team-builder-horizontal">
-            {teamBuilderData.slots.filter(slot => slot.pokemon).length === 0 ? (
+            {teamBuilderData.slots.filter(slot => slot && slot.pokemon).length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', width: '100%' }}>
                 <p style={{ fontSize: '18px', color: '#666' }}>No Pokémon in this team yet.</p>
                 <button className="gen-button" onClick={() => setShowTeamSelector(true)}>Load a Team</button>
@@ -4937,10 +6120,10 @@ function App() {
               <>
                 <div style={{ width: '100%', textAlign: 'center', marginBottom: '15px', padding: '10px', background: '#f0f9ff', borderRadius: '8px' }}>
                   <p style={{ margin: 0, color: '#1e40af', fontSize: '14px' }}>
-                    💡 Click on Pokémon cards to select up to 6 for Showdown export
+                    💡 Click on Pokémon cards to select up to 6 for export into Leagues or Showdown
                   </p>
                 </div>
-                {teamBuilderData.slots.filter(slot => slot.pokemon).map((slot, idx) => {
+                {teamBuilderData.slots.filter(slot => slot && slot.pokemon).map((slot, idx) => {
                 const totalEVs = getTotalEVs(slot);
                 const remainingEVs = MAX_EVS - totalEVs;
                 const isSelected = selectedForExport.includes(idx);
@@ -5105,78 +6288,71 @@ function App() {
         <div className="TeamBuilderContainer">
           <div className="team-builder-header">
             <h2>Load Team</h2>
-            <button className="gen-button" onClick={() => setShowTeamSelector(false)}>Back to Team Builder</button>
+            <button className="gen-button" onClick={() => setView('lobby')}>Back to Lobby</button>
           </div>
 
           <div className="team-selector-content">
             <div className="team-selector-section">
-              <h3>Saved Teams</h3>
+              <h3>Saved Teams (Database)</h3>
               {(() => {
-                const savedTeams = loadSavedTeams();
-                if (savedTeams.length === 0) {
+                if (loadingTeams) {
+                  return <div className="muted-text">Loading teams...</div>;
+                }
+
+                if (savedTeamsFromDB.length === 0) {
                   return <div className="muted-text">No saved teams found. Save a team from the team builder to see it here.</div>;
                 }
                 
                 return (
                   <div className="team-selector-grid">
-                    {savedTeams.filter(team => team && team.data && Array.isArray(team.data.slots)).map((team) => (
-                      <div key={team.id} className="team-selector-card">
+                    {savedTeamsFromDB.map((team) => (
+                      <div key={team._id} className="team-selector-card">
                         <div className="team-selector-card-header">
                           <strong>{team.name}</strong>
                           <div className="fs-12 muted">
-                            {new Date(team.savedAt).toLocaleDateString()} {new Date(team.savedAt).toLocaleTimeString()}
+                            {new Date(team.createdAt).toLocaleDateString()} {new Date(team.createdAt).toLocaleTimeString()}
                           </div>
                         </div>
                         <div className="team-selector-card-body">
                           <div className="saved-team-grid">
-                            {team.data.slots.filter(s => {
-                              // Only include slots with valid Pokemon data
-                              if (!s) return false;
-                              if (s.pokemon && typeof s.pokemon === 'object' && s.pokemon.name) return true;
-                              if (s.pokemonName) return true;
-                              return false;
-                            }).slice(0, 6).map((slot, idx) => {
-                              // Handle both old format (slot.sprite) and new format (slot.pokemon.img)
-                              const imgSrc = slot.pokemon && typeof slot.pokemon === 'object' 
-                                ? slot.pokemon.img 
-                                : slot.sprite;
-                              const pokemonName = slot.pokemon && typeof slot.pokemon === 'object'
-                                ? slot.pokemon.name
-                                : slot.pokemonName || slot.pokemon;
-                              
-                              return (
-                                <div key={idx} className="saved-team-card-small">
-                                  {imgSrc && <img src={imgSrc} alt={pokemonName} />}
-                                </div>
-                              );
-                            })}
+                            {team.teamBuilderData?.slots?.filter(s => s && s.pokemon).slice(0, 6).map((slot, idx) => (
+                              <div key={idx} className="saved-team-card-small">
+                                <img 
+                                  src={slot.pokemon.img || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${slot.pokemon.id || 1}.png`} 
+                                  alt={slot.pokemon.name} 
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              </div>
+                            )) || team.pokemon?.slice(0, 6).map((pokemon, idx) => (
+                              <div key={idx} className="saved-team-card-small">
+                                <div className="fs-10">{pokemon.name}</div>
+                              </div>
+                            ))}
                           </div>
                           <div className="fs-12 muted mt-8">
-                            {team.data.slots.filter(s => {
-                              if (!s) return false;
-                              if (s.pokemon && typeof s.pokemon === 'object' && s.pokemon.name) return true;
-                              if (s.pokemonName) return true;
-                              return false;
-                            }).length} Pokémon
+                            {team.pokemon.length} Pokémon
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                           <button 
                             className="gen-button" 
                             style={{ flex: 1 }}
-                            onClick={() => loadTeamFromStorage(team.id)}
+                            onClick={() => loadTeamFromDB(team)}
                           >
                             Load
                           </button>
                           <button 
                             className="gen-button" 
                             style={{ flex: 1, backgroundColor: '#dc2626' }}
-                            onClick={() => {
+                            onClick={async () => {
                               if (window.confirm(`Delete team "${team.name}"?`)) {
-                                deleteTeamFromStorage(team.id);
-                                // Force re-render by toggling the selector
-                                setShowTeamSelector(false);
-                                setTimeout(() => setShowTeamSelector(true), 10);
+                                try {
+                                  await axios.delete(`${socketUrl}/api/teams/${team._id}`);
+                                  fetchTeamsFromDB(); // Refresh list
+                                } catch (error) {
+                                  console.error('Failed to delete team:', error);
+                                  alert('Failed to delete team');
+                                }
                               }
                             }}
                           >
@@ -5273,6 +6449,21 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+      
+      {showAuthModal && (
+        <AuthModal 
+          onClose={() => {
+            setShowAuthModal(false);
+            // If user closed modal without logging in, allow guest access
+            if (!user && !PokemonName) {
+              const guestName = prompt('Enter a guest username to continue:');
+              if (guestName) {
+                setPokemonName(guestName);
+              }
+            }
+          }} 
+        />
       )}
     </div>
   );

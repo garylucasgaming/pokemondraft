@@ -18,8 +18,37 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 // Connect to MongoDB
 mongoose.connect(MONGODB_URI)
-.then(() => console.log('Connected to MongoDB'))
+.then(() => {
+  // Start cleanup job
+  startCleanupJob();
+})
 .catch(err => console.error('MongoDB connection error:', err));
+
+// Cleanup job to delete empty drafts
+function startCleanupJob() {
+  // Run immediately on startup
+  cleanupEmptyDrafts();
+  
+  // Run daily (every 24 hours)
+  setInterval(cleanupEmptyDrafts, 24 * 60 * 60 * 1000);
+}
+
+async function cleanupEmptyDrafts() {
+  try {
+    const result = await DraftSession.deleteMany({
+      $or: [
+        { participants: { $size: 0 } },
+        { participants: { $exists: false } },
+        { participants: null }
+      ]
+    });
+    
+    if (result.deletedCount > 0) {
+    }
+  } catch (error) {
+    console.error('Cleanup job error:', error);
+  }
+}
 
 // Load presets from file
 let presets = [];
@@ -27,7 +56,6 @@ try {
   const presetsPath = path.join(__dirname, 'public', 'presets.json');
   const presetsData = JSON.parse(fs.readFileSync(presetsPath, 'utf-8'));
   presets = presetsData.presets || [];
-  console.log(`Loaded ${presets.length} presets from presets.json`);
 } catch (err) {
   console.error('Failed to load presets.json:', err);
 }
@@ -35,7 +63,7 @@ try {
 // Create Express app for REST API
 const app = express();
 app.use(cors({
-  origin: ['https://pokemondraft.com', 'https://www.pokemondraft.com', 'http://localhost:3000'],
+  origin: ['https://pokemondraft.com', 'https://www.pokemondraft.com', 'http://localhost:3000', 'http://localhost:4001'],
   credentials: true
 }));
 app.use(express.json());
@@ -65,6 +93,7 @@ const io = new Server(server, {
       'https://pokemondraft.com',
       'https://www.pokemondraft.com',
       'http://localhost:3000',
+      'http://localhost:4001',
       '*' // Fallback to allow all origins
     ],
     methods: ['GET', 'POST'],
@@ -83,7 +112,15 @@ async function saveDraftSession(lobby) {
   if (!lobby || !lobby.code) return;
   
   try {
-    const participants = lobby.users.map(user => ({
+    // Get existing session first to preserve all participants
+    const session = await DraftSession.findOne({ lobbyCode: lobby.code });
+    
+    console.log(`[saveDraftSession] Saving lobby ${lobby.code}`);
+    console.log(`  - Connected users: ${lobby.users.map(u => u.name).join(', ')}`);
+    console.log(`  - Existing participants: ${session?.participants?.map(p => p.username).join(', ') || 'none'}`);
+    
+    // Build update data for currently connected users only
+    const connectedUsersData = lobby.users.map(user => ({
       socketId: user.id,
       username: user.name,
       selections: (lobby.selections[user.id] || []).map(p => ({
@@ -92,13 +129,62 @@ async function saveDraftSession(lobby) {
         points: p.points || 0,
         timestamp: new Date()
       })),
-      pointsRemaining: lobby.pointsRemaining[user.id] || lobby.settings.pointsLimit,
-      isConnected: false,
+      pointsRemaining: lobby.pointsRemaining[user.id] != null 
+        ? lobby.pointsRemaining[user.id] 
+        : lobby.settings.pointsLimit,
+      isConnected: true,
       lastSeen: new Date()
     }));
 
+    let finalParticipants;
+    
+    if (session && session.participants) {
+      // MERGE MODE: Preserve all existing participants, only update connected users
+      const existingParticipants = session.participants;
+      const mergedParticipants = [...existingParticipants];
+      
+      // Update data for currently connected users
+      connectedUsersData.forEach(connectedUser => {
+        const existingIndex = mergedParticipants.findIndex(p => p.username === connectedUser.username);
+        
+        if (existingIndex >= 0) {
+          // User exists - update their data only if we have new information
+          const existing = mergedParticipants[existingIndex];
+          mergedParticipants[existingIndex] = {
+            ...existing,
+            socketId: connectedUser.socketId,
+            // Only update selections if the connected user has picks (not null/empty)
+            selections: connectedUser.selections.length > 0 ? connectedUser.selections : existing.selections,
+            // Only update points if we have a valid value
+            pointsRemaining: connectedUser.pointsRemaining != null ? connectedUser.pointsRemaining : existing.pointsRemaining,
+            isConnected: connectedUser.isConnected,
+            lastSeen: connectedUser.lastSeen
+          };
+        } else {
+          // New user - add them
+          mergedParticipants.push(connectedUser);
+        }
+      });
+      
+      // Mark disconnected users as not connected (but keep their data)
+      mergedParticipants.forEach(participant => {
+        if (!connectedUsersData.find(u => u.username === participant.username)) {
+          participant.isConnected = false;
+        }
+      });
+      
+      finalParticipants = mergedParticipants;
+    } else {
+      // NEW SESSION: Use connected users as initial participants
+      finalParticipants = connectedUsersData;
+    }
+    
+    console.log(`  - Final participants: ${finalParticipants.map(p => p.username).join(', ')}`);
+
     const sessionData = {
       lobbyCode: lobby.code,
+      lobbyName: lobby.lobbyName || (session?.lobbyName) || '',
+      hostUsername: lobby.users.find(u => u.id === lobby.host)?.name || (session?.hostUsername),
       hostSocketId: lobby.host,
       status: lobby.draftStarted ? 'drafting' : 'lobby',
       settings: {
@@ -109,27 +195,78 @@ async function saveDraftSession(lobby) {
         unlimitedTrades: lobby.settings.unlimitedTrades || false,
         genFilter: lobby.settings.genFilter || 0
       },
-      participants,
-      turnOrder: lobby.draftOrder || [],
-      currentTurn: lobby.currentTurn,
-      draftPokemon: lobby.draftPokemonList || [],
-      pointsMap: lobby.pointsMap || {},
-      banList: lobby.banList || []
+      participants: finalParticipants,
+      // Map turn order to usernames (not socket IDs which change)
+      turnOrder: (lobby.draftOrder && lobby.draftOrder.length > 0) 
+        ? lobby.draftOrder.map(socketId => {
+            // Try to find in connected users first
+            const connectedUser = lobby.users.find(u => u.id === socketId);
+            if (connectedUser) return connectedUser.name;
+            
+            // Try to find in merged participants (for disconnected users)
+            const participant = finalParticipants.find(p => p.socketId === socketId);
+            if (participant) return participant.username;
+            
+            // If it's already a username (from previous save), keep it
+            return socketId;
+          })
+        : (session?.turnOrder || []),
+      // Map current turn to username (not socket ID which changes)
+      currentTurn: lobby.currentTurn 
+        ? (() => {
+            const connectedUser = lobby.users.find(u => u.id === lobby.currentTurn);
+            if (connectedUser) return connectedUser.name;
+            
+            const participant = finalParticipants.find(p => p.socketId === lobby.currentTurn);
+            if (participant) return participant.username;
+            
+            return lobby.currentTurn;
+          })()
+        : (session?.currentTurn),
+      draftPokemon: lobby.draftPokemonList || (session?.draftPokemon) || [],
+      pointsMap: lobby.pointsMap || (session?.pointsMap) || {},
+      banList: lobby.banList || (session?.banList) || [],
+      updatedAt: new Date()
     };
-
-    let session = await DraftSession.findOne({ lobbyCode: lobby.code });
     
     if (session) {
+      // Update existing session
       Object.assign(session, sessionData);
-      session.updatedAt = new Date();
+      await session.save();
     } else {
-      session = new DraftSession(sessionData);
+      // Create new session
+      const newSession = new DraftSession(sessionData);
+      await newSession.save();
     }
-    
-    await session.save();
-    console.log(`Draft session ${lobby.code} saved to MongoDB`);
   } catch (error) {
     console.error('Failed to save draft session:', error);
+  }
+}
+
+// Update just the connection status for a user (when they leave/disconnect)
+async function updateUserConnectionStatus(lobbyCode, username, isConnected) {
+  if (!lobbyCode || !username) return;
+  
+  try {
+    console.log(`[updateUserConnectionStatus] ${username} in ${lobbyCode} -> ${isConnected ? 'connected' : 'disconnected'}`);
+    
+    const session = await DraftSession.findOne({ lobbyCode });
+    if (!session) {
+      console.log(`  - Session not found`);
+      return;
+    }
+    
+    const participant = session.participants.find(p => p.username === username);
+    if (participant) {
+      participant.isConnected = isConnected;
+      participant.lastSeen = new Date();
+      await session.save();
+      console.log(`  - Updated connection status successfully`);
+    } else {
+      console.log(`  - Participant not found in session`);
+    }
+  } catch (error) {
+    console.error('Failed to update connection status:', error);
   }
 }
 
@@ -144,12 +281,12 @@ function generateLobbyCode(length = 6) {
 }
 
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
 
   socket.on('create_lobby', ({ name }, callback) => {
     const code = generateLobbyCode();
     const lobby = {
       code,
+      lobbyName: '', // Host can set this later
       host: socket.id,
       users: [{ id: socket.id, name: name || 'Host' }],
       settings: { pointsLimit: 100, teamSizeLimit: 10, genFilter: 0 },
@@ -169,11 +306,11 @@ io.on('connection', (socket) => {
     socket.join(code);
     socket.lobbyCode = code;
     
-    console.log(`Lobby created: ${code} by ${name}`);
     
     callback({
       ok: true,
       code,
+      lobbyName: lobby.lobbyName,
       host: socket.id,
       users: lobby.users,
       settings: lobby.settings,
@@ -183,7 +320,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('join_lobby', ({ code, name, savedPoints, savedSelections }, callback) => {
+  socket.on('join_lobby', async ({ code, name, savedPoints, savedSelections }, callback) => {
     const lobby = lobbies.get(code);
     if (!lobby) {
       return callback({ ok: false, error: 'Lobby not found' });
@@ -202,13 +339,16 @@ io.on('connection', (socket) => {
     // Restore saved selections if provided
     if (savedSelections && Array.isArray(savedSelections) && savedSelections.length > 0) {
       lobby.selections[socket.id] = savedSelections;
-      console.log(`Restored ${savedSelections.length} selections for ${name}`);
+    }
+    
+    // If draft has started, mark user as connected in MongoDB
+    if (lobby.draftStarted && user.name) {
+      await updateUserConnectionStatus(code, user.name, true);
     }
     
     socket.join(code);
     socket.lobbyCode = code;
     
-    console.log(`${name} joined lobby: ${code} with ${lobby.pointsRemaining[socket.id]} points`);
     
     callback({
       ok: true,
@@ -243,8 +383,14 @@ io.on('connection', (socket) => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
     
-    // Save before user leaves
-    await saveDraftSession(lobby);
+    // Find username before removing from lobby
+    const leavingUser = lobby.users.find(u => u.id === socket.id);
+    const username = leavingUser?.name;
+    
+    // If draft has started, only update connection status (don't save full lobby)
+    if (lobby.draftStarted && username) {
+      await updateUserConnectionStatus(code, username, false);
+    }
     
     lobby.users = lobby.users.filter(u => u.id !== socket.id);
     delete lobby.selections[socket.id];
@@ -255,7 +401,6 @@ io.on('connection', (socket) => {
     
     if (lobby.users.length === 0) {
       lobbies.delete(code);
-      console.log(`Lobby ${code} deleted (empty)`);
     } else {
       if (lobby.host === socket.id) {
         lobby.host = lobby.users[0].id;
@@ -305,6 +450,17 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('update_lobby_name', ({ code, lobbyName }, callback) => {
+    const lobby = lobbies.get(code);
+    if (!lobby) return callback({ ok: false, error: 'Lobby not found' });
+    if (lobby.host !== socket.id) return callback({ ok: false, error: 'Only host can update lobby name' });
+    
+    lobby.lobbyName = lobbyName || '';
+    
+    callback({ ok: true, lobbyName: lobby.lobbyName });
+    io.to(code).emit('lobby_name_updated', { lobbyName: lobby.lobbyName });
+  });
+
   socket.on('set_points', ({ code, name, value }, callback) => {
     const lobby = lobbies.get(code);
     if (!lobby) return callback({ ok: false, error: 'Lobby not found' });
@@ -313,21 +469,17 @@ io.on('connection', (socket) => {
     const normalizedName = name.toLowerCase();
     lobby.pointsMap[normalizedName] = Number(value);
     
-    console.log(`Points set for ${normalizedName}: ${value}`);
     
     callback({ ok: true, pointsMap: lobby.pointsMap });
     io.to(code).emit('pointsMap_update', { pointsMap: lobby.pointsMap });
   });
 
   socket.on('import_points', ({ code, pointsMap }, callback) => {
-    console.log(`import_points request: code=${code}, host=${socket.id}`);
     const lobby = lobbies.get(code);
     if (!lobby) {
-      console.log('import_points error: Lobby not found');
       return callback({ ok: false, error: 'Lobby not found' });
     }
     if (lobby.host !== socket.id) {
-      console.log(`import_points error: Not host. socket=${socket.id}, host=${lobby.host}`);
       return callback({ ok: false, error: 'Only host can import points' });
     }
     
@@ -337,27 +489,22 @@ io.on('connection', (socket) => {
     }
     
     lobby.pointsMap = { ...lobby.pointsMap, ...normalized };
-    console.log(`import_points success: imported ${Object.keys(normalized).length} entries`);
     
     callback({ ok: true, pointsMap: lobby.pointsMap });
     io.to(code).emit('pointsMap_update', { pointsMap: lobby.pointsMap });
   });
 
   socket.on('load_preset', ({ code, presetId }, callback) => {
-    console.log(`load_preset request: code=${code}, presetId=${presetId}, host=${socket.id}`);
     const lobby = lobbies.get(code);
     if (!lobby) {
-      console.log('load_preset error: Lobby not found');
       return callback({ ok: false, error: 'Lobby not found' });
     }
     if (lobby.host !== socket.id) {
-      console.log(`load_preset error: Not host. socket=${socket.id}, host=${lobby.host}`);
       return callback({ ok: false, error: 'Only host can load presets' });
     }
     
     const preset = presets.find(p => p.id === presetId);
     if (!preset) {
-      console.log(`load_preset error: Preset not found: ${presetId}`);
       return callback({ ok: false, error: 'Preset not found' });
     }
     
@@ -374,7 +521,6 @@ io.on('connection', (socket) => {
     if (preset.teamSizeLimit) lobby.settings.teamSizeLimit = preset.teamSizeLimit;
     if (preset.generationFilter) lobby.settings.genFilter = preset.generationFilter;
     
-    console.log(`load_preset success: loaded ${Object.keys(normalized).length} entries from preset "${preset.name}"`);
     
     callback({ ok: true, pointsMap: lobby.pointsMap, settings: lobby.settings });
     io.to(code).emit('pointsMap_update', { pointsMap: lobby.pointsMap });
@@ -497,7 +643,6 @@ io.on('connection', (socket) => {
       attempts++;
     }
     
-    console.log(`Snake draft: Round ${lobby.currentRound}, Direction: ${lobby.snakeDraftDirection === 1 ? 'forward' : 'backward'}, moved from index ${currentIndex} to ${nextIndex}, currentTurn: ${lobby.currentTurn}`);
     
     // Check if draft is complete (all players have reached team size limit)
     const teamSizeLimit = lobby.settings.teamSizeLimit || 10;
@@ -507,7 +652,6 @@ io.on('connection', (socket) => {
     });
     
     if (allPlayersComplete) {
-      console.log(`Draft complete for lobby ${code}`);
       // Save completed draft to MongoDB
       await saveDraftSession(lobby);
       io.to(code).emit('draft_complete', {
@@ -534,7 +678,6 @@ io.on('connection', (socket) => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
     
-    console.log(`Starting trading phase for lobby ${code}`);
     
     // Initialize trading state
     if (!lobby.tradesCompleted) {
@@ -562,7 +705,6 @@ io.on('connection', (socket) => {
       return callback?.({ ok: false, error: 'Lobby not found' });
     }
     
-    console.log(`Trade offer in ${code}: ${from} -> ${to}, ${pokemon1} <-> ${pokemon2}`);
     
     // Initialize trading state if needed
     if (!lobby.tradesCompleted) {
@@ -631,11 +773,9 @@ io.on('connection', (socket) => {
     
     const trade = lobby.pendingTrades.get(tradeId);
     if (!trade) {
-      console.log(`Trade ${tradeId} not found`);
       return;
     }
     
-    console.log(`Trade accepted: ${tradeId}`);
     
     // Swap the Pokemon
     const fromSelections = lobby.selections[trade.from] || [];
@@ -666,7 +806,6 @@ io.on('connection', (socket) => {
         tradesCompleted: lobby.tradesCompleted
       });
       
-      console.log(`Trade completed. Counts: ${trade.from}=${lobby.tradesCompleted[trade.from]}, ${trade.to}=${lobby.tradesCompleted[trade.to]}`);
     }
   });
 
@@ -677,7 +816,6 @@ io.on('connection', (socket) => {
     const trade = lobby.pendingTrades.get(tradeId);
     if (!trade) return;
     
-    console.log(`Trade declined: ${tradeId}`);
     
     // Remove pending trade
     lobby.pendingTrades.delete(tradeId);
@@ -692,7 +830,6 @@ io.on('connection', (socket) => {
       return callback?.({ ok: false, error: 'Lobby not found' });
     }
     
-    console.log(`Unpicked trade in ${code}: ${playerId} swapping ${oldPokemon} for ${newPokemon}`, newPokemonData ? 'with full data' : 'name only');
     
     // Initialize trading state if needed
     if (!lobby.tradesCompleted) {
@@ -762,7 +899,6 @@ io.on('connection', (socket) => {
       
       callback?.({ ok: true });
       
-      console.log(`Unpicked trade completed. ${playerId} count: ${lobby.tradesCompleted[playerId]}`);
     } else {
       callback?.({ ok: false, error: 'Pokemon not found in your team' });
     }
@@ -778,7 +914,6 @@ io.on('connection', (socket) => {
     
     if (!lobby.playersFinishedTrading.includes(socket.id)) {
       lobby.playersFinishedTrading.push(socket.id);
-      console.log(`${socket.id} finished trading in ${code}`);
     }
     
     // Notify all players
@@ -788,25 +923,28 @@ io.on('connection', (socket) => {
     
     // Check if all players are finished
     if (lobby.playersFinishedTrading.length === lobby.users.length) {
-      console.log(`All players finished trading in ${code}`);
       io.to(code).emit('all_players_finished_trading');
     }
   });
 
   socket.on('disconnect', async () => {
-    console.log('Client disconnected:', socket.id);
     
     if (socket.lobbyCode) {
       const lobby = lobbies.get(socket.lobbyCode);
       if (lobby) {
-        // Save draft session to MongoDB before modifying
-        await saveDraftSession(lobby);
+        // Find username before removing from lobby
+        const disconnectingUser = lobby.users.find(u => u.id === socket.id);
+        const username = disconnectingUser?.name;
+        
+        // If draft has started, only update connection status (don't save full lobby)
+        if (lobby.draftStarted && username) {
+          await updateUserConnectionStatus(socket.lobbyCode, username, false);
+        }
         
         lobby.users = lobby.users.filter(u => u.id !== socket.id);
         
         if (lobby.users.length === 0) {
           lobbies.delete(socket.lobbyCode);
-          console.log(`Lobby ${socket.lobbyCode} deleted (empty after disconnect)`);
         } else {
           if (lobby.host === socket.id) {
             lobby.host = lobby.users[0].id;
@@ -831,5 +969,4 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Socket.IO server listening on http://localhost:${PORT}`);
 });

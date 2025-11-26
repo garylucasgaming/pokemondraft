@@ -15,7 +15,7 @@ function generateShareCode() {
 // Create a new saved team
 router.post('/teams', async (req, res) => {
   try {
-    const { userId, username, name, pokemon, format, description, isPublic } = req.body;
+    const { userId, username, name, pokemon, format, description, isPublic, teamBuilderData } = req.body;
 
     if (!name || !pokemon || !Array.isArray(pokemon) || pokemon.length === 0) {
       return res.status(400).json({ error: 'Name and pokemon array are required' });
@@ -28,21 +28,6 @@ router.post('/teams', async (req, res) => {
       }
     }
 
-    // Generate share code if team is public
-    let shareCode = null;
-    if (isPublic) {
-      let attempts = 0;
-      while (attempts < 10) {
-        shareCode = generateShareCode();
-        const existing = await SavedTeam.findOne({ shareCode });
-        if (!existing) break;
-        attempts++;
-      }
-      if (attempts >= 10) {
-        return res.status(500).json({ error: 'Failed to generate unique share code' });
-      }
-    }
-
     const team = new SavedTeam({
       userId,
       username,
@@ -51,13 +36,15 @@ router.post('/teams', async (req, res) => {
       format,
       description,
       isPublic: isPublic || false,
-      shareCode
+      teamBuilderData
     });
 
     await team.save();
     res.status(201).json({ success: true, team });
   } catch (error) {
     console.error('Error creating saved team:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to create team' });
   }
 });

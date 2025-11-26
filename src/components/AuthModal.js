@@ -69,11 +69,13 @@ const AuthModal = ({ onClose }) => {
         if (result.success) {
           onClose(); // Close modal on success
         } else {
-          setError(result.error);
+          console.error('Login failed:', result.error);
+          setError(result.error || 'Login failed');
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      console.error('Login exception:', err);
+      setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -118,6 +120,9 @@ const AuthModal = ({ onClose }) => {
                 maxLength="20"
                 required
               />
+              <small style={{ color: '#999', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                Username must be unique (case-insensitive)
+              </small>
             </div>
           )}
 
@@ -160,6 +165,7 @@ const AuthModal = ({ onClose }) => {
               value={formData.password}
               onChange={handleChange}
               placeholder={mode === 'register' ? 'At least 6 characters' : 'Enter password'}
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
               minLength="6"
               required
             />
@@ -175,6 +181,7 @@ const AuthModal = ({ onClose }) => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Re-enter password"
+                autoComplete="new-password"
                 required
               />
             </div>
