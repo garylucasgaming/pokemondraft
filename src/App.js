@@ -1829,8 +1829,48 @@ function App() {
     fetch('/pokemon_data.json')
       .then(response => response.json())
       .then((data) => {
+        // Filter out unwanted forms (same logic as PokeAPI fallback)
+        const excludeTokens = [
+          'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
+          'attack', 'defense', 'school', 'armored', 'masked', 'dusk', 'midnight', 'origin',
+          'size', 'eternamax', 'shield', 'disguised', 'solo', 'aria', 'resolute', 'zen', 'cap'
+        ];
+        const keepRegional = [
+          'alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean'
+        ];
+        // Whitelist for pokemon whose base names contain exclusion tokens but should be kept
+        const allowedBaseNames = new Set([
+          'meganium', 'ariados', 'altaria', 'duskull', 'shieldon', 'yanmega', 
+          'dusknoir', 'solosis', 'zamazenta', 'capsakid', 'finizen'
+        ]);
+        
+        const filteredData = data.filter(pokemon => {
+          const name = pokemon.form_name.toLowerCase();
+          
+          // Allow whitelisted base forms (false positives)
+          if (allowedBaseNames.has(name)) {
+            return true;
+          }
+          
+          // First check exclude tokens
+          if (excludeTokens.some(t => name.includes(t))) {
+            // Exception: allow regional variants that aren't Pikachu
+            if (!name.includes('pikachu') && keepRegional.some(t => name.includes(t))) {
+              return true;
+            }
+            return false;
+          }
+          
+          // Exclude Pikachu regional variants (they have special forms)
+          if (name.includes('pikachu') && keepRegional.some(t => name.includes(t))) {
+            return false;
+          }
+          
+          return true;
+        });
+        
         // Transform the data to match our existing format
-        const list = data.map(pokemon => ({
+        const list = filteredData.map(pokemon => ({
           id: pokemon.id,
           name: getPokemonDisplayName(pokemon.form_name, pokemon.species_name),
           img: pokemon.sprite_front_default,
@@ -1844,7 +1884,7 @@ function App() {
         
         // Build legendary map from the data
         const legMap = {};
-        data.forEach(pokemon => {
+        filteredData.forEach(pokemon => {
           legMap[getPokemonDisplayName(pokemon.form_name, pokemon.species_name)] = pokemon.legendary || false;
         });
         setLegendaryMap(legMap);
@@ -1889,7 +1929,7 @@ function App() {
               'iron-moth','iron-thorns','oricorio-pom-pom','minior-red','mimikyu-busted',
               'toxtricity-amped','porygon-z','mime-jr','dudunsparce-two-segment',
               'tatsugiri-curly','calyrex-ice', 'nidoran-m', 'nidoran-f','urshifu-single-strike',
-              'calyrex-shadow','type-null','lycanroc-midday', 'darmanitan-standard', 'doublade ', 'aegislash-shield'
+              'calyrex-shadow','type-null','lycanroc-midday', 'darmanitan-standard', 'doublade ', 'aegislash-shield', 'Meganium', 'Yanmega'
             ]);
             const hyphenDisallowNames = new Set([
               'darmanitan-zen',
@@ -2860,7 +2900,10 @@ function App() {
   // Ban all Paradox Pokémon visible in the current pokemonList (host-only)
   const banAllParadox = () => {
     if (!socket || !lobbyCode) return;
+    console.log('Checking for Paradox Pokémon. Total pokemonList:', pokemonList.length);
+    console.log('Sample pokemon:', pokemonList[0]);
     const paradoxPokemon = pokemonList.filter(p => p.paradox);
+    console.log('Found paradox pokemon:', paradoxPokemon.length, paradoxPokemon.map(p => p.name));
     if (!paradoxPokemon || paradoxPokemon.length === 0) {
       alert('No Paradox Pokémon found to ban');
       return;
@@ -4478,9 +4521,9 @@ function App() {
                   {draftSuggestionsVisible && searchTerm && (
                     <div className="suggestions-dropdown" style={{ position: 'absolute', top: '36px', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto' }}>
                       {(draftPokemonList.length > 0 ? draftPokemonList : pokemonList).filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0,8).map(p => (
-                        <div key={p.id} className="suggestion-item" style={{ padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
-                          <img src={p.img} alt={p.name} style={{ width: '24px', height: '24px' }} />
-                          <span style={{ fontSize: '14px' }}>{p.name}</span>
+                        <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
+                          <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
+                          <span>{p.name}</span>
                         </div>
                       ))}
                     </div>

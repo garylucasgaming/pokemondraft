@@ -638,7 +638,7 @@ body {
   background: #fff;
   border: 1px solid #ddd;
   box-shadow: 0 6px 16px rgba(16,24,40,0.06);
-  max-width: 300px;
+  max-width: 600px;
   max-height: 220px;
   overflow-y: auto;
   border-radius: 6px;
