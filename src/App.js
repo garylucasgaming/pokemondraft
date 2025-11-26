@@ -137,6 +137,7 @@ function App() {
   
   // Advanced filter states
   const [filterTypes, setFilterTypes] = useState([]);
+  const [filterTypesInclusive, setFilterTypesInclusive] = useState(false); // false = exclusive (AND), true = inclusive (OR)
   const [filterGeneration, setFilterGeneration] = useState(0);
   const [filterPointsMin, setFilterPointsMin] = useState('');
   const [filterPointsMax, setFilterPointsMax] = useState('');
@@ -161,6 +162,9 @@ function App() {
   const [tradesCompleted, setTradesCompleted] = useState({}); // {userId: count}
   const [showUnpickedModal, setShowUnpickedModal] = useState(null); // {pokemonName, ownerId}
   const [unpickedSearchQuery, setUnpickedSearchQuery] = useState('');
+  
+  // Draft selection confirmation
+  const [pendingDraftSelection, setPendingDraftSelection] = useState(null); // {id, pokemon}
 
   // Team builder constants
   const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
@@ -1112,7 +1116,7 @@ function App() {
               
               pokemonObj = {
                 id: fullPokemonData.id,
-                name: fullPokemonData.form_name || fullPokemonData.species_name,
+                name: getPokemonDisplayName(fullPokemonData.form_name, fullPokemonData.species_name),
                 img: fullPokemonData.sprite_front_default || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${fullPokemonData.id}.png`,
                 baseStats: {
                   hp: stats.find(s => s.stat.name === 'hp')?.base_stat || 0,
@@ -1131,7 +1135,7 @@ function App() {
               // Fallback - use saved stats or zeros
               pokemonObj = {
                 id: fullPokemonData.id,
-                name: fullPokemonData.form_name || fullPokemonData.species_name,
+                name: getPokemonDisplayName(fullPokemonData.form_name, fullPokemonData.species_name),
                 img: fullPokemonData.sprite_front_default || slot.sprite || '',
                 baseStats: slot.stats ? {
                   hp: slot.stats.hp?.base || 0,
@@ -1795,6 +1799,22 @@ function App() {
     };
     reader.readAsText(file);
   };
+  
+  // Helper function to determine the correct Pokemon name
+  const getPokemonDisplayName = (formName, speciesName) => {
+    if (!formName || !speciesName) return formName || speciesName;
+    
+    const regionalTokens = ['alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean'];
+    const formLower = formName.toLowerCase();
+    
+    // If the form name contains a regional token, use the form name
+    if (regionalTokens.some(token => formLower.includes(token))) {
+      return formName;
+    }
+    
+    // Otherwise use the species name
+    return speciesName;
+  };
 
   useEffect(() => {
     // Fetch abilities list from PokeAPI after pokemon data loads
@@ -1812,13 +1832,22 @@ function App() {
         // Transform the data to match our existing format
         const list = data.map(pokemon => ({
           id: pokemon.id,
-          name: pokemon.form_name || pokemon.species_name,
+          name: getPokemonDisplayName(pokemon.form_name, pokemon.species_name),
           img: pokemon.sprite_front_default,
           types: pokemon.types,
           abilities: pokemon.abilities,
           moves: pokemon.moves,
-          generation: pokemon.generation
+          generation: pokemon.generation,
+          legendary: pokemon.legendary || false,
+          paradox: pokemon.paradox || false
         })).sort((a, b) => a.id - b.id);
+        
+        // Build legendary map from the data
+        const legMap = {};
+        data.forEach(pokemon => {
+          legMap[getPokemonDisplayName(pokemon.form_name, pokemon.species_name)] = pokemon.legendary || false;
+        });
+        setLegendaryMap(legMap);
         
         setPokemonList(list);
       })
@@ -2023,17 +2052,26 @@ function App() {
       if (gen > 0 && p.id > genLimits[gen]) return false;
       const name = (p.name || '').toLowerCase();
       if (searchTerm && !name.includes(searchTerm)) return false;
-      if (hideLegendaries && legendaryMap[name]) return false;
+      if (hideLegendaries && p.legendary) return false;
       if (pointsMap && Number(pointsMap[name]) === 0) return false;
       
       // Advanced filters
-      // Type filter - Pokemon must have ALL selected types (AND logic)
+      // Type filter - supports both inclusive (OR) and exclusive (AND) logic
       if (filterTypes.length > 0) {
         if (!p.types || !Array.isArray(p.types)) return false;
-        const hasAllTypes = filterTypes.every(selectedType => 
-          p.types.some(pokemonType => pokemonType === selectedType)
-        );
-        if (!hasAllTypes) return false;
+        if (filterTypesInclusive) {
+          // Inclusive mode: Pokemon must have AT LEAST ONE selected type (OR logic)
+          const hasAnyType = filterTypes.some(selectedType => 
+            p.types.some(pokemonType => pokemonType === selectedType)
+          );
+          if (!hasAnyType) return false;
+        } else {
+          // Exclusive mode: Pokemon must have ALL selected types (AND logic)
+          const hasAllTypes = filterTypes.every(selectedType => 
+            p.types.some(pokemonType => pokemonType === selectedType)
+          );
+          if (!hasAllTypes) return false;
+        }
       }
       
       // Generation filter (from advanced filters, distinct from lobbyGenFilter)
@@ -2207,6 +2245,17 @@ function App() {
     setMoveSuggestions([]);
     setShowMoveSuggestions(false);
   };
+  
+  const confirmDraftSelection = () => {
+    if (pendingDraftSelection) {
+      removePokemon(pendingDraftSelection.id);
+      setPendingDraftSelection(null);
+    }
+  };
+  
+  const cancelDraftSelection = () => {
+    setPendingDraftSelection(null);
+  };
 
   const removePokemon = (id) => {
     // local guard: if in draft view ensure it's user's turn and they have enough points
@@ -2288,7 +2337,7 @@ function App() {
       .then((data) => {
         const list = data.map(pokemon => ({
           id: pokemon.id,
-          name: pokemon.form_name || pokemon.species_name,
+          name: getPokemonDisplayName(pokemon.form_name, pokemon.species_name),
           img: pokemon.sprite_front_default,
           types: pokemon.types,
           moves: pokemon.moves,
@@ -2808,6 +2857,25 @@ function App() {
     });
   };
 
+  // Ban all Paradox Pokémon visible in the current pokemonList (host-only)
+  const banAllParadox = () => {
+    if (!socket || !lobbyCode) return;
+    const paradoxPokemon = pokemonList.filter(p => p.paradox);
+    if (!paradoxPokemon || paradoxPokemon.length === 0) {
+      alert('No Paradox Pokémon found to ban');
+      return;
+    }
+    const pm = {};
+    for (const p of paradoxPokemon) pm[p.name.toLowerCase()] = 0;
+    socket.emit('import_points', { code: lobbyCode, pointsMap: pm }, (resp) => {
+      if (!resp || !resp.ok) {
+        alert(resp && resp.error ? resp.error : 'Failed to ban Paradox Pokémon');
+      } else {
+        setPointsMap(normalizePointsMap(resp.pointsMap || {}));
+      }
+    });
+  };
+
   // Unban all currently banned Pokémon (host-only)
   const unbanAll = () => {
     if (!socket || !lobbyCode) return;
@@ -2957,7 +3025,7 @@ function App() {
         const allowed = pokemonList.filter((p) => {
           if (gen > 0 && p.id > genLimits[gen]) return false;
           const name = p.name.toLowerCase();
-          if (hideLegendaries && legendaryMap[name]) return false;
+          if (hideLegendaries && p.legendary) return false;
           return true;
         });
         const pm = (data.pointsMap && typeof data.pointsMap === 'object') ? normalizePointsMap(data.pointsMap) : {};
@@ -3482,6 +3550,7 @@ function App() {
                         </div>
                         <div className="col-2">
                           <button className="gen-button ml-8 ban-legendaries-button" onClick={() => { if (socket && socket.id === hostId) banAllLegendaries(); }}>Ban Legendaries</button>
+                          <button className="gen-button ml-8 ban-legendaries-button" onClick={() => { if (socket && socket.id === hostId) banAllParadox(); }}>Ban Paradox</button>
                           <button className="gen-button ml-8 unban-all-button" onClick={() => { if (socket && socket.id === hostId) unbanAll(); }}>Unban All</button>
                         </div>
                       </div>
@@ -3618,7 +3687,7 @@ function App() {
                                 const gen = lobbyGenFilter || 0;
                                 if (gen > 0 && p.id > genLimits[gen]) return false;
                                 const name = p.name.toLowerCase();
-                                if (hideLegendaries && legendaryMap[name]) return false;
+                                if (hideLegendaries && p.legendary) return false;
                                 return name.includes(pointsSearchName);
                               }).slice(0, 10).map(p => (
                                 <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
@@ -3741,7 +3810,7 @@ function App() {
                             }).filter(p => {
                               // For the Banned column (val === 0) always show banned entries
                               if (val === 0) return true;
-                              return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !legendaryMap[p.name]);
+                              return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !p.legendary);
                             }).map(p => (
                             <div 
                               key={p.id} 
@@ -4150,7 +4219,22 @@ function App() {
                   <div className="advanced-filters-panel">
                     {/* Type Filter */}
                     <div className="filter-section">
-                      <label className="filter-label">Types:</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <label className="filter-label" style={{ margin: 0 }}>Types:</label>
+                        {filterTypes.length > 1 && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={filterTypesInclusive}
+                              onChange={(e) => setFilterTypesInclusive(e.target.checked)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span title={filterTypesInclusive ? 'Showing Pokémon with ANY selected type' : 'Showing Pokémon with ALL selected types'}>
+                              {filterTypesInclusive ? 'OR' : 'AND'}
+                            </span>
+                          </label>
+                        )}
+                      </div>
                       <div className="type-filters">
                         {['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'].map(type => (
                           <button
@@ -4408,7 +4492,12 @@ function App() {
                       const isDisabled = (view === 'draft' && ((currentTurn && socket && socket.id !== currentTurn) || (socket && socket.id === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10))));
                       const cost = pointsMap && pointsMap[p.name] !== undefined ? Number(pointsMap[p.name]) : 1;
                         return (
-                          <div key={p.id} className={`pokemon-card ${isDisabled ? 'disabled' : ''}`} onClick={() => { console.debug('card click', { id: p.id, isDisabled, socketId: socket && socket.id, currentTurn, view }); if (isDisabled) return; removePokemon(p.id); }}>
+                          <div key={p.id} className={`pokemon-card ${isDisabled ? 'disabled' : ''}`} onClick={() => { 
+                            console.debug('card click', { id: p.id, isDisabled, socketId: socket && socket.id, currentTurn, view }); 
+                            if (isDisabled) return; 
+                            // Show confirmation modal instead of immediately selecting
+                            setPendingDraftSelection({ id: p.id, pokemon: p });
+                          }}>
                             <div className="pokemon-cost-badge">{cost}</div>
                             <img className="pokemon-img" src={p.img} alt={p.name} />
                             <div className="pokemon-name">{p.name}</div>
@@ -4541,6 +4630,33 @@ function App() {
             <div className="modal-buttons">
               <button className="gen-button" onClick={cancelTrade}>Cancel</button>
               <button className="export-button ml-8" onClick={confirmOfferTrade}>Offer Trade</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Draft Selection Confirmation Modal */}
+      {pendingDraftSelection && (
+        <div className="modal-overlay">
+          <div className="trade-modal">
+            <h3>Confirm Selection</h3>
+            <p>Do you want to draft this Pokémon?</p>
+            <div className="trade-pokemon-display" style={{ justifyContent: 'center' }}>
+              <div className="trade-pokemon-side">
+                <div className="trade-pokemon-preview">
+                  <div className="trading-pokemon-card">
+                    <img src={pendingDraftSelection.pokemon.img} alt={pendingDraftSelection.pokemon.name} className="pokemon-img" style={{ width: '120px', height: '120px' }} />
+                    <div className="pokemon-name" style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '10px' }}>{pendingDraftSelection.pokemon.name}</div>
+                    <div className="pokemon-cost-badge" style={{ position: 'relative', margin: '10px auto', fontSize: '16px' }}>
+                      Cost: {pointsMap && pointsMap[pendingDraftSelection.pokemon.name] !== undefined ? Number(pointsMap[pendingDraftSelection.pokemon.name]) : 1} points
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-buttons">
+              <button className="gen-button" onClick={cancelDraftSelection}>Cancel</button>
+              <button className="export-button ml-8" onClick={confirmDraftSelection}>Confirm Draft</button>
             </div>
           </div>
         </div>

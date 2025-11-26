@@ -100,7 +100,9 @@
     "abilities": [
       "overgrow",
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 2,
@@ -200,7 +202,9 @@
     "abilities": [
       "overgrow",
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 3,
@@ -313,7 +317,9 @@
     "abilities": [
       "overgrow",
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 4,
@@ -434,7 +440,9 @@
     "abilities": [
       "blaze",
       "solar-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 5,
@@ -553,7 +561,9 @@
     "abilities": [
       "blaze",
       "solar-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 6,
@@ -701,7 +711,9 @@
     "abilities": [
       "blaze",
       "solar-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 7,
@@ -823,7 +835,9 @@
     "abilities": [
       "torrent",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 8,
@@ -940,7 +954,9 @@
     "abilities": [
       "torrent",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 9,
@@ -1076,7 +1092,9 @@
     "abilities": [
       "torrent",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10,
@@ -1097,7 +1115,9 @@
     "abilities": [
       "shield-dust",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 11,
@@ -1117,7 +1137,9 @@
     "generation": 1,
     "abilities": [
       "shed-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 12,
@@ -1220,7 +1242,9 @@
     "abilities": [
       "compound-eyes",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 13,
@@ -1241,7 +1265,9 @@
     "abilities": [
       "shield-dust",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 14,
@@ -1262,7 +1288,9 @@
     "generation": 1,
     "abilities": [
       "shed-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 15,
@@ -1361,7 +1389,9 @@
     "abilities": [
       "swarm",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 16,
@@ -1443,7 +1473,9 @@
       "keen-eye",
       "tangled-feet",
       "big-pecks"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 17,
@@ -1521,7 +1553,9 @@
       "keen-eye",
       "tangled-feet",
       "big-pecks"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 18,
@@ -1602,7 +1636,9 @@
       "keen-eye",
       "tangled-feet",
       "big-pecks"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 19,
@@ -1701,7 +1737,9 @@
       "run-away",
       "guts",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 20,
@@ -1802,7 +1840,9 @@
       "run-away",
       "guts",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 21,
@@ -1888,7 +1928,9 @@
     "abilities": [
       "keen-eye",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 22,
@@ -1974,7 +2016,9 @@
     "abilities": [
       "keen-eye",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 23,
@@ -2086,7 +2130,9 @@
       "intimidate",
       "shed-skin",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 24,
@@ -2204,7 +2250,9 @@
       "intimidate",
       "shed-skin",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 26,
@@ -2329,7 +2377,9 @@
     "abilities": [
       "static",
       "lightning-rod"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 27,
@@ -2444,7 +2494,9 @@
     "abilities": [
       "sand-veil",
       "sand-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 28,
@@ -2563,7 +2615,9 @@
     "abilities": [
       "sand-veil",
       "sand-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 29,
@@ -2658,7 +2712,9 @@
       "poison-point",
       "rivalry",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 30,
@@ -2752,7 +2808,9 @@
       "poison-point",
       "rivalry",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 31,
@@ -2903,7 +2961,9 @@
       "poison-point",
       "rivalry",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 32,
@@ -3000,7 +3060,9 @@
       "poison-point",
       "rivalry",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 33,
@@ -3093,7 +3155,9 @@
       "poison-point",
       "rivalry",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 34,
@@ -3245,7 +3309,9 @@
       "poison-point",
       "rivalry",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 35,
@@ -3423,7 +3489,9 @@
       "cute-charm",
       "magic-guard",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 36,
@@ -3603,7 +3671,9 @@
       "cute-charm",
       "magic-guard",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 37,
@@ -3707,7 +3777,9 @@
     "abilities": [
       "flash-fire",
       "drought"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 38,
@@ -3821,7 +3893,9 @@
     "abilities": [
       "flash-fire",
       "drought"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 39,
@@ -3987,7 +4061,9 @@
       "cute-charm",
       "competitive",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 40,
@@ -4158,7 +4234,9 @@
       "cute-charm",
       "competitive",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 41,
@@ -4258,7 +4336,9 @@
     "abilities": [
       "inner-focus",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 42,
@@ -4359,7 +4439,9 @@
     "abilities": [
       "inner-focus",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 43,
@@ -4450,7 +4532,9 @@
     "abilities": [
       "chlorophyll",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 44,
@@ -4545,7 +4629,9 @@
     "abilities": [
       "chlorophyll",
       "stench"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 45,
@@ -4648,7 +4734,9 @@
     "abilities": [
       "chlorophyll",
       "effect-spore"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 46,
@@ -4752,7 +4840,9 @@
       "effect-spore",
       "dry-skin",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 47,
@@ -4850,7 +4940,9 @@
       "effect-spore",
       "dry-skin",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 48,
@@ -4942,7 +5034,9 @@
       "compound-eyes",
       "tinted-lens",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 49,
@@ -5052,7 +5146,9 @@
       "shield-dust",
       "tinted-lens",
       "wonder-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 50,
@@ -5151,7 +5247,9 @@
       "sand-veil",
       "arena-trap",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 51,
@@ -5251,7 +5349,9 @@
       "sand-veil",
       "arena-trap",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 52,
@@ -5377,7 +5477,9 @@
       "pickup",
       "technician",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 53,
@@ -5504,7 +5606,9 @@
       "limber",
       "technician",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 54,
@@ -5641,7 +5745,9 @@
       "damp",
       "cloud-nine",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 55,
@@ -5781,7 +5887,9 @@
       "damp",
       "cloud-nine",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 56,
@@ -5916,7 +6024,9 @@
       "vital-spirit",
       "anger-point",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 57,
@@ -6048,7 +6158,9 @@
       "vital-spirit",
       "anger-point",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 58,
@@ -6146,7 +6258,9 @@
       "intimidate",
       "flash-fire",
       "justified"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 59,
@@ -6253,7 +6367,9 @@
       "intimidate",
       "flash-fire",
       "justified"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 60,
@@ -6347,7 +6463,9 @@
       "water-absorb",
       "damp",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 61,
@@ -6455,7 +6573,9 @@
       "water-absorb",
       "damp",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 62,
@@ -6589,7 +6709,9 @@
       "water-absorb",
       "damp",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 63,
@@ -6702,7 +6824,9 @@
       "synchronize",
       "inner-focus",
       "magic-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 64,
@@ -6822,7 +6946,9 @@
       "synchronize",
       "inner-focus",
       "magic-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 65,
@@ -6950,7 +7076,9 @@
       "synchronize",
       "inner-focus",
       "magic-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 66,
@@ -7066,7 +7194,9 @@
       "guts",
       "no-guard",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 67,
@@ -7177,7 +7307,9 @@
       "guts",
       "no-guard",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 68,
@@ -7299,7 +7431,9 @@
       "guts",
       "no-guard",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 69,
@@ -7396,7 +7530,9 @@
     "abilities": [
       "chlorophyll",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 70,
@@ -7495,7 +7631,9 @@
     "abilities": [
       "chlorophyll",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 71,
@@ -7601,7 +7739,9 @@
     "abilities": [
       "chlorophyll",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 72,
@@ -7711,7 +7851,9 @@
       "clear-body",
       "liquid-ooze",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 73,
@@ -7829,7 +7971,9 @@
       "clear-body",
       "liquid-ooze",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 74,
@@ -7933,7 +8077,9 @@
       "rock-head",
       "sturdy",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 75,
@@ -8041,7 +8187,9 @@
       "rock-head",
       "sturdy",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 76,
@@ -8155,7 +8303,9 @@
       "rock-head",
       "sturdy",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 77,
@@ -8240,7 +8390,9 @@
       "run-away",
       "flash-fire",
       "flame-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 78,
@@ -8335,7 +8487,9 @@
       "run-away",
       "flash-fire",
       "flame-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 79,
@@ -8467,7 +8621,9 @@
       "oblivious",
       "own-tempo",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 80,
@@ -8620,7 +8776,9 @@
       "oblivious",
       "own-tempo",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 81,
@@ -8712,7 +8870,9 @@
       "magnet-pull",
       "sturdy",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 82,
@@ -8807,7 +8967,9 @@
       "magnet-pull",
       "sturdy",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 83,
@@ -8920,7 +9082,9 @@
       "keen-eye",
       "inner-focus",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 84,
@@ -9016,7 +9180,9 @@
       "run-away",
       "early-bird",
       "tangled-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 85,
@@ -9120,7 +9286,9 @@
       "run-away",
       "early-bird",
       "tangled-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 86,
@@ -9224,7 +9392,9 @@
       "thick-fat",
       "hydration",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 87,
@@ -9335,7 +9505,9 @@
       "thick-fat",
       "hydration",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 88,
@@ -9446,7 +9618,9 @@
       "stench",
       "sticky-hold",
       "poison-touch"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 89,
@@ -9566,7 +9740,9 @@
       "stench",
       "sticky-hold",
       "poison-touch"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 90,
@@ -9658,7 +9834,9 @@
       "shell-armor",
       "skill-link",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 91,
@@ -9764,7 +9942,9 @@
       "shell-armor",
       "skill-link",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 92,
@@ -9876,7 +10056,9 @@
     "generation": 1,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 93,
@@ -9991,7 +10173,9 @@
     "generation": 1,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 94,
@@ -10131,7 +10315,9 @@
     "generation": 1,
     "abilities": [
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 95,
@@ -10238,7 +10424,9 @@
       "rock-head",
       "sturdy",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 96,
@@ -10370,7 +10558,9 @@
       "insomnia",
       "forewarn",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 97,
@@ -10505,7 +10695,9 @@
       "insomnia",
       "forewarn",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 98,
@@ -10604,7 +10796,9 @@
       "hyper-cutter",
       "shell-armor",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 99,
@@ -10706,7 +10900,9 @@
       "hyper-cutter",
       "shell-armor",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 100,
@@ -10790,7 +10986,9 @@
       "soundproof",
       "static",
       "aftermath"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 101,
@@ -10880,7 +11078,9 @@
       "soundproof",
       "static",
       "aftermath"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 102,
@@ -10985,7 +11185,9 @@
     "abilities": [
       "chlorophyll",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 103,
@@ -11101,7 +11303,9 @@
     "abilities": [
       "chlorophyll",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 104,
@@ -11214,7 +11418,9 @@
       "rock-head",
       "lightning-rod",
       "battle-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 105,
@@ -11329,7 +11535,9 @@
       "rock-head",
       "lightning-rod",
       "battle-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 106,
@@ -11449,7 +11657,9 @@
       "limber",
       "reckless",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 107,
@@ -11568,7 +11778,9 @@
       "keen-eye",
       "iron-fist",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 108,
@@ -11702,7 +11914,9 @@
       "own-tempo",
       "oblivious",
       "cloud-nine"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 109,
@@ -11798,7 +12012,9 @@
       "levitate",
       "neutralizing-gas",
       "stench"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 110,
@@ -11893,7 +12109,9 @@
       "levitate",
       "neutralizing-gas",
       "stench"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 111,
@@ -12019,7 +12237,9 @@
       "lightning-rod",
       "rock-head",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 112,
@@ -12174,7 +12394,9 @@
       "lightning-rod",
       "rock-head",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 113,
@@ -12335,7 +12557,9 @@
       "natural-cure",
       "serene-grace",
       "healer"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 114,
@@ -12433,7 +12657,9 @@
       "chlorophyll",
       "leaf-guard",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 115,
@@ -12571,7 +12797,9 @@
       "early-bird",
       "scrappy",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 116,
@@ -12660,7 +12888,9 @@
       "swift-swim",
       "sniper",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 117,
@@ -12750,7 +12980,9 @@
       "poison-point",
       "sniper",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 118,
@@ -12842,7 +13074,9 @@
       "swift-swim",
       "water-veil",
       "lightning-rod"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 119,
@@ -12933,7 +13167,9 @@
       "swift-swim",
       "water-veil",
       "lightning-rod"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 120,
@@ -13029,7 +13265,9 @@
       "illuminate",
       "natural-cure",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 121,
@@ -13139,7 +13377,9 @@
       "illuminate",
       "natural-cure",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 122,
@@ -13284,7 +13524,9 @@
       "soundproof",
       "filter",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 123,
@@ -13390,7 +13632,9 @@
       "swarm",
       "technician",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 124,
@@ -13529,7 +13773,9 @@
       "oblivious",
       "forewarn",
       "dry-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 125,
@@ -13644,7 +13890,9 @@
     "abilities": [
       "static",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 126,
@@ -13761,7 +14009,9 @@
     "abilities": [
       "flame-body",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 127,
@@ -13863,7 +14113,9 @@
       "hyper-cutter",
       "mold-breaker",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 128,
@@ -13975,7 +14227,9 @@
       "intimidate",
       "anger-point",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 129,
@@ -13996,7 +14250,9 @@
     "abilities": [
       "swift-swim",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 130,
@@ -14115,7 +14371,9 @@
     "abilities": [
       "intimidate",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 131,
@@ -14245,7 +14503,9 @@
       "water-absorb",
       "shell-armor",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 132,
@@ -14262,7 +14522,9 @@
     "abilities": [
       "limber",
       "imposter"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 133,
@@ -14353,7 +14615,9 @@
       "run-away",
       "adaptability",
       "anticipation"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 134,
@@ -14467,7 +14731,9 @@
     "abilities": [
       "water-absorb",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 135,
@@ -14580,7 +14846,9 @@
     "abilities": [
       "volt-absorb",
       "quick-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 136,
@@ -14690,7 +14958,9 @@
     "abilities": [
       "flash-fire",
       "guts"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 137,
@@ -14794,7 +15064,9 @@
       "trace",
       "download",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 138,
@@ -14892,7 +15164,9 @@
       "swift-swim",
       "shell-armor",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 139,
@@ -14996,7 +15270,9 @@
       "swift-swim",
       "shell-armor",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 140,
@@ -15097,7 +15373,9 @@
       "swift-swim",
       "battle-armor",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 141,
@@ -15218,7 +15496,9 @@
       "swift-swim",
       "battle-armor",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 142,
@@ -15334,7 +15614,9 @@
       "rock-head",
       "pressure",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 143,
@@ -15487,7 +15769,9 @@
       "immunity",
       "thick-fat",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 144,
@@ -15592,7 +15876,9 @@
     "abilities": [
       "pressure",
       "snow-cloak"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 145,
@@ -15696,7 +15982,9 @@
     "abilities": [
       "pressure",
       "static"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 146,
@@ -15795,7 +16083,9 @@
     "abilities": [
       "pressure",
       "flame-body"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 147,
@@ -15897,7 +16187,9 @@
     "abilities": [
       "shed-skin",
       "marvel-scale"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 148,
@@ -15997,7 +16289,9 @@
     "abilities": [
       "shed-skin",
       "marvel-scale"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 149,
@@ -16151,7 +16445,9 @@
     "abilities": [
       "inner-focus",
       "multiscale"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 150,
@@ -16334,7 +16630,9 @@
     "abilities": [
       "pressure",
       "unnerve"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 151,
@@ -16724,7 +17022,9 @@
     "generation": 1,
     "abilities": [
       "synchronize"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 152,
@@ -16816,7 +17116,9 @@
     "abilities": [
       "overgrow",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 153,
@@ -16910,7 +17212,9 @@
     "abilities": [
       "overgrow",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 154,
@@ -17018,7 +17322,9 @@
     "abilities": [
       "overgrow",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 155,
@@ -17111,7 +17417,9 @@
     "abilities": [
       "blaze",
       "flash-fire"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 156,
@@ -17204,7 +17512,9 @@
     "abilities": [
       "blaze",
       "flash-fire"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 157,
@@ -17331,7 +17641,9 @@
     "abilities": [
       "blaze",
       "flash-fire"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 158,
@@ -17445,7 +17757,9 @@
     "abilities": [
       "torrent",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 159,
@@ -17561,7 +17875,9 @@
     "abilities": [
       "torrent",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 160,
@@ -17694,7 +18010,9 @@
     "abilities": [
       "torrent",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 161,
@@ -17811,7 +18129,9 @@
       "run-away",
       "keen-eye",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 162,
@@ -17933,7 +18253,9 @@
       "run-away",
       "keen-eye",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 163,
@@ -18043,7 +18365,9 @@
       "insomnia",
       "keen-eye",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 164,
@@ -18157,7 +18481,9 @@
       "insomnia",
       "keen-eye",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 165,
@@ -18248,7 +18574,9 @@
       "swarm",
       "early-bird",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 166,
@@ -18339,7 +18667,9 @@
       "swarm",
       "early-bird",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 167,
@@ -18437,7 +18767,9 @@
       "swarm",
       "insomnia",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 168,
@@ -18540,7 +18872,9 @@
       "swarm",
       "insomnia",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 169,
@@ -18638,7 +18972,9 @@
     "abilities": [
       "inner-focus",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 170,
@@ -18733,7 +19069,9 @@
       "volt-absorb",
       "illuminate",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 171,
@@ -18835,7 +19173,9 @@
       "volt-absorb",
       "illuminate",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 172,
@@ -18938,7 +19278,9 @@
     "abilities": [
       "static",
       "lightning-rod"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 173,
@@ -19064,7 +19406,9 @@
       "cute-charm",
       "magic-guard",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 174,
@@ -19178,7 +19522,9 @@
       "cute-charm",
       "competitive",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 175,
@@ -19301,7 +19647,9 @@
       "hustle",
       "serene-grace",
       "super-luck"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 176,
@@ -19440,7 +19788,9 @@
       "hustle",
       "serene-grace",
       "super-luck"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 177,
@@ -19551,7 +19901,9 @@
       "synchronize",
       "early-bird",
       "magic-bounce"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 178,
@@ -19660,7 +20012,9 @@
       "synchronize",
       "early-bird",
       "magic-bounce"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 179,
@@ -19747,7 +20101,9 @@
     "abilities": [
       "static",
       "plus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 180,
@@ -19846,7 +20202,9 @@
     "abilities": [
       "static",
       "plus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 181,
@@ -19962,7 +20320,9 @@
     "abilities": [
       "static",
       "plus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 182,
@@ -20064,7 +20424,9 @@
     "abilities": [
       "chlorophyll",
       "healer"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 183,
@@ -20191,7 +20553,9 @@
       "thick-fat",
       "huge-power",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 184,
@@ -20309,7 +20673,9 @@
       "thick-fat",
       "huge-power",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 185,
@@ -20427,7 +20793,9 @@
       "sturdy",
       "rock-head",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 186,
@@ -20536,7 +20904,9 @@
       "water-absorb",
       "damp",
       "drizzle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 187,
@@ -20637,7 +21007,9 @@
       "chlorophyll",
       "leaf-guard",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 188,
@@ -20730,7 +21102,9 @@
       "chlorophyll",
       "leaf-guard",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 189,
@@ -20826,7 +21200,9 @@
       "chlorophyll",
       "leaf-guard",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 190,
@@ -20958,7 +21334,9 @@
       "run-away",
       "pickup",
       "skill-link"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 191,
@@ -21038,7 +21416,9 @@
       "chlorophyll",
       "solar-power",
       "early-bird"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 192,
@@ -21124,7 +21504,9 @@
       "chlorophyll",
       "solar-power",
       "early-bird"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 193,
@@ -21215,7 +21597,9 @@
       "speed-boost",
       "compound-eyes",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 194,
@@ -21325,7 +21709,9 @@
       "damp",
       "water-absorb",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 195,
@@ -21445,7 +21831,9 @@
       "damp",
       "water-absorb",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 196,
@@ -21562,7 +21950,9 @@
     "abilities": [
       "synchronize",
       "magic-bounce"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 197,
@@ -21676,7 +22066,9 @@
     "abilities": [
       "synchronize",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 198,
@@ -21792,7 +22184,9 @@
       "insomnia",
       "super-luck",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 199,
@@ -21944,7 +22338,9 @@
       "oblivious",
       "own-tempo",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 200,
@@ -22067,7 +22463,9 @@
     "generation": 2,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 201,
@@ -22083,7 +22481,9 @@
     "generation": 2,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 202,
@@ -22107,7 +22507,9 @@
     "abilities": [
       "shadow-tag",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 203,
@@ -22237,7 +22639,9 @@
       "inner-focus",
       "early-bird",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 204,
@@ -22331,7 +22735,9 @@
     "abilities": [
       "sturdy",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 205,
@@ -22445,7 +22851,9 @@
     "abilities": [
       "sturdy",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 206,
@@ -22578,7 +22986,9 @@
       "serene-grace",
       "run-away",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 207,
@@ -22708,7 +23118,9 @@
       "hyper-cutter",
       "sand-veil",
       "immunity"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 208,
@@ -22822,7 +23234,9 @@
       "rock-head",
       "sturdy",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 209,
@@ -22950,7 +23364,9 @@
       "intimidate",
       "run-away",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 210,
@@ -23085,7 +23501,9 @@
       "intimidate",
       "quick-feet",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 211,
@@ -23202,7 +23620,9 @@
       "poison-point",
       "swift-swim",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 212,
@@ -23317,7 +23737,9 @@
       "swarm",
       "technician",
       "light-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 213,
@@ -23416,7 +23838,9 @@
       "sturdy",
       "gluttony",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 214,
@@ -23533,7 +23957,9 @@
       "swarm",
       "guts",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 215,
@@ -23668,7 +24094,9 @@
       "inner-focus",
       "keen-eye",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 216,
@@ -23788,7 +24216,9 @@
       "pickup",
       "quick-feet",
       "honey-gather"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 217,
@@ -23912,7 +24342,9 @@
       "guts",
       "quick-feet",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 218,
@@ -24009,7 +24441,9 @@
       "magma-armor",
       "flame-body",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 219,
@@ -24117,7 +24551,9 @@
       "magma-armor",
       "flame-body",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 220,
@@ -24213,7 +24649,9 @@
       "oblivious",
       "snow-cloak",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 221,
@@ -24316,7 +24754,9 @@
       "oblivious",
       "snow-cloak",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 222,
@@ -24428,7 +24868,9 @@
       "hustle",
       "natural-cure",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 223,
@@ -24518,7 +24960,9 @@
       "hustle",
       "sniper",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 224,
@@ -24616,7 +25060,9 @@
       "suction-cups",
       "sniper",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 225,
@@ -24735,7 +25181,9 @@
       "vital-spirit",
       "hustle",
       "insomnia"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 226,
@@ -24840,7 +25288,9 @@
       "swift-swim",
       "water-absorb",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 227,
@@ -24948,7 +25398,9 @@
       "keen-eye",
       "sturdy",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 228,
@@ -25060,7 +25512,9 @@
       "early-bird",
       "flash-fire",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 229,
@@ -25173,7 +25627,9 @@
       "early-bird",
       "flash-fire",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 230,
@@ -25269,7 +25725,9 @@
       "swift-swim",
       "sniper",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 231,
@@ -25362,7 +25820,9 @@
     "abilities": [
       "pickup",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 232,
@@ -25472,7 +25932,9 @@
     "abilities": [
       "sturdy",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 233,
@@ -25567,7 +26029,9 @@
       "trace",
       "download",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 234,
@@ -25687,7 +26151,9 @@
       "intimidate",
       "frisk",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 235,
@@ -25705,7 +26171,9 @@
       "own-tempo",
       "technician",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 236,
@@ -25788,7 +26256,9 @@
       "guts",
       "steadfast",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 237,
@@ -25894,7 +26364,9 @@
       "intimidate",
       "technician",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 238,
@@ -26005,7 +26477,9 @@
       "oblivious",
       "forewarn",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 239,
@@ -26108,7 +26582,9 @@
     "abilities": [
       "static",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 240,
@@ -26209,7 +26685,9 @@
     "abilities": [
       "flame-body",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 241,
@@ -26325,7 +26803,9 @@
       "thick-fat",
       "scrappy",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 242,
@@ -26479,7 +26959,9 @@
       "natural-cure",
       "serene-grace",
       "healer"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 243,
@@ -26581,7 +27063,9 @@
     "abilities": [
       "pressure",
       "inner-focus"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 244,
@@ -26678,7 +27162,9 @@
     "abilities": [
       "pressure",
       "inner-focus"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 245,
@@ -26778,7 +27264,9 @@
     "abilities": [
       "pressure",
       "inner-focus"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 246,
@@ -26875,7 +27363,9 @@
     "abilities": [
       "guts",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 247,
@@ -26972,7 +27462,9 @@
     "generation": 2,
     "abilities": [
       "shed-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 248,
@@ -27123,7 +27615,9 @@
     "abilities": [
       "sand-stream",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 249,
@@ -27257,7 +27751,9 @@
     "abilities": [
       "pressure",
       "multiscale"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 250,
@@ -27376,7 +27872,9 @@
     "abilities": [
       "pressure",
       "regenerator"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 251,
@@ -27496,7 +27994,9 @@
     "generation": 2,
     "abilities": [
       "natural-cure"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 252,
@@ -27610,7 +28110,9 @@
     "abilities": [
       "overgrow",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 253,
@@ -27726,7 +28228,9 @@
     "abilities": [
       "overgrow",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 254,
@@ -27863,7 +28367,9 @@
     "abilities": [
       "overgrow",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 255,
@@ -27961,7 +28467,9 @@
     "abilities": [
       "blaze",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 256,
@@ -28079,7 +28587,9 @@
     "abilities": [
       "blaze",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 257,
@@ -28218,7 +28728,9 @@
     "abilities": [
       "blaze",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 258,
@@ -28319,7 +28831,9 @@
     "abilities": [
       "torrent",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 259,
@@ -28432,7 +28946,9 @@
     "abilities": [
       "torrent",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 260,
@@ -28565,7 +29081,9 @@
     "abilities": [
       "torrent",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 261,
@@ -28658,7 +29176,9 @@
       "run-away",
       "quick-feet",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 262,
@@ -28755,7 +29275,9 @@
       "intimidate",
       "quick-feet",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 263,
@@ -28853,7 +29375,9 @@
       "pickup",
       "gluttony",
       "quick-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 264,
@@ -28958,7 +29482,9 @@
       "pickup",
       "gluttony",
       "quick-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 265,
@@ -28980,7 +29506,9 @@
     "abilities": [
       "shield-dust",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 266,
@@ -29002,7 +29530,9 @@
     "generation": 3,
     "abilities": [
       "shed-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 267,
@@ -29085,7 +29615,9 @@
     "abilities": [
       "swarm",
       "rivalry"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 268,
@@ -29107,7 +29639,9 @@
     "generation": 3,
     "abilities": [
       "shed-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 269,
@@ -29190,7 +29724,9 @@
     "abilities": [
       "shield-dust",
       "compound-eyes"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 270,
@@ -29280,7 +29816,9 @@
       "swift-swim",
       "rain-dish",
       "own-tempo"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 271,
@@ -29395,7 +29933,9 @@
       "swift-swim",
       "rain-dish",
       "own-tempo"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 272,
@@ -29517,7 +30057,9 @@
       "swift-swim",
       "rain-dish",
       "own-tempo"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 273,
@@ -29608,7 +30150,9 @@
       "chlorophyll",
       "early-bird",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 274,
@@ -29734,7 +30278,9 @@
       "chlorophyll",
       "early-bird",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 275,
@@ -29888,7 +30434,9 @@
       "chlorophyll",
       "wind-rider",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 276,
@@ -29966,7 +30514,9 @@
     "abilities": [
       "guts",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 277,
@@ -30039,7 +30589,9 @@
     "abilities": [
       "guts",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 278,
@@ -30135,7 +30687,9 @@
       "keen-eye",
       "hydration",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 279,
@@ -30240,7 +30794,9 @@
       "keen-eye",
       "drizzle",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 280,
@@ -30362,7 +30918,9 @@
       "synchronize",
       "trace",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 281,
@@ -30478,7 +31036,9 @@
       "synchronize",
       "trace",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 282,
@@ -30611,7 +31171,9 @@
       "synchronize",
       "trace",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 283,
@@ -30702,7 +31264,9 @@
     "abilities": [
       "swift-swim",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 284,
@@ -30813,7 +31377,9 @@
     "abilities": [
       "intimidate",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 285,
@@ -30892,7 +31458,9 @@
       "effect-spore",
       "poison-heal",
       "quick-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 286,
@@ -31013,7 +31581,9 @@
       "effect-spore",
       "poison-heal",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 287,
@@ -31124,7 +31694,9 @@
     "generation": 3,
     "abilities": [
       "truant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 288,
@@ -31252,7 +31824,9 @@
     "generation": 3,
     "abilities": [
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 289,
@@ -31394,7 +31968,9 @@
     "generation": 3,
     "abilities": [
       "truant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 290,
@@ -31465,7 +32041,9 @@
     "abilities": [
       "compound-eyes",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 291,
@@ -31551,7 +32129,9 @@
     "abilities": [
       "speed-boost",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 292,
@@ -31633,7 +32213,9 @@
     "generation": 3,
     "abilities": [
       "wonder-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 293,
@@ -31721,7 +32303,9 @@
     "abilities": [
       "soundproof",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 294,
@@ -31816,7 +32400,9 @@
     "abilities": [
       "soundproof",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 295,
@@ -31926,7 +32512,9 @@
     "abilities": [
       "soundproof",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 296,
@@ -32042,7 +32630,9 @@
       "thick-fat",
       "guts",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 297,
@@ -32160,7 +32750,9 @@
       "thick-fat",
       "guts",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 298,
@@ -32252,7 +32844,9 @@
       "thick-fat",
       "huge-power",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 299,
@@ -32353,7 +32947,9 @@
       "sturdy",
       "magnet-pull",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 300,
@@ -32455,7 +33051,9 @@
       "cute-charm",
       "normalize",
       "wonder-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 301,
@@ -32552,7 +33150,9 @@
       "cute-charm",
       "normalize",
       "wonder-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 302,
@@ -32705,7 +33305,9 @@
       "keen-eye",
       "stall",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 303,
@@ -32831,7 +33433,9 @@
       "hyper-cutter",
       "intimidate",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 304,
@@ -32923,7 +33527,9 @@
       "sturdy",
       "rock-head",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 305,
@@ -33014,7 +33620,9 @@
       "sturdy",
       "rock-head",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 306,
@@ -33153,7 +33761,9 @@
       "sturdy",
       "rock-head",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 307,
@@ -33280,7 +33890,9 @@
     "abilities": [
       "pure-power",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 308,
@@ -33406,7 +34018,9 @@
     "abilities": [
       "pure-power",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 309,
@@ -33488,7 +34102,9 @@
       "static",
       "lightning-rod",
       "minus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 310,
@@ -33574,7 +34190,9 @@
       "static",
       "lightning-rod",
       "minus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 311,
@@ -33677,7 +34295,9 @@
     "abilities": [
       "plus",
       "lightning-rod"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 312,
@@ -33778,7 +34398,9 @@
     "abilities": [
       "minus",
       "volt-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 313,
@@ -33885,7 +34507,9 @@
       "illuminate",
       "swarm",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 314,
@@ -33996,7 +34620,9 @@
       "oblivious",
       "tinted-lens",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 315,
@@ -34089,7 +34715,9 @@
       "natural-cure",
       "poison-point",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 316,
@@ -34191,7 +34819,9 @@
       "liquid-ooze",
       "sticky-hold",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 317,
@@ -34298,7 +34928,9 @@
       "liquid-ooze",
       "sticky-hold",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 318,
@@ -34384,7 +35016,9 @@
     "abilities": [
       "rough-skin",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 319,
@@ -34483,7 +35117,9 @@
     "abilities": [
       "rough-skin",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 320,
@@ -34568,7 +35204,9 @@
       "water-veil",
       "oblivious",
       "pressure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 321,
@@ -34653,7 +35291,9 @@
       "water-veil",
       "oblivious",
       "pressure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 322,
@@ -34761,7 +35401,9 @@
       "oblivious",
       "simple",
       "own-tempo"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 323,
@@ -34870,7 +35512,9 @@
       "magma-armor",
       "solid-rock",
       "anger-point"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 324,
@@ -34975,7 +35619,9 @@
       "white-smoke",
       "drought",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 325,
@@ -35084,7 +35730,9 @@
       "thick-fat",
       "own-tempo",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 326,
@@ -35222,7 +35870,9 @@
       "thick-fat",
       "own-tempo",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 327,
@@ -35339,7 +35989,9 @@
       "own-tempo",
       "tangled-feet",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 328,
@@ -35419,7 +36071,9 @@
       "hyper-cutter",
       "arena-trap",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 329,
@@ -35528,7 +36182,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 330,
@@ -35658,7 +36314,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 331,
@@ -35778,7 +36436,9 @@
     "abilities": [
       "sand-veil",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 332,
@@ -35907,7 +36567,9 @@
     "abilities": [
       "sand-veil",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 333,
@@ -36007,7 +36669,9 @@
     "abilities": [
       "natural-cure",
       "cloud-nine"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 334,
@@ -36124,7 +36788,9 @@
     "abilities": [
       "natural-cure",
       "cloud-nine"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 335,
@@ -36263,7 +36929,9 @@
     "abilities": [
       "immunity",
       "toxic-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 336,
@@ -36383,7 +37051,9 @@
     "abilities": [
       "shed-skin",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 337,
@@ -36493,7 +37163,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 338,
@@ -36607,7 +37279,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 339,
@@ -36695,7 +37369,9 @@
       "oblivious",
       "anticipation",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 340,
@@ -36794,7 +37470,9 @@
       "oblivious",
       "anticipation",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 341,
@@ -36896,7 +37574,9 @@
       "hyper-cutter",
       "shell-armor",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 342,
@@ -37012,7 +37692,9 @@
       "hyper-cutter",
       "shell-armor",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 343,
@@ -37111,7 +37793,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 344,
@@ -37221,7 +37905,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 345,
@@ -37308,7 +37994,9 @@
     "abilities": [
       "suction-cups",
       "storm-drain"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 346,
@@ -37404,7 +38092,9 @@
     "abilities": [
       "suction-cups",
       "storm-drain"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 347,
@@ -37487,7 +38177,9 @@
     "abilities": [
       "battle-armor",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 348,
@@ -37583,7 +38275,9 @@
     "abilities": [
       "battle-armor",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 349,
@@ -37653,7 +38347,9 @@
       "swift-swim",
       "oblivious",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 350,
@@ -37760,7 +38456,9 @@
       "marvel-scale",
       "competitive",
       "cute-charm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 351,
@@ -37845,7 +38543,9 @@
     "generation": 3,
     "abilities": [
       "forecast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 352,
@@ -37972,7 +38672,9 @@
     "abilities": [
       "color-change",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 353,
@@ -38077,7 +38779,9 @@
       "insomnia",
       "frisk",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 354,
@@ -38187,7 +38891,9 @@
       "insomnia",
       "frisk",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 355,
@@ -38286,7 +38992,9 @@
     "abilities": [
       "levitate",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 356,
@@ -38405,7 +39113,9 @@
     "abilities": [
       "pressure",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 357,
@@ -38518,7 +39228,9 @@
       "chlorophyll",
       "solar-power",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 358,
@@ -38636,7 +39348,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 359,
@@ -38765,7 +39479,9 @@
       "pressure",
       "super-luck",
       "justified"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 360,
@@ -38789,7 +39505,9 @@
     "abilities": [
       "shadow-tag",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 361,
@@ -38867,7 +39585,9 @@
       "inner-focus",
       "ice-body",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 362,
@@ -38964,7 +39684,9 @@
       "inner-focus",
       "ice-body",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 363,
@@ -39049,7 +39771,9 @@
       "thick-fat",
       "ice-body",
       "oblivious"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 364,
@@ -39127,7 +39851,9 @@
       "thick-fat",
       "ice-body",
       "oblivious"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 365,
@@ -39218,7 +39944,9 @@
       "thick-fat",
       "ice-body",
       "oblivious"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 366,
@@ -39279,7 +40007,9 @@
     "abilities": [
       "shell-armor",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 367,
@@ -39353,7 +40083,9 @@
     "abilities": [
       "swift-swim",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 368,
@@ -39428,7 +40160,9 @@
     "abilities": [
       "swift-swim",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 369,
@@ -39524,7 +40258,9 @@
       "swift-swim",
       "rock-head",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 370,
@@ -39606,7 +40342,9 @@
     "abilities": [
       "swift-swim",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 371,
@@ -39693,7 +40431,9 @@
     "abilities": [
       "rock-head",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 372,
@@ -39779,7 +40519,9 @@
     "abilities": [
       "rock-head",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 373,
@@ -39889,7 +40631,9 @@
     "abilities": [
       "intimidate",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 374,
@@ -39914,7 +40658,9 @@
     "abilities": [
       "clear-body",
       "light-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 375,
@@ -40024,7 +40770,9 @@
     "abilities": [
       "clear-body",
       "light-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 376,
@@ -40144,7 +40892,9 @@
     "abilities": [
       "clear-body",
       "light-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 377,
@@ -40247,7 +40997,9 @@
     "abilities": [
       "clear-body",
       "sturdy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 378,
@@ -40346,7 +41098,9 @@
     "abilities": [
       "clear-body",
       "ice-body"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 379,
@@ -40451,7 +41205,9 @@
     "abilities": [
       "clear-body",
       "light-metal"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 380,
@@ -40589,7 +41345,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 381,
@@ -40721,7 +41479,9 @@
     "generation": 3,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 382,
@@ -40809,7 +41569,9 @@
     "generation": 3,
     "abilities": [
       "drizzle"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 383,
@@ -40932,7 +41694,9 @@
     "generation": 3,
     "abilities": [
       "drought"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 384,
@@ -41053,7 +41817,9 @@
     "generation": 3,
     "abilities": [
       "air-lock"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 385,
@@ -41177,7 +41943,9 @@
     "generation": 3,
     "abilities": [
       "serene-grace"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 386,
@@ -41308,7 +42076,9 @@
     "generation": 3,
     "abilities": [
       "pressure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 387,
@@ -41408,7 +42178,9 @@
     "abilities": [
       "overgrow",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 388,
@@ -41508,7 +42280,9 @@
     "abilities": [
       "overgrow",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 389,
@@ -41631,7 +42405,9 @@
     "abilities": [
       "overgrow",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 390,
@@ -41747,7 +42523,9 @@
     "abilities": [
       "blaze",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 391,
@@ -41871,7 +42649,9 @@
     "abilities": [
       "blaze",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 392,
@@ -42013,7 +42793,9 @@
     "abilities": [
       "blaze",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 393,
@@ -42116,7 +42898,9 @@
     "abilities": [
       "torrent",
       "competitive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 394,
@@ -42222,7 +43006,9 @@
     "abilities": [
       "torrent",
       "competitive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 395,
@@ -42357,7 +43143,9 @@
     "abilities": [
       "torrent",
       "competitive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 396,
@@ -42441,7 +43229,9 @@
     "abilities": [
       "keen-eye",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 397,
@@ -42518,7 +43308,9 @@
     "abilities": [
       "intimidate",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 398,
@@ -42600,7 +43392,9 @@
     "abilities": [
       "intimidate",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 399,
@@ -42688,7 +43482,9 @@
       "simple",
       "unaware",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 400,
@@ -42788,7 +43584,9 @@
       "simple",
       "unaware",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 401,
@@ -42819,7 +43617,9 @@
     "abilities": [
       "shed-skin",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 402,
@@ -42909,7 +43709,9 @@
     "abilities": [
       "swarm",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 403,
@@ -42998,7 +43800,9 @@
       "rivalry",
       "intimidate",
       "guts"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 404,
@@ -43083,7 +43887,9 @@
       "rivalry",
       "intimidate",
       "guts"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 405,
@@ -43176,7 +43982,9 @@
       "rivalry",
       "intimidate",
       "guts"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 406,
@@ -43257,7 +44065,9 @@
       "natural-cure",
       "poison-point",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 407,
@@ -43345,7 +44155,9 @@
       "natural-cure",
       "poison-point",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 408,
@@ -43448,7 +44260,9 @@
     "abilities": [
       "mold-breaker",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 409,
@@ -43569,7 +44383,9 @@
     "abilities": [
       "mold-breaker",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 410,
@@ -43663,7 +44479,9 @@
     "abilities": [
       "sturdy",
       "soundproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 411,
@@ -43768,7 +44586,9 @@
     "abilities": [
       "sturdy",
       "soundproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 412,
@@ -43792,7 +44612,9 @@
     "abilities": [
       "shed-skin",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 413,
@@ -43873,7 +44695,9 @@
     "abilities": [
       "anticipation",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 414,
@@ -43953,7 +44777,9 @@
     "abilities": [
       "swarm",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 415,
@@ -43988,7 +44814,9 @@
     "abilities": [
       "honey-gather",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 416,
@@ -44099,7 +44927,9 @@
     "abilities": [
       "pressure",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 417,
@@ -44207,7 +45037,9 @@
       "run-away",
       "pickup",
       "volt-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 418,
@@ -44310,7 +45142,9 @@
     "abilities": [
       "swift-swim",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 419,
@@ -44415,7 +45249,9 @@
     "abilities": [
       "swift-swim",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 420,
@@ -44493,7 +45329,9 @@
     "generation": 4,
     "abilities": [
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 421,
@@ -44568,7 +45406,9 @@
     "generation": 4,
     "abilities": [
       "flower-gift"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 422,
@@ -44661,7 +45501,9 @@
       "sticky-hold",
       "storm-drain",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 423,
@@ -44758,7 +45600,9 @@
       "sticky-hold",
       "storm-drain",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 424,
@@ -44880,7 +45724,9 @@
       "technician",
       "pickup",
       "skill-link"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 425,
@@ -44994,7 +45840,9 @@
       "aftermath",
       "unburden",
       "flare-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 426,
@@ -45110,7 +45958,9 @@
       "aftermath",
       "unburden",
       "flare-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 427,
@@ -45221,7 +46071,9 @@
       "run-away",
       "klutz",
       "limber"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 428,
@@ -45341,7 +46193,9 @@
       "cute-charm",
       "klutz",
       "limber"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 429,
@@ -45459,7 +46313,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 430,
@@ -45567,7 +46423,9 @@
       "insomnia",
       "super-luck",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 431,
@@ -45661,7 +46519,9 @@
       "limber",
       "own-tempo",
       "keen-eye"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 432,
@@ -45755,7 +46615,9 @@
       "thick-fat",
       "own-tempo",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 433,
@@ -45852,7 +46714,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 434,
@@ -45964,7 +46828,9 @@
       "stench",
       "aftermath",
       "keen-eye"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 435,
@@ -46077,7 +46943,9 @@
       "stench",
       "aftermath",
       "keen-eye"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 436,
@@ -46180,7 +47048,9 @@
       "levitate",
       "heatproof",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 437,
@@ -46296,7 +47166,9 @@
       "levitate",
       "heatproof",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 438,
@@ -46390,7 +47262,9 @@
       "sturdy",
       "rock-head",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 439,
@@ -46500,7 +47374,9 @@
       "soundproof",
       "filter",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 440,
@@ -46597,7 +47473,9 @@
       "natural-cure",
       "serene-grace",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 441,
@@ -46679,7 +47557,9 @@
       "keen-eye",
       "tangled-feet",
       "big-pecks"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 442,
@@ -46782,7 +47662,9 @@
     "abilities": [
       "pressure",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 443,
@@ -46876,7 +47758,9 @@
     "abilities": [
       "sand-veil",
       "rough-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 444,
@@ -46974,7 +47858,9 @@
     "abilities": [
       "sand-veil",
       "rough-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 445,
@@ -47084,7 +47970,9 @@
     "abilities": [
       "sand-veil",
       "rough-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 446,
@@ -47206,7 +48094,9 @@
       "pickup",
       "thick-fat",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 447,
@@ -47320,7 +48210,9 @@
       "steadfast",
       "inner-focus",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 448,
@@ -47453,7 +48345,9 @@
       "steadfast",
       "inner-focus",
       "justified"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 449,
@@ -47537,7 +48431,9 @@
     "abilities": [
       "sand-stream",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 450,
@@ -47623,7 +48519,9 @@
     "abilities": [
       "sand-stream",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 451,
@@ -47718,7 +48616,9 @@
       "battle-armor",
       "sniper",
       "keen-eye"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 452,
@@ -47826,7 +48726,9 @@
       "battle-armor",
       "sniper",
       "keen-eye"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 453,
@@ -47956,7 +48858,9 @@
       "anticipation",
       "dry-skin",
       "poison-touch"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 454,
@@ -48082,7 +48986,9 @@
       "anticipation",
       "dry-skin",
       "poison-touch"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 455,
@@ -48167,7 +49073,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 456,
@@ -48258,7 +49166,9 @@
       "swift-swim",
       "storm-drain",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 457,
@@ -48347,7 +49257,9 @@
       "swift-swim",
       "storm-drain",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 458,
@@ -48431,7 +49343,9 @@
       "swift-swim",
       "water-absorb",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 459,
@@ -48524,7 +49438,9 @@
     "abilities": [
       "snow-warning",
       "soundproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 460,
@@ -48636,7 +49552,9 @@
     "abilities": [
       "snow-warning",
       "soundproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 461,
@@ -48761,7 +49679,9 @@
     "abilities": [
       "pressure",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 462,
@@ -48860,7 +49780,9 @@
       "magnet-pull",
       "sturdy",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 463,
@@ -48979,7 +49901,9 @@
       "own-tempo",
       "oblivious",
       "cloud-nine"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 464,
@@ -49125,7 +50049,9 @@
       "lightning-rod",
       "solid-rock",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 465,
@@ -49226,7 +50152,9 @@
       "chlorophyll",
       "leaf-guard",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 466,
@@ -49340,7 +50268,9 @@
     "abilities": [
       "motor-drive",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 467,
@@ -49458,7 +50388,9 @@
     "abilities": [
       "flame-body",
       "vital-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 468,
@@ -49594,7 +50526,9 @@
       "hustle",
       "serene-grace",
       "super-luck"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 469,
@@ -49691,7 +50625,9 @@
       "speed-boost",
       "tinted-lens",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 470,
@@ -49797,7 +50733,9 @@
     "abilities": [
       "leaf-guard",
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 471,
@@ -49900,7 +50838,9 @@
     "abilities": [
       "snow-cloak",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 472,
@@ -50028,7 +50968,9 @@
       "hyper-cutter",
       "sand-veil",
       "poison-heal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 473,
@@ -50137,7 +51079,9 @@
       "oblivious",
       "snow-cloak",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 474,
@@ -50234,7 +51178,9 @@
       "adaptability",
       "download",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 475,
@@ -50397,7 +51343,9 @@
       "steadfast",
       "sharpness",
       "justified"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 476,
@@ -50505,7 +51453,9 @@
       "sturdy",
       "magnet-pull",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 477,
@@ -50624,7 +51574,9 @@
     "abilities": [
       "pressure",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 478,
@@ -50736,7 +51688,9 @@
     "abilities": [
       "snow-cloak",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 479,
@@ -50818,7 +51772,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 480,
@@ -50932,7 +51888,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 481,
@@ -51046,7 +52004,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 482,
@@ -51162,7 +52122,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 483,
@@ -51271,7 +52233,9 @@
     "abilities": [
       "pressure",
       "telepathy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 484,
@@ -51386,7 +52350,9 @@
     "abilities": [
       "pressure",
       "telepathy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 485,
@@ -51489,7 +52455,9 @@
     "abilities": [
       "flash-fire",
       "flame-body"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 486,
@@ -51589,7 +52557,9 @@
     "generation": 4,
     "abilities": [
       "slow-start"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 487,
@@ -51701,7 +52671,9 @@
     "abilities": [
       "pressure",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 488,
@@ -51798,7 +52770,9 @@
     "generation": 4,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 489,
@@ -51881,7 +52855,9 @@
     "generation": 4,
     "abilities": [
       "hydration"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 490,
@@ -51979,7 +52955,9 @@
     "generation": 4,
     "abilities": [
       "hydration"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 491,
@@ -52088,7 +53066,9 @@
     "generation": 4,
     "abilities": [
       "bad-dreams"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 492,
@@ -52179,7 +53159,9 @@
     "generation": 4,
     "abilities": [
       "natural-cure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 493,
@@ -52367,7 +53349,9 @@
     "generation": 4,
     "abilities": [
       "multitype"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 494,
@@ -52477,7 +53461,9 @@
     "generation": 5,
     "abilities": [
       "victory-star"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 495,
@@ -52570,7 +53556,9 @@
     "abilities": [
       "overgrow",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 496,
@@ -52660,7 +53648,9 @@
     "abilities": [
       "overgrow",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 497,
@@ -52763,7 +53753,9 @@
     "abilities": [
       "overgrow",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 498,
@@ -52851,7 +53843,9 @@
     "abilities": [
       "blaze",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 499,
@@ -52959,7 +53953,9 @@
     "abilities": [
       "blaze",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 500,
@@ -53078,7 +54074,9 @@
     "abilities": [
       "blaze",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 501,
@@ -53172,7 +54170,9 @@
     "abilities": [
       "torrent",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 502,
@@ -53265,7 +54265,9 @@
     "abilities": [
       "torrent",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 503,
@@ -53376,7 +54378,9 @@
     "abilities": [
       "torrent",
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 504,
@@ -53456,7 +54460,9 @@
       "run-away",
       "keen-eye",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 505,
@@ -53550,7 +54556,9 @@
       "illuminate",
       "keen-eye",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 506,
@@ -53627,7 +54635,9 @@
       "vital-spirit",
       "pickup",
       "run-away"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 507,
@@ -53700,7 +54710,9 @@
       "intimidate",
       "sand-rush",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 508,
@@ -53778,7 +54790,9 @@
       "intimidate",
       "sand-rush",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 509,
@@ -53869,7 +54883,9 @@
       "limber",
       "unburden",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 510,
@@ -53963,7 +54979,9 @@
       "limber",
       "unburden",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 511,
@@ -54051,7 +55069,9 @@
     "abilities": [
       "gluttony",
       "overgrow"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 512,
@@ -54131,7 +55151,9 @@
     "abilities": [
       "gluttony",
       "overgrow"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 513,
@@ -54219,7 +55241,9 @@
     "abilities": [
       "gluttony",
       "blaze"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 514,
@@ -54301,7 +55325,9 @@
     "abilities": [
       "gluttony",
       "blaze"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 515,
@@ -54391,7 +55417,9 @@
     "abilities": [
       "gluttony",
       "torrent"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 516,
@@ -54474,7 +55502,9 @@
     "abilities": [
       "gluttony",
       "torrent"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 517,
@@ -54566,7 +55596,9 @@
       "forewarn",
       "synchronize",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 518,
@@ -54654,7 +55686,9 @@
       "forewarn",
       "synchronize",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 519,
@@ -54724,7 +55758,9 @@
       "big-pecks",
       "super-luck",
       "rivalry"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 520,
@@ -54788,7 +55824,9 @@
       "big-pecks",
       "super-luck",
       "rivalry"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 521,
@@ -54857,7 +55895,9 @@
       "big-pecks",
       "super-luck",
       "rivalry"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 522,
@@ -54939,7 +55979,9 @@
       "lightning-rod",
       "motor-drive",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 523,
@@ -55030,7 +56072,9 @@
       "lightning-rod",
       "motor-drive",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 524,
@@ -55098,7 +56142,9 @@
       "sturdy",
       "weak-armor",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 525,
@@ -55162,7 +56208,9 @@
       "sturdy",
       "weak-armor",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 526,
@@ -55235,7 +56283,9 @@
       "sturdy",
       "sand-stream",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 527,
@@ -55342,7 +56392,9 @@
       "unaware",
       "klutz",
       "simple"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 528,
@@ -55449,7 +56501,9 @@
       "unaware",
       "klutz",
       "simple"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 529,
@@ -55529,7 +56583,9 @@
       "sand-rush",
       "sand-force",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 530,
@@ -55621,7 +56677,9 @@
       "sand-rush",
       "sand-force",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 531,
@@ -55745,7 +56803,9 @@
       "healer",
       "regenerator",
       "klutz"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 532,
@@ -55842,7 +56902,9 @@
       "guts",
       "sheer-force",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 533,
@@ -55936,7 +56998,9 @@
       "guts",
       "sheer-force",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 534,
@@ -56039,7 +57103,9 @@
       "guts",
       "sheer-force",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 535,
@@ -56107,7 +57173,9 @@
       "swift-swim",
       "hydration",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 536,
@@ -56177,7 +57245,9 @@
       "swift-swim",
       "hydration",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 537,
@@ -56271,7 +57341,9 @@
       "swift-swim",
       "poison-touch",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 538,
@@ -56358,7 +57430,9 @@
       "guts",
       "inner-focus",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 539,
@@ -56443,7 +57517,9 @@
       "sturdy",
       "inner-focus",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 540,
@@ -56527,7 +57603,9 @@
       "swarm",
       "chlorophyll",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 541,
@@ -56605,7 +57683,9 @@
       "leaf-guard",
       "chlorophyll",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 542,
@@ -56708,7 +57788,9 @@
       "swarm",
       "chlorophyll",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 543,
@@ -56778,7 +57860,9 @@
       "poison-point",
       "swarm",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 544,
@@ -56845,7 +57929,9 @@
       "poison-point",
       "swarm",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 545,
@@ -56934,7 +58020,9 @@
       "poison-point",
       "swarm",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 546,
@@ -57013,7 +58101,9 @@
       "prankster",
       "infiltrator",
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 547,
@@ -57102,7 +58192,9 @@
       "prankster",
       "infiltrator",
       "chlorophyll"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 548,
@@ -57180,7 +58272,9 @@
       "chlorophyll",
       "own-tempo",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 549,
@@ -57264,7 +58358,9 @@
       "chlorophyll",
       "own-tempo",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 550,
@@ -57355,7 +58451,9 @@
       "reckless",
       "adaptability",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 551,
@@ -57453,7 +58551,9 @@
       "intimidate",
       "moxie",
       "anger-point"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 552,
@@ -57563,7 +58663,9 @@
       "intimidate",
       "moxie",
       "anger-point"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 553,
@@ -57687,7 +58789,9 @@
       "intimidate",
       "moxie",
       "anger-point"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 554,
@@ -57771,7 +58875,9 @@
     "abilities": [
       "hustle",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 555,
@@ -57876,7 +58982,9 @@
     "abilities": [
       "sheer-force",
       "zen-mode"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 556,
@@ -57958,7 +59066,9 @@
       "water-absorb",
       "chlorophyll",
       "storm-drain"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 557,
@@ -58036,7 +59146,9 @@
       "sturdy",
       "shell-armor",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 558,
@@ -58116,7 +59228,9 @@
       "sturdy",
       "shell-armor",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 559,
@@ -58235,7 +59349,9 @@
       "shed-skin",
       "moxie",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 560,
@@ -58361,7 +59477,9 @@
       "shed-skin",
       "moxie",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 561,
@@ -58462,7 +59580,9 @@
       "wonder-skin",
       "magic-guard",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 562,
@@ -58547,7 +59667,9 @@
     "generation": 5,
     "abilities": [
       "mummy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 563,
@@ -58639,7 +59761,9 @@
     "generation": 5,
     "abilities": [
       "mummy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 564,
@@ -58726,7 +59850,9 @@
       "solid-rock",
       "sturdy",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 565,
@@ -58817,7 +59943,9 @@
       "solid-rock",
       "sturdy",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 566,
@@ -58908,7 +60036,9 @@
     "generation": 5,
     "abilities": [
       "defeatist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 567,
@@ -59004,7 +60134,9 @@
     "generation": 5,
     "abilities": [
       "defeatist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 568,
@@ -59078,7 +60210,9 @@
       "stench",
       "sticky-hold",
       "aftermath"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 569,
@@ -59161,7 +60295,9 @@
       "stench",
       "weak-armor",
       "aftermath"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 570,
@@ -59260,7 +60396,9 @@
     "generation": 5,
     "abilities": [
       "illusion"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 571,
@@ -59368,7 +60506,9 @@
     "generation": 5,
     "abilities": [
       "illusion"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 572,
@@ -59458,7 +60598,9 @@
       "cute-charm",
       "technician",
       "skill-link"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 573,
@@ -59553,7 +60695,9 @@
       "cute-charm",
       "technician",
       "skill-link"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 574,
@@ -59659,7 +60803,9 @@
       "frisk",
       "competitive",
       "shadow-tag"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 575,
@@ -59760,7 +60906,9 @@
       "frisk",
       "competitive",
       "shadow-tag"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 576,
@@ -59870,7 +61018,9 @@
       "frisk",
       "competitive",
       "shadow-tag"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 577,
@@ -59966,7 +61116,9 @@
       "overcoat",
       "magic-guard",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 578,
@@ -60062,7 +61214,9 @@
       "overcoat",
       "magic-guard",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 579,
@@ -60179,7 +61333,9 @@
       "overcoat",
       "magic-guard",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 580,
@@ -60257,7 +61413,9 @@
       "keen-eye",
       "big-pecks",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 581,
@@ -60340,7 +61498,9 @@
       "keen-eye",
       "big-pecks",
       "hydration"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 582,
@@ -60409,7 +61569,9 @@
       "ice-body",
       "snow-cloak",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 583,
@@ -60472,7 +61634,9 @@
       "ice-body",
       "snow-cloak",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 584,
@@ -60541,7 +61705,9 @@
       "ice-body",
       "snow-warning",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 585,
@@ -60630,7 +61796,9 @@
       "chlorophyll",
       "sap-sipper",
       "serene-grace"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 586,
@@ -60728,7 +61896,9 @@
       "chlorophyll",
       "sap-sipper",
       "serene-grace"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 587,
@@ -60812,7 +61982,9 @@
     "abilities": [
       "static",
       "motor-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 588,
@@ -60882,7 +62054,9 @@
       "swarm",
       "shed-skin",
       "no-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 589,
@@ -60967,7 +62141,9 @@
       "swarm",
       "shell-armor",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 590,
@@ -61040,7 +62216,9 @@
     "abilities": [
       "effect-spore",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 591,
@@ -61115,7 +62293,9 @@
     "abilities": [
       "effect-spore",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 592,
@@ -61204,7 +62384,9 @@
       "water-absorb",
       "cursed-body",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 593,
@@ -61292,7 +62474,9 @@
       "water-absorb",
       "cursed-body",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 594,
@@ -61383,7 +62567,9 @@
       "healer",
       "hydration",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 595,
@@ -61470,7 +62656,9 @@
       "compound-eyes",
       "unnerve",
       "swarm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 596,
@@ -61557,7 +62745,9 @@
       "compound-eyes",
       "unnerve",
       "swarm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 597,
@@ -61633,7 +62823,9 @@
     "generation": 5,
     "abilities": [
       "iron-barbs"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 598,
@@ -61724,7 +62916,9 @@
     "abilities": [
       "iron-barbs",
       "anticipation"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 599,
@@ -61794,7 +62988,9 @@
       "plus",
       "minus",
       "clear-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 600,
@@ -61865,7 +63061,9 @@
       "plus",
       "minus",
       "clear-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 601,
@@ -61942,7 +63140,9 @@
       "plus",
       "minus",
       "clear-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 602,
@@ -61965,7 +63165,9 @@
     "generation": 5,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 603,
@@ -62041,7 +63243,9 @@
     "generation": 5,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 604,
@@ -62153,7 +63357,9 @@
     "generation": 5,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 605,
@@ -62252,7 +63458,9 @@
       "telepathy",
       "synchronize",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 606,
@@ -62353,7 +63561,9 @@
       "telepathy",
       "synchronize",
       "analytic"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 607,
@@ -62443,7 +63653,9 @@
       "flash-fire",
       "flame-body",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 608,
@@ -62532,7 +63744,9 @@
       "flash-fire",
       "flame-body",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 609,
@@ -62625,7 +63839,9 @@
       "flash-fire",
       "flame-body",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 610,
@@ -62722,7 +63938,9 @@
       "rivalry",
       "mold-breaker",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 611,
@@ -62815,7 +64033,9 @@
       "rivalry",
       "mold-breaker",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 612,
@@ -62918,7 +64138,9 @@
       "rivalry",
       "mold-breaker",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 613,
@@ -63018,7 +64240,9 @@
       "snow-cloak",
       "slush-rush",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 614,
@@ -63135,7 +64359,9 @@
       "snow-cloak",
       "slush-rush",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 615,
@@ -63216,7 +64442,9 @@
     "generation": 5,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 616,
@@ -63285,7 +64513,9 @@
       "hydration",
       "shell-armor",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 617,
@@ -63364,7 +64594,9 @@
       "hydration",
       "sticky-hold",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 618,
@@ -63456,7 +64688,9 @@
       "static",
       "limber",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 619,
@@ -63556,7 +64790,9 @@
       "inner-focus",
       "regenerator",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 620,
@@ -63664,7 +64900,9 @@
       "inner-focus",
       "regenerator",
       "reckless"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 621,
@@ -63772,7 +65010,9 @@
       "rough-skin",
       "sheer-force",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 622,
@@ -63879,7 +65119,9 @@
       "iron-fist",
       "klutz",
       "no-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 623,
@@ -64002,7 +65244,9 @@
       "iron-fist",
       "klutz",
       "no-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 624,
@@ -64104,7 +65348,9 @@
       "defiant",
       "inner-focus",
       "pressure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 625,
@@ -64207,7 +65453,9 @@
       "defiant",
       "inner-focus",
       "pressure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 626,
@@ -64297,7 +65545,9 @@
       "reckless",
       "sap-sipper",
       "soundproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 627,
@@ -64383,7 +65633,9 @@
       "keen-eye",
       "sheer-force",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 628,
@@ -64474,7 +65726,9 @@
       "keen-eye",
       "sheer-force",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 629,
@@ -64565,7 +65819,9 @@
       "big-pecks",
       "overcoat",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 630,
@@ -64663,7 +65919,9 @@
       "big-pecks",
       "overcoat",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 631,
@@ -64760,7 +66018,9 @@
       "gluttony",
       "flash-fire",
       "white-smoke"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 632,
@@ -64843,7 +66103,9 @@
       "swarm",
       "hustle",
       "truant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 633,
@@ -64926,7 +66188,9 @@
     "generation": 5,
     "abilities": [
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 634,
@@ -65010,7 +66274,9 @@
     "generation": 5,
     "abilities": [
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 635,
@@ -65130,7 +66396,9 @@
     "generation": 5,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 636,
@@ -65208,7 +66476,9 @@
     "abilities": [
       "flame-body",
       "swarm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 637,
@@ -65303,7 +66573,9 @@
     "abilities": [
       "flame-body",
       "swarm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 638,
@@ -65401,7 +66673,9 @@
     "generation": 5,
     "abilities": [
       "justified"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 639,
@@ -65492,7 +66766,9 @@
     "generation": 5,
     "abilities": [
       "justified"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 640,
@@ -65589,7 +66865,9 @@
     "generation": 5,
     "abilities": [
       "justified"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 641,
@@ -65689,7 +66967,9 @@
     "abilities": [
       "prankster",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 642,
@@ -65800,7 +67080,9 @@
     "abilities": [
       "prankster",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 643,
@@ -65907,7 +67189,9 @@
     "generation": 5,
     "abilities": [
       "turboblaze"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 644,
@@ -66021,7 +67305,9 @@
     "generation": 5,
     "abilities": [
       "teravolt"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 645,
@@ -66120,7 +67406,9 @@
     "abilities": [
       "sand-force",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 646,
@@ -66222,7 +67510,9 @@
     "generation": 5,
     "abilities": [
       "pressure"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 647,
@@ -66319,7 +67609,9 @@
     "generation": 5,
     "abilities": [
       "justified"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 648,
@@ -66440,7 +67732,9 @@
     "generation": 5,
     "abilities": [
       "serene-grace"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 649,
@@ -66536,7 +67830,9 @@
     "generation": 5,
     "abilities": [
       "download"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 650,
@@ -66648,7 +67944,9 @@
     "abilities": [
       "overgrow",
       "bulletproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 651,
@@ -66761,7 +68059,9 @@
     "abilities": [
       "overgrow",
       "bulletproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 652,
@@ -66895,7 +68195,9 @@
     "abilities": [
       "overgrow",
       "bulletproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 653,
@@ -66985,7 +68287,9 @@
     "abilities": [
       "blaze",
       "magician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 654,
@@ -67086,7 +68390,9 @@
     "abilities": [
       "blaze",
       "magician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 655,
@@ -67209,7 +68515,9 @@
     "abilities": [
       "blaze",
       "magician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 656,
@@ -67302,7 +68610,9 @@
     "abilities": [
       "torrent",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 657,
@@ -67395,7 +68705,9 @@
     "abilities": [
       "torrent",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 658,
@@ -67505,7 +68817,9 @@
     "abilities": [
       "torrent",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 659,
@@ -67587,7 +68901,9 @@
       "pickup",
       "cheek-pouch",
       "huge-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 660,
@@ -67693,7 +69009,9 @@
       "pickup",
       "cheek-pouch",
       "huge-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 661,
@@ -67768,7 +69086,9 @@
     "abilities": [
       "big-pecks",
       "gale-wings"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 662,
@@ -67848,7 +69168,9 @@
     "abilities": [
       "flame-body",
       "gale-wings"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 663,
@@ -67934,7 +69256,9 @@
     "abilities": [
       "flame-body",
       "gale-wings"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 664,
@@ -67960,7 +69284,9 @@
       "shield-dust",
       "compound-eyes",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 665,
@@ -67984,7 +69310,9 @@
     "abilities": [
       "shed-skin",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 666,
@@ -68069,7 +69397,9 @@
       "shield-dust",
       "compound-eyes",
       "friend-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 667,
@@ -68154,7 +69484,9 @@
       "rivalry",
       "unnerve",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 668,
@@ -68242,7 +69574,9 @@
       "rivalry",
       "unnerve",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 669,
@@ -68327,7 +69661,9 @@
     "abilities": [
       "flower-veil",
       "symbiosis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 670,
@@ -68411,7 +69747,9 @@
     "abilities": [
       "flower-veil",
       "symbiosis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 671,
@@ -68497,7 +69835,9 @@
     "abilities": [
       "flower-veil",
       "symbiosis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 672,
@@ -68582,7 +69922,9 @@
     "abilities": [
       "sap-sipper",
       "grass-pelt"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 673,
@@ -68673,7 +70015,9 @@
     "abilities": [
       "sap-sipper",
       "grass-pelt"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 674,
@@ -68781,7 +70125,9 @@
       "iron-fist",
       "mold-breaker",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 675,
@@ -68911,7 +70257,9 @@
       "iron-fist",
       "mold-breaker",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 676,
@@ -68983,7 +70331,9 @@
     "generation": 6,
     "abilities": [
       "fur-coat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 677,
@@ -69077,7 +70427,9 @@
       "keen-eye",
       "infiltrator",
       "own-tempo"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 678,
@@ -69185,7 +70537,9 @@
       "keen-eye",
       "infiltrator",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 679,
@@ -69258,7 +70612,9 @@
     "generation": 6,
     "abilities": [
       "no-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 680,
@@ -69328,7 +70684,9 @@
     "generation": 6,
     "abilities": [
       "no-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 681,
@@ -69406,7 +70764,9 @@
     "generation": 6,
     "abilities": [
       "stance-change"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 682,
@@ -69485,7 +70845,9 @@
     "abilities": [
       "healer",
       "aroma-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 683,
@@ -69568,7 +70930,9 @@
     "abilities": [
       "healer",
       "aroma-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 684,
@@ -69642,7 +71006,9 @@
     "abilities": [
       "sweet-veil",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 685,
@@ -69718,7 +71084,9 @@
     "abilities": [
       "sweet-veil",
       "unburden"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 686,
@@ -69821,7 +71189,9 @@
       "contrary",
       "suction-cups",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 687,
@@ -69930,7 +71300,9 @@
       "contrary",
       "suction-cups",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 688,
@@ -70034,7 +71406,9 @@
       "tough-claws",
       "sniper",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 689,
@@ -70150,7 +71524,9 @@
       "tough-claws",
       "sniper",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 690,
@@ -70237,7 +71613,9 @@
       "poison-point",
       "poison-touch",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 691,
@@ -70328,7 +71706,9 @@
       "poison-point",
       "poison-touch",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 692,
@@ -70409,7 +71789,9 @@
     "generation": 6,
     "abilities": [
       "mega-launcher"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 693,
@@ -70497,7 +71879,9 @@
     "generation": 6,
     "abilities": [
       "mega-launcher"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 694,
@@ -70578,7 +71962,9 @@
       "dry-skin",
       "sand-veil",
       "solar-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 695,
@@ -70673,7 +72059,9 @@
       "dry-skin",
       "sand-veil",
       "solar-power"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 696,
@@ -70765,7 +72153,9 @@
     "abilities": [
       "strong-jaw",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 697,
@@ -70860,7 +72250,9 @@
     "abilities": [
       "strong-jaw",
       "rock-head"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 698,
@@ -70955,7 +72347,9 @@
     "abilities": [
       "refrigerate",
       "snow-warning"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 699,
@@ -71050,7 +72444,9 @@
     "abilities": [
       "refrigerate",
       "snow-warning"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 700,
@@ -71146,7 +72542,9 @@
     "abilities": [
       "cute-charm",
       "pixilate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 701,
@@ -71272,7 +72670,9 @@
       "limber",
       "unburden",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 702,
@@ -71365,7 +72765,9 @@
       "cheek-pouch",
       "pickup",
       "plus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 703,
@@ -71461,7 +72863,9 @@
     "abilities": [
       "clear-body",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 704,
@@ -71531,7 +72935,9 @@
       "sap-sipper",
       "hydration",
       "gooey"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 705,
@@ -71599,7 +73005,9 @@
       "sap-sipper",
       "hydration",
       "gooey"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 706,
@@ -71702,7 +73110,9 @@
       "sap-sipper",
       "hydration",
       "gooey"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 707,
@@ -71784,7 +73194,9 @@
     "abilities": [
       "prankster",
       "magician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 708,
@@ -71886,7 +73298,9 @@
       "natural-cure",
       "frisk",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 709,
@@ -72003,7 +73417,9 @@
       "natural-cure",
       "frisk",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 710,
@@ -72094,7 +73510,9 @@
       "pickup",
       "frisk",
       "insomnia"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 711,
@@ -72189,7 +73607,9 @@
       "pickup",
       "frisk",
       "insomnia"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 712,
@@ -72269,7 +73689,9 @@
       "own-tempo",
       "ice-body",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 713,
@@ -72360,7 +73782,9 @@
       "own-tempo",
       "ice-body",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 714,
@@ -72450,7 +73874,9 @@
       "frisk",
       "infiltrator",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 715,
@@ -72554,7 +73980,9 @@
       "frisk",
       "infiltrator",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 716,
@@ -72638,7 +74066,9 @@
     "generation": 6,
     "abilities": [
       "fairy-aura"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 717,
@@ -72720,7 +74150,9 @@
     "generation": 6,
     "abilities": [
       "dark-aura"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 718,
@@ -72806,7 +74238,9 @@
     "generation": 6,
     "abilities": [
       "aura-break"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 719,
@@ -72912,7 +74346,9 @@
     "generation": 6,
     "abilities": [
       "clear-body"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 720,
@@ -73024,7 +74460,9 @@
     "generation": 6,
     "abilities": [
       "magician"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 721,
@@ -73122,7 +74560,9 @@
     "generation": 6,
     "abilities": [
       "water-absorb"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 722,
@@ -73215,7 +74655,9 @@
     "abilities": [
       "overgrow",
       "long-reach"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 723,
@@ -73308,7 +74750,9 @@
     "abilities": [
       "overgrow",
       "long-reach"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 724,
@@ -73433,7 +74877,9 @@
     "abilities": [
       "overgrow",
       "long-reach"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 725,
@@ -73513,7 +74959,9 @@
     "abilities": [
       "blaze",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 726,
@@ -73594,7 +75042,9 @@
     "abilities": [
       "blaze",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 727,
@@ -73717,7 +75167,9 @@
     "abilities": [
       "blaze",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 728,
@@ -73800,7 +75252,9 @@
     "abilities": [
       "torrent",
       "liquid-voice"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 729,
@@ -73883,7 +75337,9 @@
     "abilities": [
       "torrent",
       "liquid-voice"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 730,
@@ -73988,7 +75444,9 @@
     "abilities": [
       "torrent",
       "liquid-voice"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 731,
@@ -74064,7 +75522,9 @@
       "keen-eye",
       "skill-link",
       "pickup"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 732,
@@ -74141,7 +75601,9 @@
       "keen-eye",
       "skill-link",
       "pickup"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 733,
@@ -74230,7 +75692,9 @@
       "keen-eye",
       "skill-link",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 734,
@@ -74313,7 +75777,9 @@
       "stakeout",
       "strong-jaw",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 735,
@@ -74410,7 +75876,9 @@
       "stakeout",
       "strong-jaw",
       "adaptability"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 736,
@@ -74477,7 +75945,9 @@
     "generation": 7,
     "abilities": [
       "swarm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 737,
@@ -74549,7 +76019,9 @@
     "generation": 7,
     "abilities": [
       "battery"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 738,
@@ -74640,7 +76112,9 @@
     "generation": 7,
     "abilities": [
       "levitate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 739,
@@ -74729,7 +76203,9 @@
       "hyper-cutter",
       "iron-fist",
       "anger-point"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 740,
@@ -74831,7 +76307,9 @@
       "hyper-cutter",
       "iron-fist",
       "anger-point"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 741,
@@ -74912,7 +76390,9 @@
     "generation": 7,
     "abilities": [
       "dancer"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 742,
@@ -75008,7 +76488,9 @@
       "honey-gather",
       "shield-dust",
       "sweet-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 743,
@@ -75112,7 +76594,9 @@
       "honey-gather",
       "shield-dust",
       "sweet-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 744,
@@ -75193,7 +76677,9 @@
       "keen-eye",
       "vital-spirit",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 745,
@@ -75286,7 +76772,9 @@
       "keen-eye",
       "sand-rush",
       "steadfast"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 746,
@@ -75353,7 +76841,9 @@
     "generation": 7,
     "abilities": [
       "schooling"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 747,
@@ -75437,7 +76927,9 @@
       "merciless",
       "limber",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 748,
@@ -75528,7 +77020,9 @@
       "merciless",
       "limber",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 749,
@@ -75602,7 +77096,9 @@
       "own-tempo",
       "stamina",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 750,
@@ -75681,7 +77177,9 @@
       "own-tempo",
       "stamina",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 751,
@@ -75761,7 +77259,9 @@
     "abilities": [
       "water-bubble",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 752,
@@ -75848,7 +77348,9 @@
     "abilities": [
       "water-bubble",
       "water-absorb"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 753,
@@ -75921,7 +77423,9 @@
     "abilities": [
       "leaf-guard",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 754,
@@ -76008,7 +77512,9 @@
     "abilities": [
       "leaf-guard",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 755,
@@ -76082,7 +77588,9 @@
       "illuminate",
       "effect-spore",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 756,
@@ -76158,7 +77666,9 @@
       "illuminate",
       "effect-spore",
       "rain-dish"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 757,
@@ -76252,7 +77762,9 @@
     "abilities": [
       "corrosion",
       "oblivious"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 758,
@@ -76361,7 +77873,9 @@
     "abilities": [
       "corrosion",
       "oblivious"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 759,
@@ -76441,7 +77955,9 @@
       "fluffy",
       "klutz",
       "cute-charm"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 760,
@@ -76529,7 +78045,9 @@
       "fluffy",
       "klutz",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 761,
@@ -76604,7 +78122,9 @@
       "leaf-guard",
       "oblivious",
       "sweet-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 762,
@@ -76685,7 +78205,9 @@
       "leaf-guard",
       "oblivious",
       "sweet-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 763,
@@ -76779,7 +78301,9 @@
       "leaf-guard",
       "queenly-majesty",
       "sweet-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 764,
@@ -76878,7 +78402,9 @@
       "flower-veil",
       "triage",
       "natural-cure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 765,
@@ -76987,7 +78513,9 @@
       "inner-focus",
       "telepathy",
       "symbiosis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 766,
@@ -77094,7 +78622,9 @@
     "abilities": [
       "receiver",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 767,
@@ -77148,7 +78678,9 @@
     "generation": 7,
     "abilities": [
       "wimp-out"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 768,
@@ -77245,7 +78777,9 @@
     "generation": 7,
     "abilities": [
       "emergency-exit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 769,
@@ -77334,7 +78868,9 @@
     "abilities": [
       "water-compaction",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 770,
@@ -77424,7 +78960,9 @@
     "abilities": [
       "water-compaction",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 771,
@@ -77480,7 +79018,9 @@
     "abilities": [
       "innards-out",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 772,
@@ -77551,7 +79091,9 @@
     "generation": 7,
     "abilities": [
       "battle-armor"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 773,
@@ -77654,7 +79196,9 @@
     "generation": 7,
     "abilities": [
       "rks-system"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 774,
@@ -77734,7 +79278,9 @@
     "generation": 7,
     "abilities": [
       "shields-down"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 775,
@@ -77822,7 +79368,9 @@
     "generation": 7,
     "abilities": [
       "comatose"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 776,
@@ -77918,7 +79466,9 @@
     "generation": 7,
     "abilities": [
       "shell-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 777,
@@ -78014,7 +79564,9 @@
       "iron-barbs",
       "lightning-rod",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 778,
@@ -78117,7 +79669,9 @@
     "generation": 7,
     "abilities": [
       "disguise"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 779,
@@ -78219,7 +79773,9 @@
       "dazzling",
       "strong-jaw",
       "wonder-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 780,
@@ -78325,7 +79881,9 @@
       "berserk",
       "sap-sipper",
       "cloud-nine"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 781,
@@ -78417,7 +79975,9 @@
     "generation": 7,
     "abilities": [
       "steelworker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 782,
@@ -78500,7 +80060,9 @@
       "bulletproof",
       "soundproof",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 783,
@@ -78598,7 +80160,9 @@
       "bulletproof",
       "soundproof",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 784,
@@ -78723,7 +80287,9 @@
       "bulletproof",
       "soundproof",
       "overcoat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 785,
@@ -78814,7 +80380,9 @@
     "abilities": [
       "electric-surge",
       "telepathy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 786,
@@ -78902,7 +80470,9 @@
     "abilities": [
       "psychic-surge",
       "telepathy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 787,
@@ -79000,7 +80570,9 @@
     "abilities": [
       "grassy-surge",
       "telepathy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 788,
@@ -79088,7 +80660,9 @@
     "abilities": [
       "misty-surge",
       "telepathy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 789,
@@ -79105,7 +80679,9 @@
     "generation": 7,
     "abilities": [
       "unaware"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 790,
@@ -79122,7 +80698,9 @@
     "generation": 7,
     "abilities": [
       "sturdy"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 791,
@@ -79225,7 +80803,9 @@
     "generation": 7,
     "abilities": [
       "full-metal-body"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 792,
@@ -79326,7 +80906,9 @@
     "generation": 7,
     "abilities": [
       "shadow-shield"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 793,
@@ -79414,7 +80996,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 794,
@@ -79495,7 +81079,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 795,
@@ -79577,7 +81163,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 796,
@@ -79650,7 +81238,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 797,
@@ -79731,7 +81321,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 798,
@@ -79792,7 +81384,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 799,
@@ -79884,7 +81478,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 800,
@@ -79989,7 +81585,9 @@
     "generation": 7,
     "abilities": [
       "prism-armor"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 801,
@@ -80109,7 +81707,9 @@
     "generation": 7,
     "abilities": [
       "soul-heart"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 802,
@@ -80209,7 +81809,9 @@
     "generation": 7,
     "abilities": [
       "technician"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 803,
@@ -80261,7 +81863,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 804,
@@ -80354,7 +81958,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 805,
@@ -80436,7 +82042,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 806,
@@ -80518,7 +82126,9 @@
     "generation": 7,
     "abilities": [
       "beast-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 807,
@@ -80616,7 +82226,9 @@
     "generation": 7,
     "abilities": [
       "volt-absorb"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 808,
@@ -80651,7 +82263,9 @@
     "generation": 7,
     "abilities": [
       "magnet-pull"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 809,
@@ -80713,7 +82327,9 @@
     "generation": 7,
     "abilities": [
       "iron-fist"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 810,
@@ -80787,7 +82403,9 @@
     "abilities": [
       "overgrow",
       "grassy-surge"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 811,
@@ -80863,7 +82481,9 @@
     "abilities": [
       "overgrow",
       "grassy-surge"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 812,
@@ -80962,7 +82582,9 @@
     "abilities": [
       "overgrow",
       "grassy-surge"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 813,
@@ -81034,7 +82656,9 @@
     "abilities": [
       "blaze",
       "libero"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 814,
@@ -81109,7 +82733,9 @@
     "abilities": [
       "blaze",
       "libero"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 815,
@@ -81203,7 +82829,9 @@
     "abilities": [
       "blaze",
       "libero"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 816,
@@ -81265,7 +82893,9 @@
     "abilities": [
       "torrent",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 817,
@@ -81328,7 +82958,9 @@
     "abilities": [
       "torrent",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 818,
@@ -81418,7 +83050,9 @@
     "abilities": [
       "torrent",
       "sniper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 819,
@@ -81481,7 +83115,9 @@
     "abilities": [
       "cheek-pouch",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 820,
@@ -81557,7 +83193,9 @@
     "abilities": [
       "cheek-pouch",
       "gluttony"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 821,
@@ -81621,7 +83259,9 @@
       "keen-eye",
       "unnerve",
       "big-pecks"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 822,
@@ -81682,7 +83322,9 @@
       "keen-eye",
       "unnerve",
       "big-pecks"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 823,
@@ -81768,7 +83410,9 @@
       "pressure",
       "unnerve",
       "mirror-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 824,
@@ -81790,7 +83434,9 @@
       "swarm",
       "compound-eyes",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 825,
@@ -81848,7 +83494,9 @@
       "swarm",
       "compound-eyes",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 826,
@@ -81919,7 +83567,9 @@
       "swarm",
       "frisk",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 827,
@@ -81971,7 +83621,9 @@
       "run-away",
       "unburden",
       "stakeout"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 828,
@@ -82034,7 +83686,9 @@
       "run-away",
       "unburden",
       "stakeout"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 829,
@@ -82089,7 +83743,9 @@
       "cotton-down",
       "regenerator",
       "effect-spore"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 830,
@@ -82144,7 +83800,9 @@
       "cotton-down",
       "regenerator",
       "effect-spore"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 831,
@@ -82191,7 +83849,9 @@
       "fluffy",
       "run-away",
       "bulletproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 832,
@@ -82246,7 +83906,9 @@
       "fluffy",
       "steadfast",
       "bulletproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 833,
@@ -82306,7 +83968,9 @@
       "strong-jaw",
       "shell-armor",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 834,
@@ -82396,7 +84060,9 @@
       "strong-jaw",
       "shell-armor",
       "swift-swim"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 835,
@@ -82450,7 +84116,9 @@
     "abilities": [
       "ball-fetch",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 836,
@@ -82509,7 +84177,9 @@
     "abilities": [
       "strong-jaw",
       "competitive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 837,
@@ -82569,7 +84239,9 @@
       "steam-engine",
       "heatproof",
       "flash-fire"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 838,
@@ -82642,7 +84314,9 @@
       "steam-engine",
       "flame-body",
       "flash-fire"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 839,
@@ -82723,7 +84397,9 @@
       "steam-engine",
       "flame-body",
       "flash-fire"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 840,
@@ -82752,7 +84428,9 @@
       "ripen",
       "gluttony",
       "bulletproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 841,
@@ -82822,7 +84500,9 @@
       "ripen",
       "gluttony",
       "hustle"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 842,
@@ -82900,7 +84580,9 @@
       "ripen",
       "gluttony",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 843,
@@ -82960,7 +84642,9 @@
       "sand-spit",
       "shed-skin",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 844,
@@ -83030,7 +84714,9 @@
       "sand-spit",
       "shed-skin",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 845,
@@ -83107,7 +84793,9 @@
     "generation": 8,
     "abilities": [
       "gulp-missile"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 846,
@@ -83169,7 +84857,9 @@
     "abilities": [
       "swift-swim",
       "propeller-tail"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 847,
@@ -83232,7 +84922,9 @@
     "abilities": [
       "swift-swim",
       "propeller-tail"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 848,
@@ -83271,7 +84963,9 @@
       "rattled",
       "static",
       "klutz"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 849,
@@ -83369,7 +85063,9 @@
       "punk-rock",
       "plus",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 850,
@@ -83424,7 +85120,9 @@
       "flash-fire",
       "white-smoke",
       "flame-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 851,
@@ -83488,7 +85186,9 @@
       "flash-fire",
       "white-smoke",
       "flame-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 852,
@@ -83546,7 +85246,9 @@
     "abilities": [
       "limber",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 853,
@@ -83612,7 +85314,9 @@
     "abilities": [
       "limber",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 854,
@@ -83674,7 +85378,9 @@
     "abilities": [
       "weak-armor",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 855,
@@ -83744,7 +85450,9 @@
     "abilities": [
       "weak-armor",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 856,
@@ -83812,7 +85520,9 @@
       "healer",
       "anticipation",
       "magic-bounce"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 857,
@@ -83878,7 +85588,9 @@
       "healer",
       "anticipation",
       "magic-bounce"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 858,
@@ -83962,7 +85674,9 @@
       "healer",
       "anticipation",
       "magic-bounce"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 859,
@@ -84030,7 +85744,9 @@
       "prankster",
       "frisk",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 860,
@@ -84100,7 +85816,9 @@
       "prankster",
       "frisk",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 861,
@@ -84193,7 +85911,9 @@
       "prankster",
       "frisk",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 862,
@@ -84292,7 +86012,9 @@
       "reckless",
       "guts",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 863,
@@ -84387,7 +86109,9 @@
       "battle-armor",
       "tough-claws",
       "steely-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 864,
@@ -84472,7 +86196,9 @@
     "abilities": [
       "weak-armor",
       "perish-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 865,
@@ -84532,7 +86258,9 @@
     "abilities": [
       "steadfast",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 866,
@@ -84639,7 +86367,9 @@
       "tangled-feet",
       "screen-cleaner",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 867,
@@ -84722,7 +86452,9 @@
     "generation": 8,
     "abilities": [
       "wandering-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 868,
@@ -84765,7 +86497,9 @@
     "abilities": [
       "sweet-veil",
       "aroma-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 869,
@@ -84836,7 +86570,9 @@
     "abilities": [
       "sweet-veil",
       "aroma-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 870,
@@ -84909,7 +86645,9 @@
     "abilities": [
       "battle-armor",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 871,
@@ -84985,7 +86723,9 @@
     "abilities": [
       "lightning-rod",
       "electric-surge"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 872,
@@ -85023,7 +86763,9 @@
     "abilities": [
       "shield-dust",
       "ice-scales"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 873,
@@ -85096,7 +86838,9 @@
     "abilities": [
       "shield-dust",
       "ice-scales"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 874,
@@ -85166,7 +86910,9 @@
     "generation": 8,
     "abilities": [
       "power-spot"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 875,
@@ -85236,7 +86982,9 @@
     "generation": 8,
     "abilities": [
       "ice-face"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 876,
@@ -85311,7 +87059,9 @@
       "inner-focus",
       "synchronize",
       "psychic-surge"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 877,
@@ -85401,7 +87151,9 @@
     "generation": 8,
     "abilities": [
       "hunger-switch"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 878,
@@ -85474,7 +87226,9 @@
     "abilities": [
       "sheer-force",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 879,
@@ -85554,7 +87308,9 @@
     "abilities": [
       "sheer-force",
       "heavy-metal"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 880,
@@ -85630,7 +87386,9 @@
       "volt-absorb",
       "hustle",
       "sand-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 881,
@@ -85702,7 +87460,9 @@
       "volt-absorb",
       "static",
       "slush-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 882,
@@ -85770,7 +87530,9 @@
       "water-absorb",
       "strong-jaw",
       "sand-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 883,
@@ -85833,7 +87595,9 @@
       "water-absorb",
       "ice-body",
       "slush-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 884,
@@ -85911,7 +87675,9 @@
       "light-metal",
       "heavy-metal",
       "stalwart"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 885,
@@ -85955,7 +87721,9 @@
       "clear-body",
       "infiltrator",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 886,
@@ -86032,7 +87800,9 @@
       "clear-body",
       "infiltrator",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 887,
@@ -86119,7 +87889,9 @@
       "clear-body",
       "infiltrator",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 888,
@@ -86197,7 +87969,9 @@
     "generation": 8,
     "abilities": [
       "intrepid-sword"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 889,
@@ -86280,7 +88054,9 @@
     "generation": 8,
     "abilities": [
       "dauntless-shield"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 890,
@@ -86349,7 +88125,9 @@
     "generation": 8,
     "abilities": [
       "pressure"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 891,
@@ -86412,7 +88190,9 @@
     "generation": 8,
     "abilities": [
       "inner-focus"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 892,
@@ -86503,7 +88283,9 @@
     "generation": 8,
     "abilities": [
       "unseen-fist"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 893,
@@ -86601,7 +88383,9 @@
     "generation": 8,
     "abilities": [
       "leaf-guard"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 894,
@@ -86663,7 +88447,9 @@
     "generation": 8,
     "abilities": [
       "transistor"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 895,
@@ -86721,7 +88507,9 @@
     "generation": 8,
     "abilities": [
       "dragons-maw"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 896,
@@ -86791,7 +88579,9 @@
     "generation": 8,
     "abilities": [
       "chilling-neigh"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 897,
@@ -86856,7 +88646,9 @@
     "generation": 8,
     "abilities": [
       "grim-neigh"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 898,
@@ -86941,7 +88733,9 @@
     "generation": 8,
     "abilities": [
       "unnerve"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 899,
@@ -87027,7 +88821,9 @@
       "intimidate",
       "frisk",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 900,
@@ -87101,7 +88897,9 @@
       "swarm",
       "sheer-force",
       "sharpness"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 901,
@@ -87196,7 +88994,9 @@
       "guts",
       "bulletproof",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 902,
@@ -87268,7 +89068,9 @@
       "swift-swim",
       "adaptability",
       "mold-breaker"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 903,
@@ -87351,7 +89153,9 @@
       "pressure",
       "unburden",
       "poison-touch"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 904,
@@ -87432,7 +89236,9 @@
       "poison-point",
       "swift-swim",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 905,
@@ -87503,7 +89309,9 @@
     "abilities": [
       "cute-charm",
       "contrary"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 906,
@@ -87565,7 +89373,9 @@
     "abilities": [
       "overgrow",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 907,
@@ -87628,7 +89438,9 @@
     "abilities": [
       "overgrow",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 908,
@@ -87717,7 +89529,9 @@
     "abilities": [
       "overgrow",
       "protean"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 909,
@@ -87778,7 +89592,9 @@
     "abilities": [
       "blaze",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 910,
@@ -87837,7 +89653,9 @@
     "abilities": [
       "blaze",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 911,
@@ -87915,7 +89733,9 @@
     "abilities": [
       "blaze",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 912,
@@ -87970,7 +89790,9 @@
     "abilities": [
       "torrent",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 913,
@@ -88026,7 +89848,9 @@
     "abilities": [
       "torrent",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 914,
@@ -88108,7 +89932,9 @@
     "abilities": [
       "torrent",
       "moxie"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 915,
@@ -88167,7 +89993,9 @@
       "aroma-veil",
       "gluttony",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 916,
@@ -88231,7 +90059,9 @@
       "lingering-aroma",
       "gluttony",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 917,
@@ -88291,7 +90121,9 @@
     "abilities": [
       "insomnia",
       "stakeout"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 918,
@@ -88362,7 +90194,9 @@
     "abilities": [
       "insomnia",
       "stakeout"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 919,
@@ -88409,7 +90243,9 @@
     "abilities": [
       "swarm",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 920,
@@ -88476,7 +90312,9 @@
     "abilities": [
       "swarm",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 921,
@@ -88542,7 +90380,9 @@
       "static",
       "natural-cure",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 922,
@@ -88613,7 +90453,9 @@
       "volt-absorb",
       "natural-cure",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 923,
@@ -88702,7 +90544,9 @@
       "volt-absorb",
       "natural-cure",
       "iron-fist"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 924,
@@ -88768,7 +90612,9 @@
       "run-away",
       "pickup",
       "own-tempo"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 925,
@@ -88834,7 +90680,9 @@
       "friend-guard",
       "cheek-pouch",
       "technician"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 926,
@@ -88898,7 +90746,9 @@
     "abilities": [
       "own-tempo",
       "klutz"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 927,
@@ -88962,7 +90812,9 @@
     "abilities": [
       "well-baked-body",
       "aroma-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 928,
@@ -89015,7 +90867,9 @@
     "abilities": [
       "early-bird",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 929,
@@ -89065,7 +90919,9 @@
     "abilities": [
       "early-bird",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 930,
@@ -89131,7 +90987,9 @@
     "abilities": [
       "seed-sower",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 931,
@@ -89196,7 +91054,9 @@
       "intimidate",
       "hustle",
       "guts"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 932,
@@ -89252,7 +91112,9 @@
       "purifying-salt",
       "sturdy",
       "clear-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 933,
@@ -89311,7 +91173,9 @@
       "purifying-salt",
       "sturdy",
       "clear-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 934,
@@ -89385,7 +91249,9 @@
       "purifying-salt",
       "sturdy",
       "clear-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 935,
@@ -89429,7 +91295,9 @@
     "abilities": [
       "flash-fire",
       "flame-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 936,
@@ -89504,7 +91372,9 @@
     "abilities": [
       "flash-fire",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 937,
@@ -89579,7 +91449,9 @@
     "abilities": [
       "flash-fire",
       "weak-armor"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 938,
@@ -89636,7 +91508,9 @@
       "own-tempo",
       "static",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 939,
@@ -89696,7 +91570,9 @@
       "electromorphosis",
       "static",
       "damp"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 940,
@@ -89760,7 +91636,9 @@
       "wind-power",
       "volt-absorb",
       "competitive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 941,
@@ -89825,7 +91703,9 @@
       "wind-power",
       "volt-absorb",
       "competitive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 942,
@@ -89885,7 +91765,9 @@
       "intimidate",
       "run-away",
       "stakeout"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 943,
@@ -89952,7 +91834,9 @@
       "intimidate",
       "guard-dog",
       "stakeout"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 944,
@@ -90023,7 +91907,9 @@
       "unburden",
       "pickpocket",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 945,
@@ -90097,7 +91983,9 @@
       "unburden",
       "poison-touch",
       "prankster"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 946,
@@ -90158,7 +92046,9 @@
     "abilities": [
       "wind-rider",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 947,
@@ -90222,7 +92112,9 @@
     "abilities": [
       "wind-rider",
       "infiltrator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 948,
@@ -90297,7 +92189,9 @@
     "abilities": [
       "mycelium-might",
       "mycelium-might"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 949,
@@ -90370,7 +92264,9 @@
     "abilities": [
       "mycelium-might",
       "mycelium-might"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 950,
@@ -90440,7 +92336,9 @@
       "anger-shell",
       "shell-armor",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 951,
@@ -90496,7 +92394,9 @@
       "chlorophyll",
       "insomnia",
       "klutz"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 952,
@@ -90561,7 +92461,9 @@
       "chlorophyll",
       "insomnia",
       "moody"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 953,
@@ -90610,7 +92512,9 @@
     "abilities": [
       "compound-eyes",
       "shed-skin"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 954,
@@ -90695,7 +92599,9 @@
     "abilities": [
       "synchronize",
       "telepathy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 955,
@@ -90757,7 +92663,9 @@
       "anticipation",
       "frisk",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 956,
@@ -90836,7 +92744,9 @@
       "opportunist",
       "frisk",
       "speed-boost"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 957,
@@ -90900,7 +92810,9 @@
       "mold-breaker",
       "own-tempo",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 958,
@@ -90962,7 +92874,9 @@
       "mold-breaker",
       "own-tempo",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 959,
@@ -91029,7 +92943,9 @@
       "mold-breaker",
       "own-tempo",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 960,
@@ -91085,7 +93001,9 @@
       "gooey",
       "rattled",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 961,
@@ -91143,7 +93061,9 @@
       "gooey",
       "rattled",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 962,
@@ -91221,7 +93141,9 @@
       "big-pecks",
       "keen-eye",
       "rocky-payload"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 963,
@@ -91281,7 +93203,9 @@
     "abilities": [
       "water-veil",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 964,
@@ -91359,7 +93283,9 @@
     "abilities": [
       "zero-to-hero",
       "zero-to-hero"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 965,
@@ -91422,7 +93348,9 @@
     "abilities": [
       "overcoat",
       "slow-start"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 966,
@@ -91494,7 +93422,9 @@
     "abilities": [
       "overcoat",
       "filter"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 967,
@@ -91567,7 +93497,9 @@
     "abilities": [
       "shed-skin",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 968,
@@ -91627,7 +93559,9 @@
     "abilities": [
       "earth-eater",
       "sand-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 969,
@@ -91685,7 +93619,9 @@
     "abilities": [
       "toxic-debris",
       "corrosion"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 970,
@@ -91749,7 +93685,9 @@
     "abilities": [
       "toxic-debris",
       "corrosion"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 971,
@@ -91817,7 +93755,9 @@
     "abilities": [
       "pickup",
       "fluffy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 972,
@@ -91883,7 +93823,9 @@
     "abilities": [
       "sand-rush",
       "fluffy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 973,
@@ -91955,7 +93897,9 @@
       "scrappy",
       "tangled-feet",
       "costar"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 974,
@@ -92020,7 +93964,9 @@
       "thick-fat",
       "snow-cloak",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 975,
@@ -92083,7 +94029,9 @@
       "thick-fat",
       "slush-rush",
       "sheer-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 976,
@@ -92148,7 +94096,9 @@
     "abilities": [
       "mold-breaker",
       "sharpness"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 977,
@@ -92211,7 +94161,9 @@
       "unaware",
       "oblivious",
       "water-veil"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 978,
@@ -92264,7 +94216,9 @@
     "abilities": [
       "commander",
       "storm-drain"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 979,
@@ -92359,7 +94313,9 @@
       "vital-spirit",
       "inner-focus",
       "defiant"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 980,
@@ -92435,7 +94391,9 @@
       "poison-point",
       "water-absorb",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 981,
@@ -92527,7 +94485,9 @@
       "cud-chew",
       "armor-tail",
       "sap-sipper"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 982,
@@ -92630,7 +94590,9 @@
       "serene-grace",
       "run-away",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 983,
@@ -92706,7 +94668,9 @@
       "defiant",
       "supreme-overlord",
       "pressure"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 984,
@@ -92780,7 +94744,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 985,
@@ -92876,7 +94842,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 986,
@@ -92943,7 +94911,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 987,
@@ -93008,7 +94978,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 988,
@@ -93081,7 +95053,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 989,
@@ -93151,7 +95125,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 990,
@@ -93218,7 +95194,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 991,
@@ -93275,7 +95253,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 992,
@@ -93347,7 +95327,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 993,
@@ -93419,7 +95401,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 994,
@@ -93487,7 +95471,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 995,
@@ -93578,7 +95564,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 996,
@@ -93630,7 +95618,9 @@
     "abilities": [
       "thermal-exchange",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 997,
@@ -93683,7 +95673,9 @@
     "abilities": [
       "thermal-exchange",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 998,
@@ -93753,7 +95745,9 @@
     "abilities": [
       "thermal-exchange",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 999,
@@ -93786,7 +95780,9 @@
     "generation": 9,
     "abilities": [
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1000,
@@ -93847,7 +95843,9 @@
     "generation": 9,
     "abilities": [
       "good-as-gold"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1001,
@@ -93915,7 +95913,9 @@
     "generation": 9,
     "abilities": [
       "tablets-of-ruin"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1002,
@@ -93976,7 +95976,9 @@
     "generation": 9,
     "abilities": [
       "sword-of-ruin"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1003,
@@ -94038,7 +96040,9 @@
     "generation": 9,
     "abilities": [
       "vessel-of-ruin"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1004,
@@ -94100,7 +96104,9 @@
     "generation": 9,
     "abilities": [
       "beads-of-ruin"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1005,
@@ -94184,7 +96190,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1006,
@@ -94280,7 +96288,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1007,
@@ -94368,7 +96378,9 @@
     "generation": 9,
     "abilities": [
       "orichalcum-pulse"
-    ]
+    ],
+    "legendary": true,
+    "paradox": true
   },
   {
     "id": 1008,
@@ -94440,7 +96452,9 @@
     "generation": 9,
     "abilities": [
       "hadron-engine"
-    ]
+    ],
+    "legendary": true,
+    "paradox": true
   },
   {
     "id": 1009,
@@ -94508,7 +96522,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1010,
@@ -94581,7 +96597,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1011,
@@ -94643,7 +96661,9 @@
       "supersweet-syrup",
       "gluttony",
       "sticky-hold"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1012,
@@ -94698,7 +96718,9 @@
     "abilities": [
       "hospitality",
       "heatproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1013,
@@ -94756,7 +96778,9 @@
     "abilities": [
       "hospitality",
       "heatproof"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1014,
@@ -94838,7 +96862,9 @@
     "abilities": [
       "toxic-chain",
       "guard-dog"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1015,
@@ -94911,7 +96937,9 @@
     "abilities": [
       "toxic-chain",
       "frisk"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1016,
@@ -94991,7 +97019,9 @@
     "abilities": [
       "toxic-chain",
       "technician"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1017,
@@ -95068,7 +97098,9 @@
     "generation": 9,
     "abilities": [
       "defiant"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1018,
@@ -95145,7 +97177,9 @@
       "stamina",
       "sturdy",
       "stalwart"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1019,
@@ -95222,7 +97256,9 @@
       "supersweet-syrup",
       "regenerator",
       "sticky-hold"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 1020,
@@ -95299,7 +97335,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1021,
@@ -95370,7 +97408,9 @@
     "generation": 9,
     "abilities": [
       "protosynthesis"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1022,
@@ -95435,7 +97475,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1023,
@@ -95500,7 +97542,9 @@
     "generation": 9,
     "abilities": [
       "quark-drive"
-    ]
+    ],
+    "legendary": false,
+    "paradox": true
   },
   {
     "id": 1024,
@@ -95574,7 +97618,9 @@
     "generation": 9,
     "abilities": [
       "tera-shift"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 1025,
@@ -95625,7 +97671,9 @@
     "generation": 9,
     "abilities": [
       "poison-puppeteer"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 10091,
@@ -95706,7 +97754,9 @@
       "gluttony",
       "hustle",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10092,
@@ -95791,7 +97841,9 @@
       "gluttony",
       "hustle",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10093,
@@ -95872,7 +97924,9 @@
       "gluttony",
       "hustle",
       "thick-fat"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10099,
@@ -95965,7 +98019,9 @@
     "abilities": [
       "static",
       "lightning-rod"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10100,
@@ -96082,7 +98138,9 @@
     "generation": 1,
     "abilities": [
       "surge-surfer"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10101,
@@ -96190,7 +98248,9 @@
     "abilities": [
       "snow-cloak",
       "slush-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10102,
@@ -96306,7 +98366,9 @@
     "abilities": [
       "snow-cloak",
       "slush-rush"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10103,
@@ -96410,7 +98472,9 @@
     "abilities": [
       "snow-cloak",
       "snow-warning"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10104,
@@ -96521,7 +98585,9 @@
     "abilities": [
       "snow-cloak",
       "snow-warning"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10105,
@@ -96617,7 +98683,9 @@
       "sand-veil",
       "tangling-hair",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10106,
@@ -96717,7 +98785,9 @@
       "sand-veil",
       "tangling-hair",
       "sand-force"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10107,
@@ -96828,7 +98898,9 @@
       "pickup",
       "technician",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10108,
@@ -96942,7 +99014,9 @@
       "fur-coat",
       "technician",
       "rattled"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10109,
@@ -97039,7 +99113,9 @@
       "magnet-pull",
       "sturdy",
       "galvanize"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10110,
@@ -97142,7 +99218,9 @@
       "magnet-pull",
       "sturdy",
       "galvanize"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10111,
@@ -97253,7 +99331,9 @@
       "magnet-pull",
       "sturdy",
       "galvanize"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10112,
@@ -97369,7 +99449,9 @@
       "poison-touch",
       "gluttony",
       "power-of-alchemy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10113,
@@ -97484,7 +99566,9 @@
       "poison-touch",
       "gluttony",
       "power-of-alchemy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10114,
@@ -97599,7 +99683,9 @@
     "abilities": [
       "frisk",
       "harvest"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10115,
@@ -97714,7 +99800,9 @@
       "cursed-body",
       "lightning-rod",
       "rock-head"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10161,
@@ -97807,7 +99895,9 @@
       "pickup",
       "tough-claws",
       "unnerve"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10162,
@@ -97869,7 +99959,9 @@
       "run-away",
       "pastel-veil",
       "anticipation"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10163,
@@ -97942,7 +100034,9 @@
       "run-away",
       "pastel-veil",
       "anticipation"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10164,
@@ -98037,7 +100131,9 @@
       "gluttony",
       "own-tempo",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10165,
@@ -98162,7 +100258,9 @@
       "quick-draw",
       "own-tempo",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10166,
@@ -98228,7 +100326,9 @@
     "abilities": [
       "steadfast",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10167,
@@ -98317,7 +100417,9 @@
       "levitate",
       "neutralizing-gas",
       "misty-surge"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10168,
@@ -98424,7 +100526,9 @@
       "vital-spirit",
       "screen-cleaner",
       "ice-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10169,
@@ -98498,7 +100602,9 @@
     "generation": 1,
     "abilities": [
       "competitive"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 10170,
@@ -98576,7 +100682,9 @@
     "generation": 1,
     "abilities": [
       "defiant"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 10171,
@@ -98646,7 +100754,9 @@
     "generation": 1,
     "abilities": [
       "berserk"
-    ]
+    ],
+    "legendary": true,
+    "paradox": false
   },
   {
     "id": 10172,
@@ -98772,7 +100882,9 @@
       "curious-medicine",
       "own-tempo",
       "regenerator"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10173,
@@ -98855,7 +100967,9 @@
     "abilities": [
       "weak-armor",
       "cursed-body"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10174,
@@ -98929,7 +101043,9 @@
       "pickup",
       "gluttony",
       "quick-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10175,
@@ -99010,7 +101126,9 @@
       "pickup",
       "gluttony",
       "quick-feet"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10176,
@@ -99083,7 +101201,9 @@
     "abilities": [
       "hustle",
       "inner-focus"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10177,
@@ -99165,7 +101285,9 @@
     "abilities": [
       "gorilla-tactics",
       "zen-mode"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10178,
@@ -99248,7 +101370,9 @@
     "abilities": [
       "gorilla-tactics",
       "zen-mode"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10179,
@@ -99314,7 +101438,9 @@
     "generation": 5,
     "abilities": [
       "wandering-spirit"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10180,
@@ -99387,7 +101513,9 @@
     "generation": 5,
     "abilities": [
       "mimicry"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10229,
@@ -99466,7 +101594,9 @@
       "intimidate",
       "flash-fire",
       "rock-head"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10230,
@@ -99552,7 +101682,9 @@
       "intimidate",
       "flash-fire",
       "rock-head"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10231,
@@ -99620,7 +101752,9 @@
       "soundproof",
       "static",
       "aftermath"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10232,
@@ -99691,7 +101825,9 @@
       "soundproof",
       "static",
       "aftermath"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10233,
@@ -99782,7 +101918,9 @@
     "abilities": [
       "blaze",
       "frisk"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10234,
@@ -99869,7 +102007,9 @@
       "poison-point",
       "swift-swim",
       "intimidate"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10235,
@@ -99955,7 +102095,9 @@
       "inner-focus",
       "keen-eye",
       "pickpocket"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10236,
@@ -100038,7 +102180,9 @@
     "abilities": [
       "torrent",
       "sharpness"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10237,
@@ -100126,7 +102270,9 @@
       "chlorophyll",
       "hustle",
       "leaf-guard"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10238,
@@ -100200,7 +102346,9 @@
     "generation": 5,
     "abilities": [
       "illusion"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10239,
@@ -100288,7 +102436,9 @@
     "generation": 5,
     "abilities": [
       "illusion"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10240,
@@ -100381,7 +102531,9 @@
       "keen-eye",
       "sheer-force",
       "tinted-lens"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10241,
@@ -100446,7 +102598,9 @@
       "sap-sipper",
       "shell-armor",
       "gooey"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10242,
@@ -100533,7 +102687,9 @@
       "sap-sipper",
       "shell-armor",
       "gooey"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10243,
@@ -100609,7 +102765,9 @@
       "strong-jaw",
       "ice-body",
       "sturdy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10244,
@@ -100700,7 +102858,9 @@
     "abilities": [
       "overgrow",
       "scrappy"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10250,
@@ -100767,7 +102927,9 @@
       "intimidate",
       "anger-point",
       "cud-chew"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10251,
@@ -100840,7 +103002,9 @@
       "intimidate",
       "anger-point",
       "cud-chew"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10252,
@@ -100912,7 +103076,9 @@
       "intimidate",
       "anger-point",
       "cud-chew"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   },
   {
     "id": 10253,
@@ -100989,6 +103155,8 @@
       "poison-point",
       "water-absorb",
       "unaware"
-    ]
+    ],
+    "legendary": false,
+    "paradox": false
   }
 ]
