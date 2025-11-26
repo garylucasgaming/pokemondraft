@@ -884,16 +884,24 @@ function App() {
         if (raw) savedTeams = JSON.parse(raw) || [];
       } catch (e) { savedTeams = []; }
       
+      // Check if team with same name already exists
+      const existingIndex = savedTeams.findIndex(t => t.name === teamName);
+      if (existingIndex >= 0) {
+        const confirmOverwrite = window.confirm(`A team named "${teamName}" already exists. Do you want to overwrite it?`);
+        if (!confirmOverwrite) {
+          return; // User cancelled, don't save
+        }
+      }
+      
       const teamToSave = {
-        id: Date.now(),
+        id: existingIndex >= 0 ? savedTeams[existingIndex].id : Date.now(), // Keep original ID if overwriting
         name: teamName,
         playerName: teamBuilderData.playerName,
         data: teamBuilderData,
         savedAt: Date.now()
       };
       
-      // Check if updating existing team with same name
-      const existingIndex = savedTeams.findIndex(t => t.name === teamName);
+      // Update or add team
       if (existingIndex >= 0) {
         savedTeams[existingIndex] = teamToSave;
       } else {
