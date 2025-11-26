@@ -4817,7 +4817,7 @@ function App() {
                 
                 return (
                   <div className="team-selector-grid">
-                    {savedTeams.map((team) => (
+                    {savedTeams.filter(team => team && team.data && Array.isArray(team.data.slots)).map((team) => (
                       <div key={team.id} className="team-selector-card">
                         <div className="team-selector-card-header">
                           <strong>{team.name}</strong>
@@ -4850,7 +4850,12 @@ function App() {
                             })}
                           </div>
                           <div className="fs-12 muted mt-8">
-                            {team.data.slots.filter(s => s.pokemon || s.pokemonName).length} Pokémon
+                            {team.data.slots.filter(s => {
+                              if (!s) return false;
+                              if (s.pokemon && typeof s.pokemon === 'object' && s.pokemon.name) return true;
+                              if (s.pokemonName) return true;
+                              return false;
+                            }).length} Pokémon
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
