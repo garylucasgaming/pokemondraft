@@ -4,6 +4,19 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
+  // Add CORS headers for all requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+  
   // Health check endpoint for Elastic Beanstalk
   if (req.url === '/' || req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -16,11 +29,18 @@ const server = http.createServer((req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins in production (or specify your Amplify URL)
+    origin: [
+      'https://pokemondraft.com',
+      'https://www.pokemondraft.com',
+      'http://localhost:3000',
+      '*' // Fallback to allow all origins
+    ],
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type']
   },
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  allowEIO3: true // Enable compatibility with older clients
 });
 
 // In-memory storage for lobbies
