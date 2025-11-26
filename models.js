@@ -1,10 +1,23 @@
 const mongoose = require('mongoose');
 
+// User Schema
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true, trim: true, minlength: 3, maxlength: 20 },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true }, // Hashed password
+  displayName: { type: String, default: '' },
+  avatar: { type: String, default: '' }, // URL or identifier
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: { type: Date },
+  isActive: { type: Boolean, default: true }
+});
+
 // League Schema
 const leagueSchema = new mongoose.Schema({
   name: { type: String, required: true },
   code: { type: String, required: true, unique: true }, // Like lobby codes
-  commissioner: { type: String, required: true }, // Username
+  commissionerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  commissionerName: { type: String, required: true }, // Cached for display
   format: { type: String, required: true }, // e.g., "National Dex", "VGC 2024"
   rules: {
     pointsLimit: { type: Number, default: 100 },
@@ -18,7 +31,8 @@ const leagueSchema = new mongoose.Schema({
 
 // Player Schema
 const playerSchema = new mongoose.Schema({
-  username: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  username: { type: String, required: true }, // Cached for display
   leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'League', required: true },
   team: [{
     name: String,
@@ -65,8 +79,8 @@ const tournamentSchema = new mongoose.Schema({
 
 // Saved Team Schema
 const savedTeamSchema = new mongoose.Schema({
-  userId: { type: String }, // Future: link to user accounts (for now, browser-based identifier)
-  username: { type: String }, // Display name
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  username: { type: String, required: true }, // Cached for display
   name: { type: String, required: true },
   pokemon: [{
     name: { type: String, required: true },
@@ -103,18 +117,74 @@ const savedTeamSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+// Draft Session Schema - for ongoing drafts
+const draftSessionSchema = new mongoose.Schema({
+  lobbyCode: { type: String, required: true, unique: true },
+  hostId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional: link to user if authenticated
+  hostSocketId: { type: String }, // Current socket ID for reconnection
+  status: { type: String, enum: ['lobby', 'drafting', 'completed', 'abandoned'], default: 'lobby' },
+  settings: {
+    pointsLimit: { type: Number, default: 100 },
+    teamSizeLimit: { type: Number, default: 10 },
+    allowTrading: { type: Boolean, default: false },
+    maxTradeLimit: { type: Number, default: 0 },
+    unlimitedTrades: { type: Boolean, default: false },
+    genFilter: { type: Number, default: 0 }
+  },
+  participants: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional: if authenticated
+    socketId: { type: String }, // Last known socket ID
+    username: { type: String, required: true },
+    selections: [{
+      pokemonId: Number,
+      pokemonName: String,
+      points: Number,
+      timestamp: { type: Date, default: Date.now }
+    }],
+    pointsRemaining: { type: Number },
+    isConnected: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now }
+  }],
+  turnOrder: [String], // Array of usernames or socket IDs
+  currentTurn: { type: String }, // Username or socket ID of current player
+  draftPokemon: [{
+    id: Number,
+    name: String,
+    points: Number,
+    legendary: Boolean,
+    generation: Number
+  }],
+  pointsMap: { type: Map, of: Number }, // Pokemon name -> points
+  banList: [String], // Banned pokemon names
+  presetUsed: { type: String }, // Preset ID if one was loaded
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  startedAt: { type: Date }, // When draft actually started
+  completedAt: { type: Date }, // When draft finished
+  expiresAt: { type: Date, default: () => Date.now() + 7 * 24 * 60 * 60 * 1000 } // 7 days
+});
+
 // Create indexes for better query performance
 // Note: code and shareCode already have unique indexes from schema definition
-playerSchema.index({ leagueId: 1, username: 1 });
+userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
+playerSchema.index({ leagueId: 1, userId: 1 });
+playerSchema.index({ userId: 1 });
 matchSchema.index({ leagueId: 1, week: 1 });
 tournamentSchema.index({ leagueId: 1 });
 savedTeamSchema.index({ userId: 1 });
 savedTeamSchema.index({ isPublic: 1, createdAt: -1 });
+draftSessionSchema.index({ lobbyCode: 1 });
+draftSessionSchema.index({ 'participants.userId': 1 });
+draftSessionSchema.index({ status: 1, expiresAt: 1 }); // For cleanup queries
+draftSessionSchema.index({ expiresAt: 1 }); // TTL index for auto-deletion
 
 module.exports = {
+  User: mongoose.model('User', userSchema),
   League: mongoose.model('League', leagueSchema),
   Player: mongoose.model('Player', playerSchema),
   Match: mongoose.model('Match', matchSchema),
   Tournament: mongoose.model('Tournament', tournamentSchema),
-  SavedTeam: mongoose.model('SavedTeam', savedTeamSchema)
+  SavedTeam: mongoose.model('SavedTeam', savedTeamSchema),
+  DraftSession: mongoose.model('DraftSession', draftSessionSchema)
 };

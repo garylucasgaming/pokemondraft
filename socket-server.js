@@ -9,6 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const leagueRoutes = require('./league-routes');
 const savedTeamRoutes = require('./saved-team-routes');
+const { router: authRoutes } = require('./auth-routes');
+const draftRoutes = require('./draft-routes');
+const { DraftSession } = require('./models');
 
 const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -41,11 +44,17 @@ app.use(express.json());
 app.get('/', (req, res) => res.send('OK'));
 app.get('/health', (req, res) => res.send('OK'));
 
+// Auth API routes
+app.use('/api/auth', authRoutes);
+
 // League API routes
 app.use('/api', leagueRoutes);
 
 // Saved Team API routes
 app.use('/api', savedTeamRoutes);
+
+// Draft session API routes
+app.use('/api', draftRoutes);
 
 // Create HTTP server from Express app
 const server = http.createServer(app);
@@ -68,6 +77,61 @@ const io = new Server(server, {
 
 // In-memory storage for lobbies
 const lobbies = new Map();
+
+// Helper to save draft session to MongoDB
+async function saveDraftSession(lobby) {
+  if (!lobby || !lobby.code) return;
+  
+  try {
+    const participants = lobby.users.map(user => ({
+      socketId: user.id,
+      username: user.name,
+      selections: (lobby.selections[user.id] || []).map(p => ({
+        pokemonId: p.id,
+        pokemonName: p.name,
+        points: p.points || 0,
+        timestamp: new Date()
+      })),
+      pointsRemaining: lobby.pointsRemaining[user.id] || lobby.settings.pointsLimit,
+      isConnected: false,
+      lastSeen: new Date()
+    }));
+
+    const sessionData = {
+      lobbyCode: lobby.code,
+      hostSocketId: lobby.host,
+      status: lobby.draftStarted ? 'drafting' : 'lobby',
+      settings: {
+        pointsLimit: lobby.settings.pointsLimit,
+        teamSizeLimit: lobby.settings.teamSizeLimit,
+        allowTrading: lobby.settings.allowTrading || false,
+        maxTradeLimit: lobby.settings.maxTradeLimit || 0,
+        unlimitedTrades: lobby.settings.unlimitedTrades || false,
+        genFilter: lobby.settings.genFilter || 0
+      },
+      participants,
+      turnOrder: lobby.draftOrder || [],
+      currentTurn: lobby.currentTurn,
+      draftPokemon: lobby.draftPokemonList || [],
+      pointsMap: lobby.pointsMap || {},
+      banList: lobby.banList || []
+    };
+
+    let session = await DraftSession.findOne({ lobbyCode: lobby.code });
+    
+    if (session) {
+      Object.assign(session, sessionData);
+      session.updatedAt = new Date();
+    } else {
+      session = new DraftSession(sessionData);
+    }
+    
+    await session.save();
+    console.log(`Draft session ${lobby.code} saved to MongoDB`);
+  } catch (error) {
+    console.error('Failed to save draft session:', error);
+  }
+}
 
 // Helper to generate random lobby code
 function generateLobbyCode(length = 6) {
@@ -175,9 +239,12 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('leave_lobby', ({ code }) => {
+  socket.on('leave_lobby', async ({ code }) => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
+    
+    // Save before user leaves
+    await saveDraftSession(lobby);
     
     lobby.users = lobby.users.filter(u => u.id !== socket.id);
     delete lobby.selections[socket.id];
@@ -319,7 +386,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('start_draft', ({ code }, callback) => {
+  socket.on('start_draft', async ({ code }, callback) => {
     const lobby = lobbies.get(code);
     if (!lobby) return callback({ ok: false, error: 'Lobby not found' });
     if (lobby.host !== socket.id) return socket.emit('start_rejected', { reason: 'not_host' });
@@ -335,6 +402,9 @@ io.on('connection', (socket) => {
     lobby.currentTurn = lobby.draftOrder[0];
     lobby.snakeDraftDirection = 1; // Start going forward
     lobby.currentRound = 0;
+    
+    // Save draft session when starting
+    await saveDraftSession(lobby);
     
     callback({ ok: true });
     io.to(code).emit('draft_started', {
@@ -358,7 +428,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('select_pokemon', ({ code, name, pokemon }) => {
+  socket.on('select_pokemon', async ({ code, name, pokemon }) => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
     
@@ -438,11 +508,16 @@ io.on('connection', (socket) => {
     
     if (allPlayersComplete) {
       console.log(`Draft complete for lobby ${code}`);
+      // Save completed draft to MongoDB
+      await saveDraftSession(lobby);
       io.to(code).emit('draft_complete', {
         selections: lobby.selections,
         users: lobby.users
       });
     }
+    
+    // Save after each selection
+    await saveDraftSession(lobby);
     
     io.to(code).emit('user_selected', {
       userId: socket.id,
@@ -718,12 +793,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log('Client disconnected:', socket.id);
     
     if (socket.lobbyCode) {
       const lobby = lobbies.get(socket.lobbyCode);
       if (lobby) {
+        // Save draft session to MongoDB before modifying
+        await saveDraftSession(lobby);
+        
         lobby.users = lobby.users.filter(u => u.id !== socket.id);
         
         if (lobby.users.length === 0) {
