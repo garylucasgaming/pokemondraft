@@ -1869,15 +1869,30 @@ function App() {
 
             const filtered = rawList.filter((p) => {
               const name = p.name.toLowerCase();
+              
+              // First check exclude tokens - this takes priority over everything
+              if (excludeTokens.some((t) => name.includes(t))) {
+                // Exception: allow regional variants that aren't Pikachu
+                if (!name.includes('pikachu') && keepRegional.some((t) => name.includes(t))) {
+                  return true;
+                }
+                return false;
+              }
+              
+              // Exclude Pikachu regional variants (they have special forms)
               if (name.includes('pikachu') && keepRegional.some((t) => name.includes(t))) return false;
+              
+              // Keep regional variants
               if (keepRegional.some((t) => name.includes(t))) return true;
+              
+              // Handle hyphenated names
               if (name.includes('-')) {
                 if (hyphenDisallowNames.has(name)) return false;
                 if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
                 if (hyphenAllowNames.has(name)) return true;
                 return false;
               }
-              if (excludeTokens.some((t) => name.includes(t))) return false;
+              
               return true;
             });
 
@@ -2324,13 +2339,29 @@ function App() {
 
             const filtered = rawList.filter((item) => {
               const name = item.name.toLowerCase();
+              
+              // First check exclude tokens - this takes priority over everything
+              if (excludeTokens.some((t) => name.includes(t))) {
+                // Exception: allow regional variants that aren't Pikachu
+                if (!name.includes('pikachu') && keepRegional.some((t) => name.includes(t))) {
+                  return true;
+                }
+                return false;
+              }
+              
+              // Exclude Pikachu regional variants (they have special forms)
+              if (name.includes('pikachu') && keepRegional.some((t) => name.includes(t))) return false;
+              
+              // Handle explicitly allowed names
               if (hyphenAllowNames.has(name)) return true;
+              
+              // Handle hyphenated names
               if (name.includes('-')) {
                 if (keepRegional.some((t) => name.includes(t))) return true;
                 if (hyphenAllowTokens.some((t) => name.includes(t))) return true;
                 return false;
               }
-              if (excludeTokens.some((t) => name.includes(t))) return false;
+              
               return true;
             });
 
