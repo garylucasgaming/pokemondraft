@@ -1,7 +1,20 @@
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 8080;
+
+// Load presets from file
+let presets = [];
+try {
+  const presetsPath = path.join(__dirname, 'public', 'presets.json');
+  const presetsData = JSON.parse(fs.readFileSync(presetsPath, 'utf-8'));
+  presets = presetsData.presets || [];
+  console.log(`Loaded ${presets.length} presets from presets.json`);
+} catch (err) {
+  console.error('Failed to load presets.json:', err);
+}
 
 const server = http.createServer((req, res) => {
   // Add CORS headers for all requests
@@ -251,6 +264,49 @@ io.on('connection', (socket) => {
     
     callback({ ok: true, pointsMap: lobby.pointsMap });
     io.to(code).emit('pointsMap_update', { pointsMap: lobby.pointsMap });
+  });
+
+  socket.on('load_preset', ({ code, presetId }, callback) => {
+    console.log(`load_preset request: code=${code}, presetId=${presetId}, host=${socket.id}`);
+    const lobby = lobbies.get(code);
+    if (!lobby) {
+      console.log('load_preset error: Lobby not found');
+      return callback({ ok: false, error: 'Lobby not found' });
+    }
+    if (lobby.host !== socket.id) {
+      console.log(`load_preset error: Not host. socket=${socket.id}, host=${lobby.host}`);
+      return callback({ ok: false, error: 'Only host can load presets' });
+    }
+    
+    const preset = presets.find(p => p.id === presetId);
+    if (!preset) {
+      console.log(`load_preset error: Preset not found: ${presetId}`);
+      return callback({ ok: false, error: 'Preset not found' });
+    }
+    
+    // Normalize and apply preset points
+    const normalized = {};
+    for (const [k, v] of Object.entries(preset.points)) {
+      normalized[k.toLowerCase()] = Number(v);
+    }
+    
+    lobby.pointsMap = { ...lobby.pointsMap, ...normalized };
+    
+    // Update lobby settings if preset has them
+    if (preset.pointsLimit) lobby.settings.pointsLimit = preset.pointsLimit;
+    if (preset.teamSizeLimit) lobby.settings.teamSizeLimit = preset.teamSizeLimit;
+    if (preset.generationFilter) lobby.settings.genFilter = preset.generationFilter;
+    
+    console.log(`load_preset success: loaded ${Object.keys(normalized).length} entries from preset "${preset.name}"`);
+    
+    callback({ ok: true, pointsMap: lobby.pointsMap, settings: lobby.settings });
+    io.to(code).emit('pointsMap_update', { pointsMap: lobby.pointsMap });
+    io.to(code).emit('lobby_update', {
+      code: lobby.code,
+      host: lobby.host,
+      users: lobby.users,
+      settings: lobby.settings
+    });
   });
 
   socket.on('start_draft', ({ code }, callback) => {

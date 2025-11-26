@@ -3641,24 +3641,27 @@ function App() {
                                     setLobbyGenFilter(preset.generationFilter);
                                   }
                                   
-                                  // Send all points as a batch to avoid overwhelming the server
-                                  socket.emit('import_points', { 
+                                  // Send preset ID to server - server handles all the heavy lifting
+                                  socket.emit('load_preset', { 
                                     code: lobbyCode, 
-                                    pointsData: preset.points 
+                                    presetId: preset.id 
                                   }, (resp) => {
                                     if (resp && resp.ok) {
-                                      // Update settings after points are applied
-                                      socket.emit('update_settings', { code: lobbyCode, settings: newSettings }, (settingsResp) => {
-                                        if (settingsResp && settingsResp.ok) {
-                                          setExportMessage(`Preset "${preset.name}" loaded successfully!`);
-                                          setTimeout(() => setExportMessage(''), 3000);
-                                        } else {
-                                          setExportMessage('Failed to update settings');
-                                          setTimeout(() => setExportMessage(''), 3000);
+                                      // Update local state with server response
+                                      if (resp.settings) {
+                                        setLobbySettings(s => ({
+                                          ...s,
+                                          pointsLimit: resp.settings.pointsLimit,
+                                          teamSizeLimit: resp.settings.teamSizeLimit
+                                        }));
+                                        if (resp.settings.genFilter) {
+                                          setLobbyGenFilter(resp.settings.genFilter);
                                         }
-                                      });
+                                      }
+                                      setExportMessage(`Preset "${preset.name}" loaded successfully!`);
+                                      setTimeout(() => setExportMessage(''), 3000);
                                     } else {
-                                      setExportMessage('Failed to load preset points');
+                                      setExportMessage(resp?.error || 'Failed to load preset');
                                       setTimeout(() => setExportMessage(''), 3000);
                                     }
                                   });
