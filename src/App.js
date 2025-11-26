@@ -2901,11 +2901,14 @@ function App() {
   const banAllParadox = () => {
     if (!socket || !lobbyCode) return;
     console.log('Checking for Paradox Pokémon. Total pokemonList:', pokemonList.length);
-    console.log('Sample pokemon:', pokemonList[0]);
+    console.log('Sample pokemon (first):', pokemonList[0]);
+    console.log('Sample pokemon (id 984 - great-tusk):', pokemonList.find(p => p.id === 984));
+    console.log('Checking if paradox field exists on any pokemon:', pokemonList.some(p => 'paradox' in p));
+    console.log('Checking if any have paradox=true:', pokemonList.some(p => p.paradox === true));
     const paradoxPokemon = pokemonList.filter(p => p.paradox);
-    console.log('Found paradox pokemon:', paradoxPokemon.length, paradoxPokemon.map(p => p.name));
+    console.log('Found paradox pokemon:', paradoxPokemon.length, paradoxPokemon.map(p => ({ id: p.id, name: p.name, paradox: p.paradox })));
     if (!paradoxPokemon || paradoxPokemon.length === 0) {
-      alert('No Paradox Pokémon found to ban');
+      alert('No Paradox Pokémon found to ban. Make sure to do a hard refresh (Ctrl+Shift+R) to reload pokemon_data.json');
       return;
     }
     const pm = {};
@@ -4521,7 +4524,7 @@ function App() {
                   {draftSuggestionsVisible && searchTerm && (
                     <div className="suggestions-dropdown" style={{ position: 'absolute', top: '36px', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto' }}>
                       {(draftPokemonList.length > 0 ? draftPokemonList : pokemonList).filter(p => p.name.toLowerCase().includes(searchTerm)).slice(0,8).map(p => (
-                        <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
+                        <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px' }} onMouseDown={(ev) => { ev.preventDefault(); setSearchTerm(p.name.toLowerCase()); setDraftSuggestionsVisible(false); }}>
                           <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
                           <span>{p.name}</span>
                         </div>
