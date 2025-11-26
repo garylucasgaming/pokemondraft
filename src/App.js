@@ -1015,16 +1015,34 @@ function App() {
   const loadTeamFromStorage = async (teamId) => {
     try {
       const savedTeams = loadSavedTeams();
+      
+      if (!savedTeams || savedTeams.length === 0) {
+        alert('Sorry, no teams to load. Save a team from the team builder first.');
+        return;
+      }
+      
       const team = savedTeams.find(t => t.id === teamId);
       
-      if (!team || !team.data) {
-        alert('Team not found');
+      if (!team) {
+        alert('Sorry, team not found. It may have been deleted.');
+        return;
+      }
+      
+      if (!team.data || !team.data.slots) {
+        alert('Sorry, team data is corrupted or invalid.');
+        return;
+      }
+      
+      // Check if team has any Pokemon
+      const pokemonCount = team.data.slots.filter(s => s && s.pokemon).length;
+      if (pokemonCount === 0) {
+        alert('Sorry, this team has no Pokémon to load.');
         return;
       }
       
       console.log('Raw team data from storage:', team.data);
       console.log('Number of slots:', team.data.slots?.length);
-      console.log('Slots with pokemon:', team.data.slots?.filter(s => s && s.pokemon).length);
+      console.log('Slots with pokemon:', pokemonCount);
       
       // Fetch pokemon_data.json to get moves and abilities
       const response = await fetch('/pokemon_data.json');
@@ -4809,7 +4827,13 @@ function App() {
                         </div>
                         <div className="team-selector-card-body">
                           <div className="saved-team-grid">
-                            {team.data.slots.filter(s => s && (s.pokemon || s.pokemonName)).slice(0, 6).map((slot, idx) => {
+                            {team.data.slots.filter(s => {
+                              // Only include slots with valid Pokemon data
+                              if (!s) return false;
+                              if (s.pokemon && typeof s.pokemon === 'object' && s.pokemon.name) return true;
+                              if (s.pokemonName) return true;
+                              return false;
+                            }).slice(0, 6).map((slot, idx) => {
                               // Handle both old format (slot.sprite) and new format (slot.pokemon.img)
                               const imgSrc = slot.pokemon && typeof slot.pokemon === 'object' 
                                 ? slot.pokemon.img 
