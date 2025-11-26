@@ -120,6 +120,20 @@ function App() {
     lobbySettingsRef.current = lobbySettings;
   }, [lobbySettings]);
   
+  // Load presets from JSON
+  useEffect(() => {
+    fetch('/presets.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.presets) {
+          setPresetsList(data.presets);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load presets:', err);
+      });
+  }, []);
+  
   const [banList, setBanList] = useState([]);
   const [pointsMap, setPointsMap] = useState({});
   const [pointsRemaining, setPointsRemaining] = useState({});
@@ -165,6 +179,10 @@ function App() {
   
   // Draft selection confirmation
   const [pendingDraftSelection, setPendingDraftSelection] = useState(null); // {id, pokemon}
+  
+  // Presets
+  const [presetsList, setPresetsList] = useState([]);
+  const [selectedPreset, setSelectedPreset] = useState('');
 
   // Team builder constants
   const TEAM_BUILDER_STORAGE_KEY = 'pkmndraft_teambuilder';
@@ -3585,6 +3603,66 @@ function App() {
                             }} className="input-full" />
                         </div>
                       </div>
+                      <div className="row mt-8">
+                        <div className="col-1">
+                          <label className="label-small">Load Preset</label>
+                          <select value={selectedPreset} onChange={(e) => {
+                              const presetId = e.target.value;
+                              setSelectedPreset(presetId);
+                              
+                              if (presetId && socket && lobbyCode && socket.id === hostId) {
+                                const preset = presetsList.find(p => p.id === presetId);
+                                if (preset) {
+                                  // Apply preset settings
+                                  const newSettings = {
+                                    pointsLimit: preset.pointsLimit,
+                                    teamSizeLimit: preset.teamSizeLimit,
+                                    genFilter: preset.generationFilter || 0,
+                                    allowTrading: lobbySettings.allowTrading,
+                                    maxTradeLimit: lobbySettings.maxTradeLimit,
+                                    unlimitedTrades: lobbySettings.unlimitedTrades
+                                  };
+                                  
+                                  setLobbySettings(s => ({
+                                    ...s,
+                                    pointsLimit: preset.pointsLimit,
+                                    teamSizeLimit: preset.teamSizeLimit
+                                  }));
+                                  
+                                  if (preset.generationFilter) {
+                                    setLobbyGenFilter(preset.generationFilter);
+                                  }
+                                  
+                                  // Apply points to all Pokemon in the preset
+                                  const pointsEntries = Object.entries(preset.points);
+                                  let applied = 0;
+                                  
+                                  pointsEntries.forEach(([pokemonName, points]) => {
+                                    socket.emit('set_points', { code: lobbyCode, pokemon: pokemonName, points }, (resp) => {
+                                      if (resp && resp.ok) {
+                                        applied++;
+                                        if (applied === pointsEntries.length) {
+                                          // Update settings after all points are applied
+                                          socket.emit('update_settings', { code: lobbyCode, settings: newSettings }, (resp) => {
+                                            if (resp && resp.ok) {
+                                              setExportMessage(`Preset "${preset.name}" loaded successfully!`);
+                                              setTimeout(() => setExportMessage(''), 3000);
+                                            }
+                                          });
+                                        }
+                                      }
+                                    });
+                                  });
+                                }
+                              }
+                            }} className="input-full">
+                            <option value="">-- Select Preset --</option>
+                            {presetsList.map(preset => (
+                              <option key={preset.id} value={preset.id}>{preset.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                       <div className="gen-filter-row">
                         <div className="col-1">
                           <label className="label-small">Generation Filter</label>
@@ -3863,7 +3941,7 @@ function App() {
                             }).filter(p => {
                               // For the Banned column (val === 0) always show banned entries
                               if (val === 0) return true;
-                              return (lobbyGenFilter === 0 || p.id <= genLimits[lobbyGenFilter]) && (!hideLegendaries || !p.legendary);
+                              return (lobbyGenFilter === 0 || p.generation <= lobbyGenFilter) && (!hideLegendaries || !p.legendary);
                             }).map(p => (
                             <div 
                               key={p.id} 
