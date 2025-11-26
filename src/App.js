@@ -1829,6 +1829,11 @@ function App() {
     fetch('/pokemon_data.json')
       .then(response => response.json())
       .then((data) => {
+        console.log('Raw pokemon_data.json loaded. Total entries:', data.length);
+        const sampleParadox = data.find(p => p.form_name === 'great-tusk');
+        console.log('Sample paradox pokemon from JSON (great-tusk):', sampleParadox);
+        console.log('Does it have paradox field?', 'paradox' in (sampleParadox || {}), 'Value:', sampleParadox?.paradox);
+        
         // Filter out unwanted forms (same logic as PokeAPI fallback)
         const excludeTokens = [
           'mega', 'gmax', 'g-max', 'primal', 'totem', 'therian', 'incarnate', 'eternal',
