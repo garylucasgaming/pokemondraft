@@ -1,9 +1,24 @@
+require('dotenv').config();
+
 const http = require('http');
+const express = require('express');
+const cors = require('cors');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const leagueRoutes = require('./league-routes');
 
 const PORT = process.env.PORT || 8080;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err));
 
 // Load presets from file
 let presets = [];
@@ -16,29 +31,23 @@ try {
   console.error('Failed to load presets.json:', err);
 }
 
-const server = http.createServer((req, res) => {
-  // Add CORS headers for all requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
-  
-  // Health check endpoint for Elastic Beanstalk
-  if (req.url === '/' || req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('OK');
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
+// Create Express app for REST API
+const app = express();
+app.use(cors({
+  origin: ['https://pokemondraft.com', 'https://www.pokemondraft.com', 'http://localhost:3000'],
+  credentials: true
+}));
+app.use(express.json());
+
+// Health check
+app.get('/', (req, res) => res.send('OK'));
+app.get('/health', (req, res) => res.send('OK'));
+
+// League API routes
+app.use('/api', leagueRoutes);
+
+// Create HTTP server from Express app
+const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
