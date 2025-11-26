@@ -644,7 +644,7 @@ body {
   border-radius: 6px;
 }
 .suggestion-item {
-  padding: 8px 10px;
+  
   cursor: pointer;
 }
 .suggestion-item:hover { background: #f3f4f6; }
