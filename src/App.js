@@ -2901,18 +2901,24 @@ function App() {
   };
 
   // Ban all legendaries visible in the current pokemonList (host-only)
-  const banAllLegendaries = async () => {
+  const banAllLegendaries = () => {
     if (!socket || !lobbyCode) return;
-    // ensure we have legendary statuses for the visible pokemon
-    const allNames = pokemonList.map(p => p.name.toLowerCase());
-    const statusMap = await fetchLegendaryStatuses(allNames);
-    const legends = Object.entries(statusMap || {}).filter(([n, v]) => v).map(([n]) => n);
-    if (!legends || legends.length === 0) {
-      alert('No legendaries found to ban');
+    
+    // Use legendary field from pokemon_data.json (already loaded)
+    const legendaryPokemon = pokemonList.filter(p => p.legendary);
+    
+    if (!legendaryPokemon || legendaryPokemon.length === 0) {
+      alert('No legendary Pokémon found to ban. Make sure to do a hard refresh (Ctrl+Shift+R) to reload pokemon_data.json');
       return;
     }
+    
+    console.log(`Banning ${legendaryPokemon.length} legendary Pokémon`);
+    
     const pm = {};
-    for (const n of legends) pm[n] = 0;
+    for (const p of legendaryPokemon) {
+      pm[p.name.toLowerCase()] = 0;
+    }
+    
     socket.emit('import_points', { code: lobbyCode, pointsMap: pm }, (resp) => {
       if (!resp || !resp.ok) {
         alert(resp && resp.error ? resp.error : 'Failed to ban legendaries');
@@ -3613,6 +3619,8 @@ function App() {
                               if (presetId && socket && lobbyCode && socket.id === hostId) {
                                 const preset = presetsList.find(p => p.id === presetId);
                                 if (preset) {
+                                  setExportMessage(`Loading preset "${preset.name}"...`);
+                                  
                                   // Apply preset settings
                                   const newSettings = {
                                     pointsLimit: preset.pointsLimit,
@@ -3633,25 +3641,26 @@ function App() {
                                     setLobbyGenFilter(preset.generationFilter);
                                   }
                                   
-                                  // Apply points to all Pokemon in the preset
-                                  const pointsEntries = Object.entries(preset.points);
-                                  let applied = 0;
-                                  
-                                  pointsEntries.forEach(([pokemonName, points]) => {
-                                    socket.emit('set_points', { code: lobbyCode, pokemon: pokemonName, points }, (resp) => {
-                                      if (resp && resp.ok) {
-                                        applied++;
-                                        if (applied === pointsEntries.length) {
-                                          // Update settings after all points are applied
-                                          socket.emit('update_settings', { code: lobbyCode, settings: newSettings }, (resp) => {
-                                            if (resp && resp.ok) {
-                                              setExportMessage(`Preset "${preset.name}" loaded successfully!`);
-                                              setTimeout(() => setExportMessage(''), 3000);
-                                            }
-                                          });
+                                  // Send all points as a batch to avoid overwhelming the server
+                                  socket.emit('import_points', { 
+                                    code: lobbyCode, 
+                                    pointsData: preset.points 
+                                  }, (resp) => {
+                                    if (resp && resp.ok) {
+                                      // Update settings after points are applied
+                                      socket.emit('update_settings', { code: lobbyCode, settings: newSettings }, (settingsResp) => {
+                                        if (settingsResp && settingsResp.ok) {
+                                          setExportMessage(`Preset "${preset.name}" loaded successfully!`);
+                                          setTimeout(() => setExportMessage(''), 3000);
+                                        } else {
+                                          setExportMessage('Failed to update settings');
+                                          setTimeout(() => setExportMessage(''), 3000);
                                         }
-                                      }
-                                    });
+                                      });
+                                    } else {
+                                      setExportMessage('Failed to load preset points');
+                                      setTimeout(() => setExportMessage(''), 3000);
+                                    }
                                   });
                                 }
                               }
