@@ -63,15 +63,58 @@ const tournamentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Saved Team Schema
+const savedTeamSchema = new mongoose.Schema({
+  userId: { type: String }, // Future: link to user accounts (for now, browser-based identifier)
+  username: { type: String }, // Display name
+  name: { type: String, required: true },
+  pokemon: [{
+    name: { type: String, required: true },
+    moves: [String],
+    ability: String,
+    item: String,
+    nature: String,
+    teraType: String,
+    evs: {
+      hp: { type: Number, default: 0 },
+      attack: { type: Number, default: 0 },
+      defense: { type: Number, default: 0 },
+      specialAttack: { type: Number, default: 0 },
+      specialDefense: { type: Number, default: 0 },
+      speed: { type: Number, default: 0 }
+    },
+    ivs: {
+      hp: { type: Number, default: 31 },
+      attack: { type: Number, default: 31 },
+      defense: { type: Number, default: 31 },
+      specialAttack: { type: Number, default: 31 },
+      specialDefense: { type: Number, default: 31 },
+      speed: { type: Number, default: 31 }
+    },
+    level: { type: Number, default: 50 },
+    gender: String,
+    shiny: { type: Boolean, default: false }
+  }],
+  format: String, // 'SV OU', 'VGC 2024', 'National Dex', etc.
+  description: String,
+  isPublic: { type: Boolean, default: false },
+  shareCode: { type: String, unique: true, sparse: true }, // Unique code for sharing
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 // Create indexes for better query performance
-leagueSchema.index({ code: 1 });
+// Note: code and shareCode already have unique indexes from schema definition
 playerSchema.index({ leagueId: 1, username: 1 });
 matchSchema.index({ leagueId: 1, week: 1 });
 tournamentSchema.index({ leagueId: 1 });
+savedTeamSchema.index({ userId: 1 });
+savedTeamSchema.index({ isPublic: 1, createdAt: -1 });
 
 module.exports = {
   League: mongoose.model('League', leagueSchema),
   Player: mongoose.model('Player', playerSchema),
   Match: mongoose.model('Match', matchSchema),
-  Tournament: mongoose.model('Tournament', tournamentSchema)
+  Tournament: mongoose.model('Tournament', tournamentSchema),
+  SavedTeam: mongoose.model('SavedTeam', savedTeamSchema)
 };

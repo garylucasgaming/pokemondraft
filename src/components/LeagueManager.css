@@ -1,0 +1,352 @@
+.league-manager {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.league-nav {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #3b4cca;
+  padding-bottom: 10px;
+}
+
+.league-nav button {
+  padding: 10px 20px;
+  background: transparent;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 4px 4px 0 0;
+  transition: background 0.2s;
+}
+
+.league-nav button:hover {
+  background: rgba(59, 76, 202, 0.2);
+}
+
+.league-nav button.active {
+  background: #3b4cca;
+  font-weight: bold;
+}
+
+.error-message {
+  padding: 15px;
+  background: #ff4444;
+  color: white;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.success-message {
+  padding: 15px;
+  background: #4caf50;
+  color: white;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.league-card {
+  background: #2a2a2a;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #ffcb05;
+}
+
+.league-card h3 {
+  color: #ffcb05;
+  margin-top: 0;
+}
+
+.league-card p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.league-card ul {
+  margin: 10px 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.league-card button {
+  width: 100%;
+  padding: 10px;
+  background: #3b4cca;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.league-card button:hover {
+  background: #5a6fd6;
+}
+
+.create-section, .join-section, .view-section {
+  background: #2a2a2a;
+  padding: 30px;
+  border-radius: 8px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.form-group textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.gen-selector {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gen-selector button {
+  padding: 8px 16px;
+  background: #1a1a1a;
+  border: 2px solid #555;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gen-selector button.active {
+  background: #3b4cca;
+  border-color: #3b4cca;
+}
+
+.gen-selector button:hover {
+  border-color: #ffcb05;
+}
+
+.submit-btn {
+  padding: 12px 24px;
+  background: #ffcb05;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #ffd633;
+}
+
+.submit-btn:disabled {
+  background: #555;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.team-builder {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.add-pokemon-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.add-pokemon-form input {
+  padding: 8px;
+  background: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+}
+
+.add-pokemon-form input:first-child {
+  flex: 1;
+}
+
+.add-pokemon-form button {
+  padding: 8px 20px;
+  background: #3b4cca;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-pokemon-form button:hover {
+  background: #5a6fd6;
+}
+
+.team-summary {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-around;
+}
+
+.team-summary p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-pokemon {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.team-pokemon span:first-child {
+  text-transform: capitalize;
+  flex: 1;
+}
+
+.team-pokemon span:nth-child(2) {
+  color: #aaa;
+  font-size: 13px;
+  margin-right: 10px;
+}
+
+.team-pokemon button {
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.team-pokemon button:hover {
+  background: #ff6666;
+}
+
+.league-info {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.league-info p {
+  margin: 10px 0;
+}
+
+.league-info ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.standings-table th {
+  background: #3b4cca;
+  padding: 12px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.standings-table td {
+  padding: 12px;
+  border-top: 1px solid #333;
+}
+
+.standings-table tr:hover {
+  background: #2a2a2a;
+}
+
+.standings-table tr:first-child td {
+  color: #ffcb05;
+  font-weight: bold;
+}
+
+.back-btn {
+  padding: 8px 16px;
+  background: #555;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.back-btn:hover {
+  background: #666;
+}
+
+@media (max-width: 768px) {
+  .leagues-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .league-nav {
+    flex-direction: column;
+  }
+
+  .add-pokemon-form {
+    flex-direction: column;
+  }
+}

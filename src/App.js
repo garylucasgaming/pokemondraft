@@ -5,6 +5,7 @@ import CreditsPage from './pages/Credits';
 import ContactPage from './pages/Contact';
 import PrivacyPage from './pages/Privacy';
 import CopyrightPage from './pages/Copyright';
+import LeagueManager from './components/LeagueManager';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
@@ -3499,6 +3500,9 @@ function App() {
             setOngoingDrafts(drafts);
             setView('ongoingdrafts');
           }}>Ongoing Drafts</button>
+          <button className="nav-button" onClick={() => {
+            setView('leagues');
+          }}>Leagues</button>
         </div>
       </div>
 
@@ -5230,6 +5234,15 @@ function App() {
               })()}
             </div>
           </div>
+        </div>
+      )}
+
+      {view === 'leagues' && (
+        <div className="leagues-container">
+          <button className="gen-button" onClick={() => setView('lobby')} style={{ margin: '20px' }}>
+            Back to Lobby
+          </button>
+          <LeagueManager username={PokemonName || 'Guest'} />
         </div>
       )}
 

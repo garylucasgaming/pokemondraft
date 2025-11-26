@@ -8,15 +8,13 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 const leagueRoutes = require('./league-routes');
+const savedTeamRoutes = require('./saved-team-routes');
 
 const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // Connect to MongoDB
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(MONGODB_URI)
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('MongoDB connection error:', err));
 
@@ -45,6 +43,9 @@ app.get('/health', (req, res) => res.send('OK'));
 
 // League API routes
 app.use('/api', leagueRoutes);
+
+// Saved Team API routes
+app.use('/api', savedTeamRoutes);
 
 // Create HTTP server from Express app
 const server = http.createServer(app);
