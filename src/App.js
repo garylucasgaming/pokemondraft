@@ -2386,7 +2386,9 @@ function App() {
           img: pokemon.sprite_front_default,
           types: pokemon.types,
           moves: pokemon.moves,
-          generation: pokemon.generation
+          generation: pokemon.generation,
+          legendary: pokemon.legendary || false,
+          paradox: pokemon.paradox || false
         })).sort((a, b) => a.id - b.id);
         
         setPokemonList(list);
