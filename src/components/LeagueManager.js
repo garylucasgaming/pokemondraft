@@ -563,32 +563,41 @@ Replays must be posted to the appropriate channel.`;
 
     try {
       setLoading(true);
-      await updateLeague(currentLeague.code, {
-        captainRules: {
-          captainCount: captainCount,
-          allowMegaCaptains: allowMegaCaptains,
-          allowTeraCaptains: allowTeraCaptains,
-          allowGmaxCaptains: allowGmaxCaptains,
-          allowZMoveCaptains: allowZMoveCaptains,
-          bannedCaptains: bannedCaptains
-        }
+      
+      const captainRulesData = {
+        captainCount: captainCount,
+        allowMegaCaptains: allowMegaCaptains,
+        allowTeraCaptains: allowTeraCaptains,
+        allowGmaxCaptains: allowGmaxCaptains,
+        allowZMoveCaptains: allowZMoveCaptains,
+        bannedCaptains: bannedCaptains
+      };
+      
+      console.log('Saving captain rules:', captainRulesData);
+      
+      const result = await updateLeague(currentLeague.code, {
+        captainRules: captainRulesData
       });
       
-      setCurrentLeague({
-        ...currentLeague,
-        captainRules: {
-          captainCount: captainCount,
-          allowMegaCaptains: allowMegaCaptains,
-          allowTeraCaptains: allowTeraCaptains,
-          allowGmaxCaptains: allowGmaxCaptains,
-          allowZMoveCaptains: allowZMoveCaptains,
-          bannedCaptains: bannedCaptains
-        }
-      });
+      console.log('Save result:', result);
+      
+      // Reload the league to ensure we have fresh data
+      const leagueData = await getLeagueByCode(currentLeague.code);
+      setCurrentLeague(leagueData.league);
+      
+      // Update state variables from the fresh data
+      setCaptainCount(leagueData.league.captainRules?.captainCount || 2);
+      setAllowMegaCaptains(leagueData.league.captainRules?.allowMegaCaptains ?? false);
+      setAllowTeraCaptains(leagueData.league.captainRules?.allowTeraCaptains ?? false);
+      setAllowGmaxCaptains(leagueData.league.captainRules?.allowGmaxCaptains ?? false);
+      setAllowZMoveCaptains(leagueData.league.captainRules?.allowZMoveCaptains ?? false);
+      setBannedCaptains(leagueData.league.captainRules?.bannedCaptains || []);
+      
       setShowDraftRulesModal(false);
       setMessage('Draft rules saved successfully!');
       setError('');
     } catch (err) {
+      console.error('Save draft rules error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -2437,24 +2446,24 @@ Replays must be posted to the appropriate channel.`;
                       </div>
                       <div>
                         <strong style={{ color: '#64748b', fontSize: '13px' }}>Captains Allowed:</strong>
-                        <div style={{ fontSize: '15px', marginTop: '4px' }}>{captainCount}</div>
+                        <div style={{ fontSize: '15px', marginTop: '4px' }}>{currentLeague.captainRules?.captainCount || 2}</div>
                       </div>
                       <div>
                         <strong style={{ color: '#64748b', fontSize: '13px' }}>Captain Types:</strong>
                         <div style={{ fontSize: '13px', marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {allowMegaCaptains && <span style={{ background: '#e0e7ff', padding: '2px 8px', borderRadius: '4px' }}>Mega</span>}
-                          {allowTeraCaptains && <span style={{ background: '#fce7f3', padding: '2px 8px', borderRadius: '4px' }}>Tera</span>}
-                          {allowGmaxCaptains && <span style={{ background: '#ddd6fe', padding: '2px 8px', borderRadius: '4px' }}>Gmax</span>}
-                          {allowZMoveCaptains && <span style={{ background: '#fef3c7', padding: '2px 8px', borderRadius: '4px' }}>Z-Move</span>}
-                          {!allowMegaCaptains && !allowTeraCaptains && !allowGmaxCaptains && !allowZMoveCaptains && <span style={{ color: '#94a3b8' }}>None</span>}
+                          {currentLeague.captainRules?.allowMegaCaptains && <span style={{ background: '#e0e7ff', padding: '2px 8px', borderRadius: '4px' }}>Mega</span>}
+                          {currentLeague.captainRules?.allowTeraCaptains && <span style={{ background: '#fce7f3', padding: '2px 8px', borderRadius: '4px' }}>Tera</span>}
+                          {currentLeague.captainRules?.allowGmaxCaptains && <span style={{ background: '#ddd6fe', padding: '2px 8px', borderRadius: '4px' }}>Gmax</span>}
+                          {currentLeague.captainRules?.allowZMoveCaptains && <span style={{ background: '#fef3c7', padding: '2px 8px', borderRadius: '4px' }}>Z-Move</span>}
+                          {!currentLeague.captainRules?.allowMegaCaptains && !currentLeague.captainRules?.allowTeraCaptains && !currentLeague.captainRules?.allowGmaxCaptains && !currentLeague.captainRules?.allowZMoveCaptains && <span style={{ color: '#94a3b8' }}>None</span>}
                         </div>
                       </div>
                     </div>
-                    {bannedCaptains.length > 0 && (
+                    {(currentLeague.captainRules?.bannedCaptains || []).length > 0 && (
                       <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                         <strong style={{ color: '#64748b', fontSize: '13px' }}>Banned Captains:</strong>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                          {bannedCaptains.map((name, idx) => {
+                          {(currentLeague.captainRules?.bannedCaptains || []).map((name, idx) => {
                             const pokemon = draftPokemonList.find(p => p.name === name);
                             return (
                               <div
