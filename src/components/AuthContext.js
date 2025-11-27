@@ -37,10 +37,20 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('auth_token', data.token);
-        setToken(data.token);
-        setUser(data.user);
+        const text = await response.text();
+        if (text) {
+          try {
+            const data = JSON.parse(text);
+            localStorage.setItem('auth_token', data.token);
+            setToken(data.token);
+            setUser(data.user);
+          } catch (parseError) {
+            console.error('Failed to parse device login response');
+            setLoading(false);
+          }
+        } else {
+          setLoading(false);
+        }
       } else {
         // Device not recognized, user needs to login manually
         setLoading(false);
@@ -60,9 +70,25 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setToken(tokenToVerify);
-        setUser(data.user);
+        const text = await response.text();
+        if (text) {
+          try {
+            const data = JSON.parse(text);
+            setToken(tokenToVerify);
+            setUser(data.user);
+          } catch (parseError) {
+            console.error('Failed to parse verify token response');
+            localStorage.removeItem('auth_token');
+            setToken(null);
+            setUser(null);
+            tryDeviceLogin();
+          }
+        } else {
+          localStorage.removeItem('auth_token');
+          setToken(null);
+          setUser(null);
+          tryDeviceLogin();
+        }
       } else {
         // Token invalid, clear it and try device login
         localStorage.removeItem('auth_token');
@@ -107,7 +133,21 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, email, password })
       });
 
-      const data = await response.json();
+      // Check if response has content
+      const text = await response.text();
+      
+      if (!text) {
+        throw new Error('Server returned empty response. Is the server running?');
+      }
+
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse response:', text);
+        throw new Error('Server returned invalid JSON response');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed');
@@ -123,6 +163,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user: data.user };
     } catch (error) {
+      console.error('Registration error:', error);
       return { success: false, error: error.message };
     }
   };
@@ -137,7 +178,21 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ usernameOrEmail, password })
       });
 
-      const data = await response.json();
+      // Check if response has content
+      const text = await response.text();
+      
+      if (!text) {
+        throw new Error('Server returned empty response. Is the server running?');
+      }
+
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse response:', text);
+        throw new Error('Server returned invalid JSON response');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed');
@@ -153,6 +208,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user: data.user };
     } catch (error) {
+      console.error('Login error:', error);
       return { success: false, error: error.message };
     }
   };
