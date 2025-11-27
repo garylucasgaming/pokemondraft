@@ -184,6 +184,7 @@ async function saveDraftSession(lobby) {
     const sessionData = {
       lobbyCode: lobby.code,
       lobbyName: lobby.lobbyName || (session?.lobbyName) || '',
+      leagueCode: lobby.leagueCode || (session?.leagueCode) || null,
       hostUsername: lobby.users.find(u => u.id === lobby.host)?.name || (session?.hostUsername),
       hostSocketId: lobby.host,
       status: lobby.draftStarted ? 'drafting' : 'lobby',
@@ -282,11 +283,12 @@ function generateLobbyCode(length = 6) {
 
 io.on('connection', (socket) => {
 
-  socket.on('create_lobby', ({ name }, callback) => {
+  socket.on('create_lobby', ({ name, leagueCode }, callback) => {
     const code = generateLobbyCode();
     const lobby = {
       code,
       lobbyName: '', // Host can set this later
+      leagueCode: leagueCode || null, // Optional league association
       host: socket.id,
       users: [{ id: socket.id, name: name || 'Host' }],
       settings: { pointsLimit: 100, teamSizeLimit: 10, genFilter: 0 },
@@ -374,7 +376,9 @@ io.on('connection', (socket) => {
       draftOrder: lobby.draftOrder,
       currentTurn: lobby.currentTurn,
       draftStarted: lobby.draftStarted,
+      leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
+      playersFinishedTrading: lobby.playersFinishedTrading || []
       playersFinishedTrading: lobby.playersFinishedTrading || []
     });
   });
@@ -415,6 +419,7 @@ io.on('connection', (socket) => {
         pointsRemaining: lobby.pointsRemaining,
         draftOrder: lobby.draftOrder,
         currentTurn: lobby.currentTurn,
+        leagueCode: lobby.leagueCode,
         tradesCompleted: lobby.tradesCompleted || {},
         playersFinishedTrading: lobby.playersFinishedTrading || []
       });
@@ -445,8 +450,11 @@ io.on('connection', (socket) => {
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining,
       currentTurn: lobby.currentTurn,
+      leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
       playersFinishedTrading: lobby.playersFinishedTrading || []
+    });
+  });
     });
   });
 
@@ -459,6 +467,29 @@ io.on('connection', (socket) => {
     
     callback({ ok: true, lobbyName: lobby.lobbyName });
     io.to(code).emit('lobby_name_updated', { lobbyName: lobby.lobbyName });
+  });
+
+  socket.on('update_league_code', ({ code, leagueCode }, callback) => {
+    const lobby = lobbies.get(code);
+    if (!lobby) return callback({ ok: false, error: 'Lobby not found' });
+    if (lobby.host !== socket.id) return callback({ ok: false, error: 'Only host can update league code' });
+    
+    lobby.leagueCode = leagueCode || null;
+    
+    callback({ ok: true, leagueCode: lobby.leagueCode });
+    io.to(code).emit('lobby_update', {
+      code,
+      host: lobby.host,
+      users: lobby.users,
+      settings: lobby.settings,
+      pointsMap: lobby.pointsMap,
+      selections: lobby.selections,
+      pointsRemaining: lobby.pointsRemaining,
+      currentTurn: lobby.currentTurn,
+      leagueCode: lobby.leagueCode,
+      tradesCompleted: lobby.tradesCompleted || {},
+      playersFinishedTrading: lobby.playersFinishedTrading || []
+    });
   });
 
   socket.on('set_points', ({ code, name, value }, callback) => {
@@ -528,7 +559,8 @@ io.on('connection', (socket) => {
       code: lobby.code,
       host: lobby.host,
       users: lobby.users,
-      settings: lobby.settings
+      settings: lobby.settings,
+      leagueCode: lobby.leagueCode
     });
   });
 
@@ -569,6 +601,7 @@ io.on('connection', (socket) => {
       draftOrder: lobby.draftOrder,
       currentTurn: lobby.currentTurn,
       draftStarted: true,
+      leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
       playersFinishedTrading: lobby.playersFinishedTrading || []
     });
@@ -959,6 +992,7 @@ io.on('connection', (socket) => {
             pointsRemaining: lobby.pointsRemaining,
             draftOrder: lobby.draftOrder,
             currentTurn: lobby.currentTurn,
+            leagueCode: lobby.leagueCode,
             tradesCompleted: lobby.tradesCompleted || {},
             playersFinishedTrading: lobby.playersFinishedTrading || []
           });

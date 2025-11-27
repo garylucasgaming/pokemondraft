@@ -1,4 +1,5 @@
-import logo from './logo.svg';
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 import './App.css';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import CreditsPage from './pages/Credits';
@@ -47,49 +48,17 @@ function AppContent() {
       : 'http://localhost:4000'
   );
 
-  const [PokemonChosen, setPokemonChosen] = useState(false);  
-  const [PokemonData, setPokemonData] = useState({
-    species: "",
-    img: "",
-    type: "",
-    type2: ""
-  });
+  // Removed unused PokemonChosen and PokemonData state
 
   const [pokemonList, setPokemonList] = useState([]);
 
-  const fetchPokemonData = () => {
-    axios.get(`https://pokeapi.co/api/v2/pokemon/${PokemonName.toLowerCase()}`).then(
-      (response) => {
-        setPokemonData({
-            species: response.data.species.name,
-            img: response.data.sprites.front_default, 
-            type1: response.data.types[0].type.name,
-            type2: response.data.types[1] ? response.data.types[1].type.name : null
-          });
-        setPokemonChosen(true);
-        }
-      )
-    };
+  // Removed unused fetchPokemonData function
 
   const [exportMessage, setExportMessage] = useState("");
   // saved username cookie key
   const usernameCookieKey = 'pkmndraft_username';
 
-  const saveUsernameToCookie = (name) => {
-    try {
-      const key = usernameCookieKey;
-      const maxAge = 60 * 60 * 24 * 365;
-      document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(name)}; path=/; max-age=${maxAge}`;
-      setExportMessage('Username saved');
-      setTimeout(() => setExportMessage(''), 2500);
-      // inform user about changing effects
-      window.alert('Username saved. Changing this will prevent joining any currently saved ongoing drafts');
-    } catch (err) {
-      console.error('Failed to save username cookie', err);
-      setExportMessage('Failed to save username');
-      setTimeout(() => setExportMessage(''), 2500);
-    }
-  };
+  // Removed unused saveUsernameToCookie function
 
   const readUsernameFromCookie = () => {
     try {
@@ -102,16 +71,13 @@ function AppContent() {
       return null;
     }
   };
-  const [savedTeamsVisible, setSavedTeamsVisible] = useState(false);
-  const [savedTeams, setSavedTeams] = useState([]);
-  const [copiedTeamKey, setCopiedTeamKey] = useState(null);
+  // Removed unused savedTeamsVisible, savedTeams, copiedTeamKey state
   const [footerPage, setFooterPage] = useState(null);
-  const [ongoingDraftsVisible, setOngoingDraftsVisible] = useState(false);
+  // Removed unused ongoingDraftsVisible state
   const [ongoingDrafts, setOngoingDrafts] = useState([]);
   const [draftSearchQuery, setDraftSearchQuery] = useState('');
   const [viewedOngoingTeam, setViewedOngoingTeam] = useState(null);
-  const [rejoinPending, setRejoinPending] = useState(null);
-  const [waitingForPlayers, setWaitingForPlayers] = useState(false);
+  // Removed unused rejoinPending and waitingForPlayers state
   const [draftComplete, setDraftComplete] = useState(false);
   const [finalTeams, setFinalTeams] = useState(null);
   // app view: 'lobby' (main), 'draft' (the drafting page), or 'teambuilder' (team builder page)
@@ -146,6 +112,7 @@ function AppContent() {
     firstRoundTimer: 480, // 8 hours in minutes
     subsequentRoundTimer: 480 // 8 hours in minutes
   });
+  const [lobbyLeagueCode, setLobbyLeagueCode] = useState(''); // League code to link draft to a league
   const lobbySettingsRef = useRef(lobbySettings);
   
   // Sync refs with state for use in event handler closures
@@ -166,6 +133,7 @@ function AppContent() {
     if (showTeamSelector && view === 'teambuilder') {
       fetchTeamsFromDB();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTeamSelector, view]);
   
   // Load presets from JSON
@@ -209,7 +177,6 @@ function AppContent() {
   const [filterAbility, setFilterAbility] = useState('');
   const [filterMoves, setFilterMoves] = useState([]); // Applied filters (array)
   const [filterMoveInput, setFilterMoveInput] = useState(''); // Current input text
-  const [moveInput, setMoveInput] = useState(''); // Input field value
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [allAbilitiesList, setAllAbilitiesList] = useState([]); // All abilities from PokeAPI
   const [abilitySuggestions, setAbilitySuggestions] = useState([]);
@@ -364,20 +331,7 @@ function AppContent() {
     return true;
   };
 
-  // Schema validation for ongoing drafts
-  const validateOngoingDraft = (entry) => {
-    if (!entry || typeof entry !== 'object') return false;
-    if (!entry.code || typeof entry.code !== 'string') return false;
-    if (!Array.isArray(entry.players)) return false;
-    
-    // Validate nested structures if present
-    if (entry.settings && typeof entry.settings !== 'object') return false;
-    if (entry.pointsRemainingByName && typeof entry.pointsRemainingByName !== 'object') return false;
-    if (entry.pointsRemaining && typeof entry.pointsRemaining !== 'object') return false;
-    if (entry.draftOrder && !Array.isArray(entry.draftOrder)) return false;
-    
-    return true;
-  };
+  // Removed unused validateOngoingDraft function
 
   // Normalize incoming points maps: lowercase keys and numeric values (allow 0 for banned)
   const normalizePointsMap = (pm) => {
@@ -464,122 +418,9 @@ function AppContent() {
     }
   };
 
-  const exportRemoved = async () => {
-    // Export the current local player's team from `remoteSelections`.
-    const localUser = (socket && lobbyUsers) ? lobbyUsers.find(u => u.id === socket.id) : null;
-    const localName = localUser ? localUser.name : (localPlayerName || PokemonName || 'You');
-    const team = getMergedSelectionsForUser(localUser || { id: socket && socket.id, name: localName });
-    if (!team || team.length === 0) {
-      setExportMessage('No selected Pokémon to export');
-      setTimeout(() => setExportMessage(''), 2500);
-      return;
-    }
-    const lines = team.map(p => toShowdownName(p.name || p));
-    const text = lines.join('\n\n');
-    const ok = await copyToClipboard(text);
-    if (ok) {
-      setExportMessage(`Copied ${lines.length} selected Pokémon to clipboard`);
-      setTimeout(() => setExportMessage(''), 3000);
-    } else {
-      setExportMessage('Failed to copy to clipboard');
-      setTimeout(() => setExportMessage(''), 3000);
-    }
-  };
+  // Removed unused exportRemoved function
 
-  const exportPokemonData = async () => {
-    if (!window.confirm('This will fetch data for all Pokemon from PokeAPI. This may take several minutes. Continue?')) {
-      return;
-    }
-    
-    setExportMessage('Fetching Pokemon data from PokeAPI... This may take a few minutes.');
-    
-    try {
-      // First get the list of all Pokemon
-      const listResponse = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000');
-      const pokemonUrls = listResponse.data.results;
-      
-      const pokemonData = [];
-      const seenSpecies = new Set();
-      
-      // Fetch data for each Pokemon
-      for (let i = 0; i < pokemonUrls.length; i++) {
-        try {
-          const pokemonResponse = await axios.get(pokemonUrls[i].url);
-          const pokemon = pokemonResponse.data;
-          
-          // Get species data for generation info
-          const speciesResponse = await axios.get(pokemon.species.url);
-          const species = speciesResponse.data;
-          
-          // Determine if this is a regional form
-          const isRegionalForm = pokemon.name.includes('-alola') || 
-                                  pokemon.name.includes('-galar') || 
-                                  pokemon.name.includes('-hisui') || 
-                                  pokemon.name.includes('-paldea');
-          
-          // Skip if species already exists and it's not a regional form
-          const speciesName = species.name;
-          if (seenSpecies.has(speciesName) && !isRegionalForm) {
-            continue;
-          }
-          
-          seenSpecies.add(speciesName);
-          
-          // Extract types
-          const types = pokemon.types.map(t => t.type.name);
-          
-          // Extract all move names
-          const moves = pokemon.moves.map(m => m.move.name);
-          
-          // Extract abilities
-          const abilities = pokemon.abilities.map(a => a.ability.name);
-          
-          // Get generation number
-          const generationNum = parseInt(species.generation.url.split('/').filter(Boolean).pop());
-          
-          // Build the data object
-          const data = {
-            id: pokemon.id,
-            species_name: speciesName,
-            form_name: pokemon.name,
-            types: types,
-            abilities: abilities,
-            moves: moves,
-            sprite_front_default: pokemon.sprites.front_default,
-            generation: generationNum
-          };
-          
-          pokemonData.push(data);
-          
-          // Update progress message every 50 Pokemon
-          if ((i + 1) % 50 === 0) {
-            setExportMessage(`Fetching Pokemon data... ${i + 1}/${pokemonUrls.length} processed`);
-          }
-        } catch (err) {
-          console.error(`Failed to fetch data for ${pokemonUrls[i].name}:`, err);
-        }
-      }
-      
-      // Convert to JSON and download
-      const jsonString = JSON.stringify(pokemonData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `pokemon_data_${Date.now()}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      setExportMessage(`Successfully exported ${pokemonData.length} Pokemon to JSON file!`);
-      setTimeout(() => setExportMessage(''), 5000);
-    } catch (err) {
-      console.error('Failed to export Pokemon data:', err);
-      setExportMessage('Failed to export Pokemon data. Check console for details.');
-      setTimeout(() => setExportMessage(''), 5000);
-    }
-  };
+  // Removed unused exportPokemonData function
 
   // Saved teams functionality removed - now using ongoing draft data
   
@@ -628,7 +469,6 @@ function AppContent() {
       
       if (!draft || !draft.playerData || !draft.playerData[currentUsername]) {
         alert('Team not found for your username in this draft.');
-        setSavedTeams(readSavedTeamsFromCookies());
         return;
       }
       
@@ -690,8 +530,6 @@ function AppContent() {
       const ok = await copyToClipboard(text);
       if (ok) {
         setExportMessage(`Copied ${lines.length} Pokémon to clipboard`);
-        setCopiedTeamKey(lobbyCode);
-        setTimeout(() => setCopiedTeamKey(null), 2500);
       } else {
         setExportMessage('Failed to copy team');
       }
@@ -2046,10 +1884,6 @@ function AppContent() {
 
       // DON'T restore full list yet - we'll set the correct filtered list below
       
-      // Hide saved/ongoing panels
-      setSavedTeamsVisible(false);
-      setOngoingDraftsVisible(false);
-
       // Set lobby code and settings
       setLobbyCode(code);
       
@@ -3172,9 +3006,6 @@ function AppContent() {
     
     // Restore full Pokemon list before creating lobby
     restoreFullPokemonList();
-    // hide saved/ongoing panels when creating a lobby
-    setSavedTeamsVisible(false);
-    setOngoingDraftsVisible(false);
     const name = (PokemonName && PokemonName.trim()) ? PokemonName.trim() : `Player-${Math.floor(Math.random()*1000)}`;
     if (socket) {
       socket.emit('create_lobby', { name }, (resp) => {
@@ -3214,9 +3045,6 @@ function AppContent() {
     
     // Restore full Pokemon list before joining lobby
     restoreFullPokemonList();
-    // hide saved/ongoing panels when joining a lobby
-    setSavedTeamsVisible(false);
-    setOngoingDraftsVisible(false);
     if (!code || code.trim().length === 0) return;
     const name = (PokemonName && PokemonName.trim()) ? PokemonName.trim() : `Player-${Math.floor(Math.random()*1000)}`;
     if (socket) {
@@ -3886,6 +3714,9 @@ function AppContent() {
       if (data.settings) {
         setLobbySettings(data.settings);
       }
+      if (data.leagueCode !== undefined) {
+        setLobbyLeagueCode(data.leagueCode || '');
+      }
       
       // Determine trading status: server > cached host settings > local state
       let tradingEnabled = data.settings?.allowTrading ?? lobbySettings.allowTrading;
@@ -4177,32 +4008,6 @@ function AppContent() {
     <div className="App">
       <div className= "TitleSection">
         <h1>Welcome to Pokemon Draft!</h1>
-        
-        {/* Navigation Panel */}
-        <div className="navigation-panel">
-          <button className="nav-button" onClick={() => {
-            setView('teambuilder');
-            setShowTeamSelector(true);
-          }}>Team Builder</button>
-          <button className="nav-button" onClick={async () => {
-            if (!user && !PokemonName?.trim()) {
-              setShowAuthModal(true);
-              return;
-            }
-            const currentUsername = PokemonName?.trim();
-            if (!currentUsername) {
-              alert('Please log in or enter a username first');
-              return;
-            }
-            setDraftSearchQuery(''); // Clear search when opening
-            const drafts = await fetchOngoingDraftsFromAPI(currentUsername);
-            setOngoingDrafts(drafts);
-            setView('ongoingdrafts');
-          }}>Ongoing Drafts</button>
-          <button className="nav-button" onClick={() => {
-            setView('leagues');
-          }}>Leagues</button>
-        </div>
       </div>
 
       {view === 'lobby' && (
@@ -4274,6 +4079,9 @@ function AppContent() {
                     setOngoingDrafts(drafts);
                     setView('ongoingdrafts');
                   }}>Ongoing Drafts</button>
+                  <button className="nav-button ml-8" onClick={() => {
+                    setView('leagues');
+                  }}>Leagues</button>
                 </div>
               </div>
             )}
@@ -4587,6 +4395,33 @@ function AppContent() {
                         </>
                       )}
                       
+                      {/* League Code Setting */}
+                      <div className="row mt-8">
+                        <div className="col-1">
+                          <label className="label-small">League Code (Optional)</label>
+                          <input 
+                            type="text" 
+                            placeholder="Enter league code to link this draft"
+                            value={lobbyLeagueCode || ''}
+                            onChange={(e) => {
+                              const newCode = e.target.value.trim();
+                              setLobbyLeagueCode(newCode);
+                              if (socket && lobbyCode && socket.id === hostId) {
+                                socket.emit('update_league_code', { code: lobbyCode, leagueCode: newCode }, (resp) => {
+                                  if (!resp || !resp.ok) {
+                                    alert(resp && resp.error ? resp.error : 'Failed to update league code');
+                                  }
+                                });
+                              }
+                            }}
+                            className="input-full" 
+                          />
+                          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                            Link this draft to a league for tracking
+                          </div>
+                        </div>
+                      </div>
+                      
                       {/* Timer Settings */}
                       <div className="row mt-8">
                         <div className="col-1">
@@ -4678,24 +4513,44 @@ function AppContent() {
                   )}
                 </div>
 
-                {/* Points Assignment Panel - Host Only */}
-                {socket && hostId && socket.id === hostId && (
-                  <div className="PointsAssignmentPanel">
-                    <div className="LobbySettingsTitle"><strong>Points Assignment</strong></div>
-                    <div className="points-controls">
-                      <div className="points-search">
-                          <input className="points-search-input" placeholder="Search Pokémon" value={pointsSearchName} onChange={(e) => { setPointsSearchName(e.target.value.toLowerCase()); setSuggestionsVisible(true); }} />
+                {/* Points Table - Always Visible */}
+                <div className="points-section-full-width">
+                  <div className="points-title"><strong>Points Table</strong></div>
+                  
+                  {/* Points Assignment Controls - Host Only */}
+                  {socket && hostId && socket.id === hostId && (
+                    <>
+                      {/* Multi-select Search and Controls */}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                          <input 
+                            className="points-search-input" 
+                            placeholder="Search & select Pokémon..." 
+                            value={pointsSearchName} 
+                            onChange={(e) => { 
+                              setPointsSearchName(e.target.value.toLowerCase()); 
+                              setSuggestionsVisible(true); 
+                            }} 
+                            style={{ width: '100%' }}
+                          />
                           {suggestionsVisible && pointsSearchName && (
                             <div className="points-suggestions suggestions-dropdown">
                               {pointsSearchSuggestions.map(p => (
-                                <div key={p.id} className="suggestion-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
-                                  // Add to selected Pokemon list if not already there
-                                  if (!selectedPokemonForPoints.find(sp => sp.id === p.id)) {
-                                    setSelectedPokemonForPoints([...selectedPokemonForPoints, p]);
-                                  }
-                                  setPointsSearchName('');
-                                  setSuggestionsVisible(false);
-                                }}>
+                                <div 
+                                  key={p.id} 
+                                  className="suggestion-item" 
+                                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', cursor: 'pointer' }} 
+                                  onClick={() => {
+                                    // Add to selected Pokemon list if not already there
+                                    if (!selectedPokemonForPoints.find(sp => sp.id === p.id)) {
+                                      setSelectedPokemonForPoints([...selectedPokemonForPoints, p]);
+                                    }
+                                    setPointsSearchName('');
+                                    setSuggestionsVisible(false);
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                                >
                                   <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
                                   <span>{p.name}</span>
                                 </div>
@@ -4703,70 +4558,108 @@ function AppContent() {
                             </div>
                           )}
                         </div>
-                    </div>
+                        <select 
+                          className="points-select" 
+                          value={pointsValueSelected} 
+                          onChange={(e) => setPointsValueSelected(Number(e.target.value))}
+                          style={{ width: '100px' }}
+                        >
+                          <option key={0} value={0}>Banned</option>
+                          {Array.from({length:30}, (_,i) => i+1).map(n => <option key={n} value={n}>{n} pts</option>)}
+                        </select>
+                        <button 
+                          className="set-button" 
+                          onClick={() => {
+                            if (selectedPokemonForPoints.length === 0) return alert('Select Pokémon first');
+                            
+                            // Apply points to all selected Pokemon
+                            const promises = selectedPokemonForPoints.map(p => {
+                              return new Promise((resolve) => {
+                                socket.emit('set_points', { code: lobbyCode, name: p.name, value: pointsValueSelected }, (resp) => {
+                                  resolve(resp);
+                                });
+                              });
+                            });
 
-                    {/* Selected Pokemon Area */}
-                    {selectedPokemonForPoints.length > 0 && (
-                      <div className="selected-pokemon-area">
-                        <div className="selected-pokemon-header">
-                          <strong>Selected Pokémon ({selectedPokemonForPoints.length})</strong>
-                          <button className="gen-button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => setSelectedPokemonForPoints([])}>Clear All</button>
-                        </div>
-                        <div className="selected-pokemon-list">
+                            Promise.all(promises).then((responses) => {
+                              const failed = responses.filter(r => !r || !r.ok);
+                              if (failed.length > 0) {
+                                alert(`Failed to set points for ${failed.length} Pokémon`);
+                              } else {
+                                // Get the latest pointsMap from the last response
+                                const lastResp = responses[responses.length - 1];
+                                if (lastResp && lastResp.pointsMap) {
+                                  setPointsMap(lastResp.pointsMap);
+                                }
+                                setSelectedPokemonForPoints([]);
+                              }
+                            });
+                          }}
+                          style={{ whiteSpace: 'nowrap', padding: '8px 16px' }}
+                        >
+                          Set Points
+                        </button>
+                      </div>
+
+                      {/* Display selected Pokemon as removable chips */}
+                      {selectedPokemonForPoints.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px', padding: '12px', background: '#f8f9fa', borderRadius: '6px' }}>
+                          <div style={{ width: '100%', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                            <strong>Selected ({selectedPokemonForPoints.length}):</strong>
+                          </div>
                           {selectedPokemonForPoints.map(p => (
-                            <div key={p.id} className="selected-pokemon-item">
-                              <img src={p.img} alt={p.name} style={{ width: '24px', height: '24px' }} />
+                            <div 
+                              key={p.id} 
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: '#e0e7ff',
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                border: '1px solid #c7d2fe'
+                              }}
+                            >
+                              <img src={p.img} alt={p.name} style={{ width: '20px', height: '20px' }} />
                               <span>{p.name}</span>
-                              <button className="remove-btn" onClick={() => setSelectedPokemonForPoints(selectedPokemonForPoints.filter(sp => sp.id !== p.id))}>×</button>
+                              <button 
+                                onClick={() => setSelectedPokemonForPoints(selectedPokemonForPoints.filter(sp => sp.id !== p.id))}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '18px',
+                                  padding: 0,
+                                  lineHeight: 1,
+                                  color: '#6366f1',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                ×
+                              </button>
                             </div>
                           ))}
+                          <button 
+                            onClick={() => setSelectedPokemonForPoints([])}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              borderRadius: '4px',
+                              border: '1px solid #d1d5db',
+                              background: '#fff',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Clear All
+                          </button>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Points Value Selector and Apply Button */}
-                    <div className="points-apply-controls">
-                      <select className="points-select" value={pointsValueSelected} onChange={(e) => setPointsValueSelected(Number(e.target.value))}>
-                        <option key={0} value={0}>banned</option>
-                        {Array.from({length:20}, (_,i) => i+1).map(n => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                      <button className="set-button" onClick={() => {
-                        if (selectedPokemonForPoints.length === 0) return alert('Add Pokémon to the list first');
-                        
-                        // Apply points to all selected Pokemon
-                        const promises = selectedPokemonForPoints.map(p => {
-                          return new Promise((resolve) => {
-                            socket.emit('set_points', { code: lobbyCode, name: p.name, value: pointsValueSelected }, (resp) => {
-                              resolve(resp);
-                            });
-                          });
-                        });
-
-                        Promise.all(promises).then((responses) => {
-                          const failed = responses.filter(r => !r || !r.ok);
-                          if (failed.length > 0) {
-                            alert(`Failed to set points for ${failed.length} Pokémon`);
-                          } else {
-                            // Get the latest pointsMap from the last response
-                            const lastResp = responses[responses.length - 1];
-                            if (lastResp && lastResp.pointsMap) {
-                              setPointsMap(lastResp.pointsMap);
-                            }
-                            alert(`Points set to ${pointsValueSelected} for ${selectedPokemonForPoints.length} Pokémon`);
-                            setSelectedPokemonForPoints([]);
-                          }
-                        });
-                      }}>Apply to All</button>
-                    </div>
-                  </div>
-                )}
-                </div>
-
-                {/* Points Table - Always Visible */}
-                <div className="points-section-full-width">
-                  <div className="points-title"><strong>Points Table</strong></div>
+                      )}
+                    </>
+                  )}
+                  
                   <div className="PointsGrid">
-                    {[0, ...Array.from({length:20}, (_,i) => i+1)].map((val) => (
+                    {[0, ...Array.from({length:30}, (_,i) => i+1)].map((val) => (
                       <div 
                         key={val} 
                         className="PointsTile"
@@ -4836,9 +4729,10 @@ function AppContent() {
                   </div>
                 </div>
               </div>
-
-              {/* Duplicate old points assignment/table removed — host controls above are used instead */}
             </div>
+
+            {/* Duplicate old points assignment/table removed — host controls above are used instead */}
+          </div>
           ) : (
             <div className="muted-text">No lobby yet — create one or join with a code.</div>
           )}

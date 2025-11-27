@@ -3,7 +3,8 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 25px;
   flex-direction: column;
-  align-items: stretch;
+  justify-content: center;
+  align-items:  center;
   width: 100%;
   min-height: 100vh;
   background: linear-gradient(to bottom, #ffffff 0%, #e5e7eb 100%);
@@ -346,12 +347,12 @@ body {
 .LobbyControlsRow { 
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 .control-group {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
@@ -404,11 +405,11 @@ body {
 .player-points { margin-left: 8px; color: #666; }
 .player-current { margin-left: 8px; color: #0a76ff; }
 
-.LobbySettingsTitle { margin-bottom: 8px; }
-.row { display: flex; gap: 8px; margin-bottom: 8px; }
+.LobbySettingsTitle { margin-bottom: 8px; justify-content: center; align-items: center;}
+.row { justify-content: center; align-items: center; gap: 2px; margin-bottom: 2px; }
 .col-1 { flex: 1; }
-.label-small { font-size: 12px; }
-.input-full { width: 100px; margin: 10px; }
+.label-small { display:flex; font-size: 12px; }
+.input-full { justify-content: center; align-items: center; width: 100px; margin: 1px; }
 .gen-filter-row { display:block; gap: 8px; margin-bottom: 8px; }
 
 /* points-search is defined later once; removed earlier duplicate */
@@ -446,7 +447,9 @@ body {
 .SettingsAndPointsContainer {
   flex: 1 1 0;
   display: flex;
-  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
 }
 
 .SettingsPanel {
@@ -454,14 +457,7 @@ body {
   box-sizing: border-box;
 }
 
-.PointsAssignmentPanel {
-  flex: 1 1 0;
-  box-sizing: border-box;
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
+
 
 .selected-pokemon-area {
   margin-top: 12px;
@@ -1053,6 +1049,7 @@ body {
   }
   
   .gen-buttons-row {
+    align-items: center;
     flex-wrap: wrap;
     gap: 8px;
   }

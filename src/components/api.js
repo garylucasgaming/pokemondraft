@@ -103,6 +103,19 @@ export const updateLeague = async (code, updates) => {
   return response.json();
 };
 
+export const updateLeagueSchedule = async (code, commissioner, schedule) => {
+  const response = await fetch(`${API_BASE}/api/leagues/${code}/schedule`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ commissioner, schedule })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update schedule');
+  }
+  return response.json();
+};
+
 export const joinLeague = async (code, playerData) => {
   const response = await fetch(`${API_BASE}/api/leagues/${code}/players`, {
     method: 'POST',
@@ -161,5 +174,70 @@ export const createTournament = async (code, tournamentData) => {
 export const getLeagueTournaments = async (code) => {
   const response = await fetch(`${API_BASE}/api/leagues/${code}/tournaments`);
   if (!response.ok) throw new Error('Failed to fetch tournaments');
+  return response.json();
+};
+
+export const acceptPlayerRequest = async (code, username, commissionerName) => {
+  const response = await fetch(`${API_BASE}/api/leagues/${code}/players/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, commissionerName })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to accept player');
+  }
+  return response.json();
+};
+
+export const kickPlayer = async (code, username, commissionerName) => {
+  const response = await fetch(`${API_BASE}/api/leagues/${code}/players/kick`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, commissionerName })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to kick player');
+  }
+  return response.json();
+};
+
+export const requestToJoinLeague = async (code, username) => {
+  const response = await fetch(`${API_BASE}/api/leagues/${code}/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to send join request');
+  }
+  return response.json();
+};
+
+export const generateInviteCode = async (leagueCode, commissionerName) => {
+  const response = await fetch(`${API_BASE}/api/leagues/${leagueCode}/invite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ commissionerName })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate invite code');
+  }
+  return response.json();
+};
+
+export const joinByInviteCode = async (inviteCode, username) => {
+  const response = await fetch(`${API_BASE}/api/leagues/invite/${inviteCode}/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to join with invite code');
+  }
   return response.json();
 };

@@ -22,14 +22,50 @@ const userSchema = new mongoose.Schema({
 const leagueSchema = new mongoose.Schema({
   name: { type: String, required: true },
   code: { type: String, required: true, unique: true }, // Like lobby codes
-  commissionerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  commissionerName: { type: String, required: true }, // Cached for display
-  format: { type: String, required: true }, // e.g., "National Dex", "VGC 2024"
+  commissionerName: { type: String, required: true }, // Username of creator
+  isPublic: { type: Boolean, default: true },
+  maxPlayers: { type: Number, default: 8 },
+  splitIntoPools: { type: Boolean, default: false },
+  numPools: { type: Number, default: 1 },
+  leagueWeeks: { type: Number, default: 8 },
+  bracketType: { type: String, enum: ['round_robin', 'swiss', 'single_elimination', 'double_elimination'], default: 'round_robin' },
+  format: { type: String }, // e.g., "National Dex", "VGC 2024" - configured later
   rules: {
     pointsLimit: { type: Number, default: 100 },
     teamSize: { type: Number, default: 6 },
     allowedGenerations: [Number],
     bannedPokemon: [String]
+  },
+  pokemonPointValues: { type: Map, of: Number }, // Map of pokemon name -> point value
+  draftRules: { type: String }, // Custom draft rules text
+  battleRules: { type: String }, // Custom battle rules text
+  pendingPlayers: [{ type: String }], // Array of usernames requesting to join
+  inviteCodes: [{
+    code: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date, required: true }
+  }],
+  schedule: [{
+    id: { type: String, required: true },
+    type: { type: String, enum: ['draft_start', 'match', 'meeting', 'playoffs_start', 'playoffs_end', 'league_end', 'custom'], required: true },
+    date: { type: Date, required: true },
+    notes: { type: String, default: '' },
+    dateDisplay: { type: String },
+    players: [{ type: String }] // Array of player usernames
+  }],
+  bracket: {
+    type: { type: String, enum: ['round_robin', 'single_elimination', 'double_elimination', 'swiss'] },
+    matches: [{
+      id: String,
+      player1: String,
+      player2: String,
+      winner: String,
+      score: String,
+      week: Number,
+      round: Number,
+      nextMatchId: String,
+      replay: String
+    }]
   },
   status: { type: String, enum: ['open', 'in_progress', 'completed'], default: 'open' },
   createdAt: { type: Date, default: Date.now }
@@ -37,8 +73,8 @@ const leagueSchema = new mongoose.Schema({
 
 // Player Schema
 const playerSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  username: { type: String, required: true }, // Cached for display
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional - for when user accounts are implemented
+  username: { type: String, required: true }, // Primary identifier for now
   leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'League', required: true },
   team: [{
     name: String,
@@ -127,6 +163,7 @@ const savedTeamSchema = new mongoose.Schema({
 const draftSessionSchema = new mongoose.Schema({
   lobbyCode: { type: String, required: true, unique: true },
   lobbyName: { type: String, default: '' }, // Host-set lobby name
+  leagueCode: { type: String }, // Optional: Link to a league if this draft is part of one
   hostId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional: link to user if authenticated
   hostUsername: { type: String }, // Username of the host
   hostSocketId: { type: String }, // Current socket ID for reconnection
@@ -178,16 +215,13 @@ const draftSessionSchema = new mongoose.Schema({
 });
 
 // Create indexes for better query performance
-// Note: code and shareCode already have unique indexes from schema definition
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+// Note: code, shareCode, email, username, and lobbyCode already have unique indexes from schema definition
 playerSchema.index({ leagueId: 1, userId: 1 });
 playerSchema.index({ userId: 1 });
 matchSchema.index({ leagueId: 1, week: 1 });
 tournamentSchema.index({ leagueId: 1 });
 savedTeamSchema.index({ userId: 1 });
 savedTeamSchema.index({ isPublic: 1, createdAt: -1 });
-draftSessionSchema.index({ lobbyCode: 1 });
 draftSessionSchema.index({ 'participants.userId': 1 });
 draftSessionSchema.index({ 'participants.username': 1 }); // For username search
 draftSessionSchema.index({ lobbyName: 'text' }); // Text search for lobby names
