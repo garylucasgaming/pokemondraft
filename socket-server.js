@@ -379,7 +379,6 @@ io.on('connection', (socket) => {
       leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
       playersFinishedTrading: lobby.playersFinishedTrading || []
-      playersFinishedTrading: lobby.playersFinishedTrading || []
     });
   });
 
@@ -453,8 +452,6 @@ io.on('connection', (socket) => {
       leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
       playersFinishedTrading: lobby.playersFinishedTrading || []
-    });
-  });
     });
   });
 
