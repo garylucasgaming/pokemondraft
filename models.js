@@ -34,7 +34,17 @@ const leagueSchema = new mongoose.Schema({
     pointsLimit: { type: Number, default: 100 },
     teamSize: { type: Number, default: 6 },
     allowedGenerations: [Number],
-    bannedPokemon: [String]
+    bannedPokemon: [String],
+    allowMega: { type: Boolean, default: false },
+    allowGmax: { type: Boolean, default: false }
+  },
+  captainRules: {
+    captainCount: { type: Number, default: 2 },
+    allowMegaCaptains: { type: Boolean, default: false },
+    allowTeraCaptains: { type: Boolean, default: false },
+    allowGmaxCaptains: { type: Boolean, default: false },
+    allowZMoveCaptains: { type: Boolean, default: false },
+    bannedCaptains: [{ type: String }]
   },
   pokemonPointValues: { type: Map, of: Number }, // Map of pokemon name -> point value
   draftRules: { type: String }, // Custom draft rules text

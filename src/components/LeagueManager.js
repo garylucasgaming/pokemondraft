@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import axios from 'axios';
 import { createLeague, browseLeagues, getLeagueByCode, joinLeague, getLeaguePlayers, updateLeague, updateLeagueSchedule, acceptPlayerRequest, kickPlayer, requestToJoinLeague, generateInviteCode, joinByInviteCode } from './api';
 import './LeagueManager.css';
 
@@ -89,6 +90,20 @@ const LeagueManager = ({ username }) => {
   const [allowSeasonalTrading, setAllowSeasonalTrading] = useState(false);
   const [maxSeasonalTradeLimit, setMaxSeasonalTradeLimit] = useState(1);
   const [unlimitedSeasonalTrades, setUnlimitedSeasonalTrades] = useState(false);
+  const [allowMega, setAllowMega] = useState(false);
+  const [allowGmax, setAllowGmax] = useState(false);
+
+  // Draft Rules modal state
+  const [showDraftRulesModal, setShowDraftRulesModal] = useState(false);
+  const [captainCount, setCaptainCount] = useState(2);
+  const [allowMegaCaptains, setAllowMegaCaptains] = useState(false);
+  const [allowTeraCaptains, setAllowTeraCaptains] = useState(false);
+  const [allowGmaxCaptains, setAllowGmaxCaptains] = useState(false);
+  const [allowZMoveCaptains, setAllowZMoveCaptains] = useState(false);
+  const [bannedCaptains, setBannedCaptains] = useState([]);
+  const [captainSearchQuery, setCaptainSearchQuery] = useState('');
+  const [captainSuggestionsVisible, setCaptainSuggestionsVisible] = useState(false);
+  const [selectedPokemonForCaptainBan, setSelectedPokemonForCaptainBan] = useState([]);
 
   // Export to Calendar modal state
   const [showExportCalendarModal, setShowExportCalendarModal] = useState(false);
@@ -196,6 +211,12 @@ Replays must be posted to the appropriate channel.`;
     }
   }, [showDraftFormatModal]);
 
+  useEffect(() => {
+    if (showDraftRulesModal && draftPokemonList.length === 0) {
+      fetchPokemonList();
+    }
+  }, [showDraftRulesModal]);
+
   const fetchPokemonList = async () => {
     try {
       // Fetch from pokemon_data.json which has all the data we need
@@ -277,6 +298,20 @@ Replays must be posted to the appropriate channel.`;
     });
     setDraftPointsMap(newPointsMap);
     alert(`Banned ${paradoxPokemon.length} Paradox Pokémon`);
+  };
+
+  const unbanAll = () => {
+    const bannedPokemon = draftPokemonList.filter(p => draftPointsMap[p.name] === 0);
+    if (bannedPokemon.length === 0) {
+      alert('No banned Pokémon found');
+      return;
+    }
+    const newPointsMap = { ...draftPointsMap };
+    bannedPokemon.forEach(p => {
+      newPointsMap[p.name] = 1;
+    });
+    setDraftPointsMap(newPointsMap);
+    alert(`Unbanned ${bannedPokemon.length} Pokémon`);
   };
 
   const formatTimerMinutes = (minutes) => {
@@ -414,7 +449,7 @@ Replays must be posted to the appropriate channel.`;
       
       setCurrentLeague(leagueData.league);
       setPlayers(playersData.players || []);
-      setDraftRules(leagueData.league.draftRules || DEFAULT_DRAFT_RULES);
+      setDraftRules(leagueData.league.draftRules || '');
       setBattleRules(leagueData.league.battleRules || DEFAULT_BATTLE_RULES);
       setIsEditingRules(false);
       
@@ -425,6 +460,14 @@ Replays must be posted to the appropriate channel.`;
       setDraftGenerations(leagueData.league.rules?.allowedGenerations || [1,2,3,4,5,6,7,8,9]);
       setDraftBannedPokemon(leagueData.league.rules?.bannedPokemon || []);
       setDraftPointsMap(leagueData.league.pokemonPointValues || {});
+      
+      // Load captain rules data
+      setCaptainCount(leagueData.league.captainRules?.captainCount || 2);
+      setAllowMegaCaptains(leagueData.league.captainRules?.allowMegaCaptains ?? false);
+      setAllowTeraCaptains(leagueData.league.captainRules?.allowTeraCaptains ?? false);
+      setAllowGmaxCaptains(leagueData.league.captainRules?.allowGmaxCaptains ?? false);
+      setAllowZMoveCaptains(leagueData.league.captainRules?.allowZMoveCaptains ?? false);
+      setBannedCaptains(leagueData.league.captainRules?.bannedCaptains || []);
       
       // Load schedule if exists
       if (leagueData.league.schedule && Array.isArray(leagueData.league.schedule)) {
@@ -485,7 +528,9 @@ Replays must be posted to the appropriate channel.`;
           pointsLimit: draftPointsLimit,
           teamSize: draftTeamSize,
           allowedGenerations: draftGenerations,
-          bannedPokemon: draftBannedPokemon
+          bannedPokemon: draftBannedPokemon,
+          allowMega: allowMega,
+          allowGmax: allowGmax
         },
         pokemonPointValues: draftPointsMap
       });
@@ -497,12 +542,51 @@ Replays must be posted to the appropriate channel.`;
           pointsLimit: draftPointsLimit,
           teamSize: draftTeamSize,
           allowedGenerations: draftGenerations,
-          bannedPokemon: draftBannedPokemon
+          bannedPokemon: draftBannedPokemon,
+          allowMega: allowMega,
+          allowGmax: allowGmax
         },
         pokemonPointValues: draftPointsMap
       });
       setShowDraftFormatModal(false);
       setMessage('Draft format saved successfully!');
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveDraftRules = async () => {
+    if (!currentLeague) return;
+
+    try {
+      setLoading(true);
+      await updateLeague(currentLeague.code, {
+        captainRules: {
+          captainCount: captainCount,
+          allowMegaCaptains: allowMegaCaptains,
+          allowTeraCaptains: allowTeraCaptains,
+          allowGmaxCaptains: allowGmaxCaptains,
+          allowZMoveCaptains: allowZMoveCaptains,
+          bannedCaptains: bannedCaptains
+        }
+      });
+      
+      setCurrentLeague({
+        ...currentLeague,
+        captainRules: {
+          captainCount: captainCount,
+          allowMegaCaptains: allowMegaCaptains,
+          allowTeraCaptains: allowTeraCaptains,
+          allowGmaxCaptains: allowGmaxCaptains,
+          allowZMoveCaptains: allowZMoveCaptains,
+          bannedCaptains: bannedCaptains
+        }
+      });
+      setShowDraftRulesModal(false);
+      setMessage('Draft rules saved successfully!');
       setError('');
     } catch (err) {
       setError(err.message);
@@ -521,7 +605,9 @@ Replays must be posted to the appropriate channel.`;
         genFilter: draftGenerations.length === 9 ? 0 : Math.max(...draftGenerations),
         allowTrading: allowTrading,
         maxTradeLimit: maxTradeLimit,
-        unlimitedTrades: unlimitedTrades
+        unlimitedTrades: unlimitedTrades,
+        allowMega: allowMega,
+        allowGmax: allowGmax
       },
       allowedGenerations: draftGenerations,
       bannedPokemon: draftBannedPokemon,
@@ -572,7 +658,9 @@ Replays must be posted to the appropriate channel.`;
                   genFilter: jsonData.settings.genFilter,
                   allowTrading: jsonData.settings.allowTrading ?? false,
                   maxTradeLimit: jsonData.settings.maxTradeLimit ?? 0,
-                  unlimitedTrades: jsonData.settings.unlimitedTrades ?? false
+                  unlimitedTrades: jsonData.settings.unlimitedTrades ?? false,
+                  allowMega: jsonData.settings.allowMega ?? false,
+                  allowGmax: jsonData.settings.allowGmax ?? false
                 };
               }
               
@@ -623,6 +711,8 @@ Replays must be posted to the appropriate channel.`;
             setAllowTrading(importedSettings.allowTrading ?? false);
             setMaxTradeLimit(importedSettings.maxTradeLimit ?? 0);
             setUnlimitedTrades(importedSettings.unlimitedTrades ?? false);
+            setAllowMega(importedSettings.allowMega ?? false);
+            setAllowGmax(importedSettings.allowGmax ?? false);
             
             if (importedSettings.genFilter != null) {
               // Convert genFilter to generations array
@@ -672,6 +762,24 @@ Replays must be posted to the appropriate channel.`;
           setDraftGenerations(Array.from({length: maxGen}, (_, i) => i + 1));
         }
         
+        if (preset.allowMega !== undefined) {
+          setAllowMega(preset.allowMega);
+          if (preset.allowMega) {
+            fetchMegaPokemon();
+          } else {
+            removeMegaPokemon();
+          }
+        }
+        
+        if (preset.allowGmax !== undefined) {
+          setAllowGmax(preset.allowGmax);
+          if (preset.allowGmax) {
+            fetchGmaxPokemon();
+          } else {
+            removeGmaxPokemon();
+          }
+        }
+        
         if (preset.points) {
           // Normalize point values - convert lowercase keys to proper case
           const normalizedPoints = {};
@@ -685,6 +793,129 @@ Replays must be posted to the appropriate channel.`;
         setMessage(`Preset "${preset.name}" loaded successfully!`);
       }
     }
+  };
+
+  // Fetch Mega Evolution Pokémon from PokeAPI
+  const fetchMegaPokemon = async () => {
+    try {
+      const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000');
+      const allPokemon = response.data.results;
+      
+      const megaForms = allPokemon.filter(p => {
+        const name = p.name.toLowerCase();
+        return name.includes('mega') && !name.includes('meganium') && !name.includes('yanmega');
+      });
+      
+      const megaList = await Promise.all(
+        megaForms.map(async (form) => {
+          try {
+            const detailResponse = await axios.get(form.url);
+            const data = detailResponse.data;
+            
+            return {
+              id: data.id,
+              name: data.name.charAt(0).toUpperCase() + data.name.slice(1),
+              img: data.sprites?.front_default || data.sprites?.other?.['official-artwork']?.front_default || '',
+              generation: Math.floor(data.id / 151) + 1,
+              legendary: false,
+              paradox: false
+            };
+          } catch (err) {
+            console.error(`Failed to fetch details for ${form.name}:`, err);
+            return null;
+          }
+        })
+      );
+      
+      const validMega = megaList.filter(p => p !== null);
+      
+      setDraftPokemonList(prev => {
+        const existingNames = new Set(prev.map(p => p.name.toLowerCase()));
+        const newPokemon = validMega.filter(p => !existingNames.has(p.name.toLowerCase()));
+        return [...prev, ...newPokemon].sort((a, b) => a.id - b.id);
+      });
+      
+      // Initialize new Pokemon with 1 point
+      setDraftPointsMap(prev => {
+        const updated = { ...prev };
+        validMega.forEach(p => {
+          if (!updated[p.name]) {
+            updated[p.name] = 1;
+          }
+        });
+        return updated;
+      });
+    } catch (err) {
+      console.error('Failed to fetch Mega Pokemon:', err);
+    }
+  };
+
+  // Remove Mega Evolution Pokémon from the list
+  const removeMegaPokemon = () => {
+    setDraftPokemonList(prev => prev.filter(p => !p.name.toLowerCase().includes('-mega')));
+  };
+
+  // Fetch Gigantamax Pokémon from PokeAPI
+  const fetchGmaxPokemon = async () => {
+    try {
+      const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000');
+      const allPokemon = response.data.results;
+      
+      const gmaxForms = allPokemon.filter(p => {
+        const name = p.name.toLowerCase();
+        return name.includes('gmax') || name.includes('eternamax');
+      });
+      
+      const gmaxList = await Promise.all(
+        gmaxForms.map(async (form) => {
+          try {
+            const detailResponse = await axios.get(form.url);
+            const data = detailResponse.data;
+            
+            return {
+              id: data.id,
+              name: data.name.charAt(0).toUpperCase() + data.name.slice(1),
+              img: data.sprites?.front_default || data.sprites?.other?.['official-artwork']?.front_default || '',
+              generation: 8,
+              legendary: false,
+              paradox: false
+            };
+          } catch (err) {
+            console.error(`Failed to fetch details for ${form.name}:`, err);
+            return null;
+          }
+        })
+      );
+      
+      const validGmax = gmaxList.filter(p => p !== null);
+      
+      setDraftPokemonList(prev => {
+        const existingNames = new Set(prev.map(p => p.name.toLowerCase()));
+        const newPokemon = validGmax.filter(p => !existingNames.has(p.name.toLowerCase()));
+        return [...prev, ...newPokemon].sort((a, b) => a.id - b.id);
+      });
+      
+      // Initialize new Pokemon with 1 point
+      setDraftPointsMap(prev => {
+        const updated = { ...prev };
+        validGmax.forEach(p => {
+          if (!updated[p.name]) {
+            updated[p.name] = 1;
+          }
+        });
+        return updated;
+      });
+    } catch (err) {
+      console.error('Failed to fetch Gigantamax Pokemon:', err);
+    }
+  };
+
+  // Remove Gigantamax Pokémon from the list
+  const removeGmaxPokemon = () => {
+    setDraftPokemonList(prev => prev.filter(p => {
+      const name = p.name.toLowerCase();
+      return !name.includes('-gmax') && !name.includes('eternamax');
+    }));
   };
 
   const handleSaveRules = async () => {
@@ -1782,7 +2013,6 @@ Replays must be posted to the appropriate channel.`;
               {filteredLeagues.map(league => (
                 <div key={league._id} className="league-card">
                   <h3>{league.name}</h3>
-                  <p><strong>Code:</strong> {league.code}</p>
                   <p><strong>Format:</strong> {league.format}</p>
                   <p><strong>Commissioner:</strong> {league.commissionerName}</p>
                   <p><strong>Status:</strong> {league.status}</p>
@@ -1966,6 +2196,7 @@ Replays must be posted to the appropriate channel.`;
                   <button onClick={() => setShowBracketModal(true)} className="admin-btn">Bracket</button>
                   <button onClick={() => setShowManagePlayersModal(true)} className="admin-btn">Manage Players</button>
                   <button onClick={() => setShowDraftFormatModal(true)} className="admin-btn">Set Draft Format</button>
+                  <button onClick={() => setShowDraftRulesModal(true)} className="admin-btn">Set Draft Rules</button>
                   <button onClick={() => setShowScheduleModal(true)} className="admin-btn">Edit Schedule</button>
                 </div>
               </div>
@@ -2172,90 +2403,180 @@ Replays must be posted to the appropriate channel.`;
 
               {/* Rules Section - Visible to all, editable by admin */}
               <div className="league-section">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0 }}>League Rules</h3>
-                  {currentLeague.commissionerName === username && (
-                    <div>
-                      {isEditingRules ? (
-                        <>
-                          <button onClick={handleSaveRules} className="admin-btn" style={{ margin: '0 8px 0 0' }}>
-                            Save Rules
-                          </button>
-                          <button onClick={() => setIsEditingRules(false)} className="back-btn" style={{ margin: 0 }}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <button onClick={() => setIsEditingRules(true)} className="admin-btn" style={{ margin: 0 }}>
-                          Edit Rules
-                        </button>
-                      )}
+                <h3 style={{ marginBottom: '15px' }}>League Rules</h3>
+
+                {/* Drafting Rules Panel */}
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ color: '#1d8ca8', marginBottom: '12px' }}>Drafting Rules</h4>
+                  <div style={{
+                    background: '#f8f9fa',
+                    padding: '15px',
+                    borderRadius: '6px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                      <div>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>Points Limit:</strong>
+                        <div style={{ fontSize: '15px', marginTop: '4px' }}>{currentLeague.rules?.pointsLimit || 120}</div>
+                      </div>
+                      <div>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>Team Size:</strong>
+                        <div style={{ fontSize: '15px', marginTop: '4px' }}>{currentLeague.rules?.teamSize || 12}</div>
+                      </div>
+                      <div>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>First Round Timer:</strong>
+                        <div style={{ fontSize: '15px', marginTop: '4px' }}>
+                          {enableTimer ? `${Math.floor(firstRoundTimer / 60)}:${String(firstRoundTimer % 60).padStart(2, '0')}` : 'Disabled'}
+                        </div>
+                      </div>
+                      <div>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>Subsequent Timer:</strong>
+                        <div style={{ fontSize: '15px', marginTop: '4px' }}>
+                          {enableTimer ? `${Math.floor(subsequentRoundTimer / 60)}:${String(subsequentRoundTimer % 60).padStart(2, '0')}` : 'Disabled'}
+                        </div>
+                      </div>
+                      <div>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>Captains Allowed:</strong>
+                        <div style={{ fontSize: '15px', marginTop: '4px' }}>{captainCount}</div>
+                      </div>
+                      <div>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>Captain Types:</strong>
+                        <div style={{ fontSize: '13px', marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {allowMegaCaptains && <span style={{ background: '#e0e7ff', padding: '2px 8px', borderRadius: '4px' }}>Mega</span>}
+                          {allowTeraCaptains && <span style={{ background: '#fce7f3', padding: '2px 8px', borderRadius: '4px' }}>Tera</span>}
+                          {allowGmaxCaptains && <span style={{ background: '#ddd6fe', padding: '2px 8px', borderRadius: '4px' }}>Gmax</span>}
+                          {allowZMoveCaptains && <span style={{ background: '#fef3c7', padding: '2px 8px', borderRadius: '4px' }}>Z-Move</span>}
+                          {!allowMegaCaptains && !allowTeraCaptains && !allowGmaxCaptains && !allowZMoveCaptains && <span style={{ color: '#94a3b8' }}>None</span>}
+                        </div>
+                      </div>
                     </div>
-                  )}
+                    {bannedCaptains.length > 0 && (
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                        <strong style={{ color: '#64748b', fontSize: '13px' }}>Banned Captains:</strong>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                          {bannedCaptains.map((name, idx) => {
+                            const pokemon = draftPokemonList.find(p => p.name === name);
+                            return (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#fee2e2',
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  border: '1px solid #fecaca'
+                                }}
+                              >
+                                {pokemon?.img && <img src={pokemon.img} alt={name} style={{ width: '16px', height: '16px' }} />}
+                                <span>{name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{ color: '#1d8ca8', marginBottom: '8px' }}>Draft Rules</h4>
-                  {isEditingRules && currentLeague.commissionerName === username ? (
-                    <textarea
-                      value={draftRules}
-                      onChange={(e) => setDraftRules(e.target.value)}
-                      style={{
-                        width: '100%',
-                        minHeight: '300px',
-                        padding: '12px',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '4px',
-                        fontFamily: 'inherit',
-                        fontSize: '14px',
-                        lineHeight: '1.6',
-                        resize: 'vertical'
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      background: '#f8f9fa',
-                      padding: '15px',
+                  <h4 style={{ color: '#1d8ca8', marginBottom: '8px' }}>Draft Rules Notes</h4>
+                  <textarea
+                    value={draftRules}
+                    onChange={(e) => {
+                      if (currentLeague.commissionerName === username) {
+                        setDraftRules(e.target.value);
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (currentLeague.commissionerName === username) {
+                        try {
+                          await updateLeague(currentLeague.code, { draftRules });
+                          setMessage('Draft rules notes saved');
+                          setTimeout(() => setMessage(''), 2000);
+                        } catch (err) {
+                          setError('Failed to save draft rules notes');
+                        }
+                      }
+                    }}
+                    readOnly={currentLeague.commissionerName !== username}
+                    placeholder={currentLeague.commissionerName === username ? "Add any additional draft rules or notes here..." : ""}
+                    style={{
+                      width: 'calc(100% - 20px)',
+                      minHeight: '200px',
+                      padding: '12px',
+                      marginRight: '20px',
+                      border: '1px solid #cbd5e1',
                       borderRadius: '4px',
-                      border: '1px solid #e5e7eb',
-                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'inherit',
                       fontSize: '14px',
-                      lineHeight: '1.6'
+                      lineHeight: '1.6',
+                      resize: 'vertical',
+                      background: currentLeague.commissionerName === username ? '#fff' : '#f8f9fa',
+                      cursor: currentLeague.commissionerName === username ? 'text' : 'default',
+                      color: draftRules ? '#000' : '#94a3b8'
+                    }}
+                  />
+                  {!draftRules && currentLeague.commissionerName !== username && (
+                    <div style={{ 
+                      marginTop: '8px', 
+                      fontSize: '14px', 
+                      color: '#94a3b8',
+                      fontStyle: 'italic'
                     }}>
-                      {draftRules}
+                      No additional draft rules notes.
                     </div>
                   )}
                 </div>
 
                 <div>
                   <h4 style={{ color: '#1d8ca8', marginBottom: '8px' }}>Battle Rules</h4>
-                  {isEditingRules && currentLeague.commissionerName === username ? (
-                    <textarea
-                      value={battleRules}
-                      onChange={(e) => setBattleRules(e.target.value)}
-                      style={{
-                        width: '100%',
-                        minHeight: '300px',
-                        padding: '12px',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '4px',
-                        fontFamily: 'inherit',
-                        fontSize: '14px',
-                        lineHeight: '1.6',
-                        resize: 'vertical'
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      background: '#f8f9fa',
-                      padding: '15px',
+                  <textarea
+                    value={battleRules}
+                    onChange={(e) => {
+                      if (currentLeague.commissionerName === username) {
+                        setBattleRules(e.target.value);
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (currentLeague.commissionerName === username) {
+                        try {
+                          await updateLeague(currentLeague.code, { battleRules });
+                          setMessage('Battle rules saved');
+                          setTimeout(() => setMessage(''), 2000);
+                        } catch (err) {
+                          setError('Failed to save battle rules');
+                        }
+                      }
+                    }}
+                    readOnly={currentLeague.commissionerName !== username}
+                    placeholder={currentLeague.commissionerName === username ? "Add battle rules or format here..." : ""}
+                    style={{
+                      width: 'calc(100% - 20px)',
+                      minHeight: '300px',
+                      padding: '12px',
+                      marginRight: '20px',
+                      border: '1px solid #cbd5e1',
                       borderRadius: '4px',
-                      border: '1px solid #e5e7eb',
-                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'inherit',
                       fontSize: '14px',
-                      lineHeight: '1.6'
+                      lineHeight: '1.6',
+                      resize: 'vertical',
+                      background: currentLeague.commissionerName === username ? '#fff' : '#f8f9fa',
+                      cursor: currentLeague.commissionerName === username ? 'text' : 'default',
+                      color: battleRules ? '#000' : '#94a3b8'
+                    }}
+                  />
+                  {!battleRules && currentLeague.commissionerName !== username && (
+                    <div style={{ 
+                      marginTop: '8px', 
+                      fontSize: '14px', 
+                      color: '#94a3b8',
+                      fontStyle: 'italic'
                     }}>
-                      {battleRules}
+                      No battle rules specified.
                     </div>
                   )}
                 </div>
@@ -2269,10 +2590,12 @@ Replays must be posted to the appropriate channel.`;
               </div>
 
               <div className="league-info-grid">
-                <div className="league-info-item">
-                  <div className="league-info-label">League Code</div>
-                  <div className="league-info-value">{currentLeague.code}</div>
-                </div>
+                {players.some(p => p.username === username) && (
+                  <div className="league-info-item">
+                    <div className="league-info-label">League Code</div>
+                    <div className="league-info-value">{currentLeague.code}</div>
+                  </div>
+                )}
                 <div className="league-info-item">
                   <div className="league-info-label">Commissioner</div>
                   <div className="league-info-value">{currentLeague.commissionerName || currentLeague.commissioner}</div>
@@ -2771,6 +3094,46 @@ Replays must be posted to the appropriate channel.`;
               </div>
 
               <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowMega}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setAllowMega(newValue);
+                      if (newValue) {
+                        fetchMegaPokemon();
+                      } else {
+                        removeMegaPokemon();
+                      }
+                    }}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Allow Mega Evolutions
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowGmax}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setAllowGmax(newValue);
+                      if (newValue) {
+                        fetchGmaxPokemon();
+                      } else {
+                        removeGmaxPokemon();
+                      }
+                    }}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Allow Gigantamax
+                </label>
+              </div>
+
+              <div className="form-group">
                 <label>Format Presets</label>
                 <select
                   value={selectedPreset}
@@ -2803,6 +3166,16 @@ Replays must be posted to the appropriate channel.`;
                     style={{ width: '100%', padding: '8px' }}
                   >
                     Ban Paradox
+                  </button>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <button
+                    type="button"
+                    onClick={unbanAll}
+                    className="admin-btn"
+                    style={{ width: '100%', padding: '8px' }}
+                  >
+                    Unban All
                   </button>
                 </div>
               </div>
@@ -2993,6 +3366,16 @@ Replays must be posted to the appropriate channel.`;
                           }).filter(p => {
                             // For the Banned column (val === 0) always show banned entries
                             if (val === 0) return true;
+                            
+                            // Check if it's a mega or gmax form
+                            const name = p.name.toLowerCase();
+                            const isMega = name.includes('-mega');
+                            const isGmax = name.includes('-gmax') || name.includes('eternamax');
+                            
+                            // Bypass generation filter for mega/gmax if allowed
+                            const shouldIgnoreGen = (isMega && allowMega) || (isGmax && allowGmax);
+                            if (shouldIgnoreGen) return true;
+                            
                             return draftGenerations.includes(p.generation);
                           }).map(p => (
                           <div 
@@ -3030,6 +3413,281 @@ Replays must be posted to the appropriate channel.`;
               </button>
               <button onClick={handleSaveDraftFormat} className="admin-btn">
                 Save Draft Format
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Draft Rules Modal */}
+      {showDraftRulesModal && (
+        <div className="modal-overlay" onClick={() => setShowDraftRulesModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Set Draft Rules</h2>
+              <button onClick={() => setShowDraftRulesModal(false)} className="modal-close">&times;</button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Number of Captains Allowed</label>
+                <input
+                  type="number"
+                  value={captainCount}
+                  onChange={(e) => setCaptainCount(Number(e.target.value))}
+                  min="0"
+                  max="10"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowMegaCaptains}
+                    onChange={(e) => setAllowMegaCaptains(e.target.checked)}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Allow Mega Captains
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowTeraCaptains}
+                    onChange={(e) => setAllowTeraCaptains(e.target.checked)}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Allow Tera Captains
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowGmaxCaptains}
+                    onChange={(e) => setAllowGmaxCaptains(e.target.checked)}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Allow Gigantamax Captains
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowZMoveCaptains}
+                    onChange={(e) => setAllowZMoveCaptains(e.target.checked)}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Allow Z-Move Captains
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label>Banned Captains</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      type="text"
+                      placeholder="Search Pokémon to ban as captain"
+                      value={captainSearchQuery}
+                      onChange={(e) => {
+                        setCaptainSearchQuery(e.target.value.toLowerCase());
+                        setCaptainSuggestionsVisible(true);
+                      }}
+                      onBlur={() => setTimeout(() => setCaptainSuggestionsVisible(false), 150)}
+                      onFocus={() => { if (captainSearchQuery) setCaptainSuggestionsVisible(true); }}
+                      style={{ width: '100%' }}
+                    />
+                    {captainSuggestionsVisible && captainSearchQuery && (
+                      <div
+                        className="suggestions-dropdown"
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 1000,
+                          background: '#fff',
+                          border: '1px solid #ddd',
+                          boxShadow: '0 6px 16px rgba(16,24,40,0.06)',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          borderRadius: '6px',
+                          marginTop: '4px'
+                        }}
+                      >
+                        {draftPokemonList
+                          .filter(p => p.name.toLowerCase().includes(captainSearchQuery))
+                          .slice(0, 8)
+                          .map(p => (
+                            <div
+                              key={p.id}
+                              className="suggestion-item"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 10px',
+                                cursor: 'pointer'
+                              }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (!selectedPokemonForCaptainBan.find(sp => sp.id === p.id)) {
+                                  setSelectedPokemonForCaptainBan([...selectedPokemonForCaptainBan, p]);
+                                }
+                                setCaptainSearchQuery('');
+                                setCaptainSuggestionsVisible(false);
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                            >
+                              {p.img && <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />}
+                              <span>{p.name}</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (selectedPokemonForCaptainBan.length === 0) {
+                        alert('Please select Pokémon first');
+                        return;
+                      }
+                      const newBannedCaptains = [...bannedCaptains];
+                      selectedPokemonForCaptainBan.forEach(p => {
+                        if (!newBannedCaptains.includes(p.name)) {
+                          newBannedCaptains.push(p.name);
+                        }
+                      });
+                      setBannedCaptains(newBannedCaptains);
+                      setSelectedPokemonForCaptainBan([]);
+                    }}
+                    className="admin-btn"
+                    style={{ whiteSpace: 'nowrap', padding: '6px 12px' }}
+                  >
+                    Add to List
+                  </button>
+                </div>
+                
+                {/* Display selected Pokemon as removable chips */}
+                {selectedPokemonForCaptainBan.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                    {selectedPokemonForCaptainBan.map((p) => (
+                      <div
+                        key={p.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#e0e7ff',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '14px'
+                        }}
+                      >
+                        {p.img && <img src={p.img} alt={p.name} style={{ width: '20px', height: '20px' }} />}
+                        <span>{p.name}</span>
+                        <button
+                          onClick={() =>
+                            setSelectedPokemonForCaptainBan(selectedPokemonForCaptainBan.filter(sp => sp.id !== p.id))
+                          }
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            padding: 0,
+                            lineHeight: 1,
+                            color: '#6366f1'
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setSelectedPokemonForCaptainBan([])}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '12px',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                        background: '#fff',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                )}
+
+                {/* Display banned captains list */}
+                {bannedCaptains.length > 0 && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '12px', 
+                    background: '#f8f9fa', 
+                    borderRadius: '6px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b' }}>
+                      Banned Captain Pokémon ({bannedCaptains.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {bannedCaptains.map((name, idx) => {
+                        const pokemon = draftPokemonList.find(p => p.name === name);
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#fee2e2',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              border: '1px solid #fecaca'
+                            }}
+                          >
+                            {pokemon?.img && <img src={pokemon.img} alt={name} style={{ width: '18px', height: '18px' }} />}
+                            <span>{name}</span>
+                            <button
+                              onClick={() => setBannedCaptains(bannedCaptains.filter(n => n !== name))}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                padding: 0,
+                                lineHeight: 1,
+                                color: '#ef4444'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setShowDraftRulesModal(false)} className="back-btn">
+                Cancel
+              </button>
+              <button onClick={handleSaveDraftRules} className="admin-btn">
+                Save Draft Rules
               </button>
             </div>
           </div>

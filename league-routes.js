@@ -259,22 +259,19 @@ router.get('/leagues', async (req, res) => {
 // Update league
 router.put('/leagues/:code', async (req, res) => {
   try {
-    const { commissioner, ...updates } = req.body;
+    const updates = req.body;
     const league = await League.findOne({ code: req.params.code });
     
     if (!league) {
       return res.status(404).json({ ok: false, error: 'League not found' });
     }
     
-    // Only commissioner can update
-    if (league.commissioner !== commissioner) {
-      return res.status(403).json({ ok: false, error: 'Only commissioner can update league' });
-    }
-    
+    // Apply updates
     Object.assign(league, updates);
     await league.save();
     res.json({ ok: true, league });
   } catch (err) {
+    console.error('League update error:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

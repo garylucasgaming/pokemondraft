@@ -395,7 +395,52 @@ body {
   background: #15803d;
 }
 .LobbyMeta { margin-left: auto; }
-.LobbyHeaderRow { display: flex; justify-content: space-between; align-items: center; }
+.LobbyHeader { 
+  background: #f9fafb; 
+  border: 1px solid #e5e7eb; 
+  border-radius: 8px; 
+  padding: 16px; 
+  margin-bottom: 16px;
+}
+.LobbyHeaderRow { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 12px;
+}
+.LobbyCodeSection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.LobbyOptionalFields {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+.LobbyFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  flex: 1;
+}
+.LobbyFieldInput {
+  width: 100%;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.LobbyFieldInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
 .LobbyCode { letter-spacing: 2px; }
 .btn-mr8 { margin-right: 8px; }
 
@@ -405,12 +450,47 @@ body {
 .player-points { margin-left: 8px; color: #666; }
 .player-current { margin-left: 8px; color: #0a76ff; }
 
-.LobbySettingsTitle { margin-bottom: 8px; justify-content: center; align-items: center;}
-.row { justify-content: center; align-items: center; gap: 2px; margin-bottom: 2px; }
-.col-1 { flex: 1; }
-.label-small { display:flex; font-size: 12px; }
-.input-full { justify-content: center; align-items: center; width: 100px; margin: 1px; }
-.gen-filter-row { display:block; gap: 8px; margin-bottom: 8px; }
+.LobbySettingsTitle { margin-bottom: 8px; justify-content: center; align-items: center; width: 100%;}
+.row { 
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: flex-start; 
+  align-items: flex-start; 
+  gap: 3px; 
+  min-width: 0;
+}
+.col-1 { 
+  flex: 1; 
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.col-2 { 
+  display: flex; 
+  flex-wrap: wrap;
+  gap: 8px; 
+  align-items: center; 
+}
+.label-small { 
+  display: flex; 
+  font-size: 11px; 
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+.input-full { 
+  width: 100%; 
+  padding: 4px 6px;
+  box-sizing: border-box;
+  min-width: 100px;
+  font-size: 13px;
+}
+.gen-filter-row { 
+  display: inline-flex; 
+  flex-direction: column;
+  gap: 8px; 
+  min-width: 0;
+}
 
 /* points-search is defined later once; removed earlier duplicate */
 .points-suggestions { position: absolute; top: 34px; left: 0; right: 0; max-height: 160px; z-index: 50; background: white; border: 1px solid #ddd; }
@@ -447,16 +527,51 @@ body {
 .SettingsAndPointsContainer {
   flex: 1 1 0;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .SettingsPanel {
-  flex: 1 1 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   box-sizing: border-box;
+  padding: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
 }
 
+.settings-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.panel-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.panel-meta {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: normal;
+}
 
 
 .selected-pokemon-area {
@@ -620,19 +735,36 @@ body {
 
 }
 .points-search { position: relative; min-width: 30px; }
-.points-search-input { width: 200px; padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; }
-.points-select { padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; }
+.points-search-input { 
+  width: 100%; 
+  padding: 8px 12px; 
+  border-radius: 6px; 
+  border: 1px solid #ccc;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.points-select { 
+  padding: 8px 12px; 
+  border-radius: 6px; 
+  border: 1px solid #ccc;
+  font-size: 14px;
+  box-sizing: border-box;
+  min-width: 100px;
+}
 .points-controls .export-button, .points-controls .toggle-button { padding: 6px 10px; }
 
 /* New button styles for points controls */
 .set-button {
-  padding: 6px 12px;
+  padding: 8px 16px;
   background: #1d8ca8; /* primary */
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 700;
+  white-space: nowrap;
+  font-size: 14px;
+  box-sizing: border-box;
 }
 .set-button:hover { background: #166a75; }
 
@@ -682,20 +814,30 @@ body {
   background: #f4f4f6;
   border-top: 1px solid #e0e0e0;
   margin-top: 16px;
+  width: 100%;
 }
 .AppFooter .footer-inner {
-  max-width: 1000px;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 60px;
   flex-wrap: wrap;
+  padding: 0 40px;
 }
 .AppFooter .footer-col {
-  min-width: 200px;
+  flex: 1 1 auto;
+  min-width: 250px;
+}
+.AppFooter .footer-links {
+  flex: 1 1 auto;
+  min-width: 250px;
 }
 .AppFooter .footer-right {
-  min-width: 200px;
+  flex: 1 1 auto;
+  min-width: 250px;
   text-align: right;
 }
 .AppFooter .footer-links a {
@@ -711,20 +853,30 @@ body {
   background: #f4f4f6;
   border-top: 1px solid #e0e0e0;
   margin-top: 16px;
+  width: 100%;
 }
 .AppFooter .footer-inner {
-  max-width: 1000px;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 60px;
   flex-wrap: wrap;
+  padding: 0 40px;
 }
 .AppFooter .footer-col {
-  min-width: 200px;
+  flex: 1 1 auto;
+  min-width: 250px;
+}
+.AppFooter .footer-links {
+  flex: 1 1 auto;
+  min-width: 250px;
 }
 .AppFooter .footer-right {
-  min-width: 200px;
+  flex: 1 1 auto;
+  min-width: 250px;
   text-align: right;
 }
 .AppFooter .footer-links a {

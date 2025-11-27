@@ -1,7 +1,9 @@
 .league-manager {
   padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  align-self: stretch;
 }
 
 .league-nav {
@@ -169,11 +171,21 @@
   background: #176d83;
 }
 
-.create-section, .join-section, .view-section {
+.create-section, .join-section {
   background: radial-gradient(circle, #f4f8ff 0%, #e5e7eb 100%);
   padding: 30px;
   border-radius: 8px;
   color: #333;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.view-section {
+  background: radial-gradient(circle, #f4f8ff 0%, #e5e7eb 100%);
+  padding: 30px;
+  border-radius: 8px;
+  color: #333;
+  width: 100%;
 }
 
 .form-group {
@@ -601,7 +613,7 @@
 .modal-content {
   background: white;
   border-radius: 8px;
-  max-width: 600px;
+  max-width: 900px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;

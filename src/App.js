@@ -110,7 +110,9 @@ function AppContent() {
     unlimitedTrades: false,
     timerEnabled: false,
     firstRoundTimer: 480, // 8 hours in minutes
-    subsequentRoundTimer: 480 // 8 hours in minutes
+    subsequentRoundTimer: 480, // 8 hours in minutes
+    allowMega: false,
+    allowGmax: false
   });
   const [lobbyLeagueCode, setLobbyLeagueCode] = useState(''); // League code to link draft to a league
   const lobbySettingsRef = useRef(lobbySettings);
@@ -341,7 +343,37 @@ function AppContent() {
       const key = String(k).toLowerCase();
       const raw = Number(v);
       const val = Number.isFinite(raw) ? raw : 1;
+      
+      // Store with original key
       out[key] = val;
+      
+      // Also store with normalized key (handles mega- prefix conversion)
+      const normalized = normalizePokemonName(key);
+      if (normalized !== key) {
+        out[normalized] = val;
+      }
+      
+      // Also handle reverse conversion (charizard-mega -> mega-charizard)
+      if (key.includes('-mega')) {
+        const parts = key.split('-mega');
+        if (parts.length === 2) {
+          const baseName = parts[0];
+          const suffix = parts[1]; // Could be empty or have additional parts like "-x"
+          const reverseName = suffix ? `mega-${baseName}${suffix}` : `mega-${baseName}`;
+          out[reverseName] = val;
+        }
+      }
+      
+      // Handle gmax similarly
+      if (key.includes('-gmax')) {
+        const parts = key.split('-gmax');
+        if (parts.length === 2) {
+          const baseName = parts[0];
+          const suffix = parts[1];
+          const reverseName = suffix ? `gmax-${baseName}${suffix}` : `gmax-${baseName}`;
+          out[reverseName] = val;
+        }
+      }
     }
     return out;
   };
@@ -2252,16 +2284,38 @@ function AppContent() {
   const getPokemonDisplayName = (formName, speciesName) => {
     if (!formName || !speciesName) return formName || speciesName;
     
-    const regionalTokens = ['alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean'];
+    const specialFormTokens = ['alola', 'alolan', 'galar', 'galarian', 'hisui', 'hisuian', 'paldea', 'paldean', 'mega', 'gmax'];
     const formLower = formName.toLowerCase();
     
-    // If the form name contains a regional token, use the form name
-    if (regionalTokens.some(token => formLower.includes(token))) {
+    // If the form name contains a special form token, use the form name
+    if (specialFormTokens.some(token => formLower.includes(token))) {
       return formName;
     }
     
     // Otherwise use the species name
     return speciesName;
+  };
+
+  // Helper function to normalize Pokemon names for matching (handles different mega/gmax naming conventions)
+  const normalizePokemonName = (name) => {
+    if (!name) return '';
+    const lower = name.toLowerCase().trim();
+    
+    // Handle mega- prefix (presets format) -> convert to -mega suffix (PokeAPI format)
+    // mega-charizard-x -> charizard-mega-x
+    if (lower.startsWith('mega-')) {
+      const withoutPrefix = lower.substring(5); // Remove "mega-"
+      const parts = withoutPrefix.split('-');
+      if (parts.length === 1) {
+        // mega-charizard -> charizard-mega
+        return `${parts[0]}-mega`;
+      } else {
+        // mega-charizard-x -> charizard-mega-x
+        return `${parts[0]}-mega-${parts.slice(1).join('-')}`;
+      }
+    }
+    
+    return lower;
   };
 
   useEffect(() => {
@@ -2571,7 +2625,11 @@ function AppContent() {
   const getCost = (p) => {
     if (!p) return 1;
     const name = (p.name || '').toLowerCase();
+    const normalizedName = normalizePokemonName(name);
+    
+    // Try original name first, then normalized name
     if (pointsMap && pointsMap[name] != null) return Number(pointsMap[name]);
+    if (pointsMap && pointsMap[normalizedName] != null) return Number(pointsMap[normalizedName]);
     if (pointsMap && pointsMap[p.name] != null) return Number(pointsMap[p.name]);
     return 1;
   };
@@ -2582,8 +2640,14 @@ function AppContent() {
     const gen = lobbyGenFilter || 0;
     const filtered = (source || []).filter((p) => {
       if (!p) return false;
-      if (gen > 0 && p.id > genLimits[gen]) return false;
       const name = (p.name || '').toLowerCase();
+      
+      // Check if this is a mega/gmax/eternamax form and bypass generation filter if enabled
+      const isMega = name.includes('-mega');
+      const isGmax = name.includes('-gmax') || name.includes('eternamax');
+      const shouldIgnoreGen = (isMega && lobbySettings.allowMega) || (isGmax && lobbySettings.allowGmax);
+      
+      if (gen > 0 && !shouldIgnoreGen && p.id > genLimits[gen]) return false;
       // Multi-search: if there are selected terms, Pokemon must match at least one
       if (searchTerms.length > 0) {
         const matchesAnyTerm = searchTerms.some(term => name.includes(term.toLowerCase()));
@@ -2592,7 +2656,10 @@ function AppContent() {
       // Single search term (typing in progress)
       if (searchTerm && !name.includes(searchTerm)) return false;
       if (hideLegendaries && p.legendary) return false;
-      if (pointsMap && Number(pointsMap[name]) === 0) return false;
+      
+      // Check if banned (support both naming conventions)
+      const normalizedName = normalizePokemonName(name);
+      if (pointsMap && (Number(pointsMap[name]) === 0 || Number(pointsMap[normalizedName]) === 0)) return false;
       
       // Advanced filters
       // Type filter - supports both inclusive (OR) and exclusive (AND) logic
@@ -2680,7 +2747,9 @@ function AppContent() {
     filterAbility, 
     pokemonWithAbility, 
     filterMoves, 
-    sortOption
+    sortOption,
+    lobbySettings.allowMega,
+    lobbySettings.allowGmax
   ]);
 
   // Memoize filtered suggestions for points search to avoid filtering on every render
@@ -2688,12 +2757,17 @@ function AppContent() {
     if (!pointsSearchName) return [];
     return pokemonList.filter(p => {
       const gen = lobbyGenFilter || 0;
-      if (gen > 0 && p.id > genLimits[gen]) return false;
       const name = p.name.toLowerCase();
+      // Ignore generation filter for mega/gmax forms if those settings are enabled
+      const isMega = name.includes('-mega');
+      const isGmax = name.includes('-gmax');
+      const shouldIgnoreGen = (isMega && lobbySettings.allowMega) || (isGmax && lobbySettings.allowGmax);
+      
+      if (gen > 0 && !shouldIgnoreGen && p.id > genLimits[gen]) return false;
       if (hideLegendaries && p.legendary) return false;
       return name.includes(pointsSearchName);
     }).slice(0, 10);
-  }, [pointsSearchName, pokemonList, lobbyGenFilter, hideLegendaries]);
+  }, [pointsSearchName, pokemonList, lobbyGenFilter, hideLegendaries, lobbySettings.allowMega, lobbySettings.allowGmax]);
 
   // Memoize draft search suggestions to avoid filtering on every render
   const draftSearchSuggestions = useMemo(() => {
@@ -3301,7 +3375,7 @@ function AppContent() {
 
   const startDraft = () => {
     if (socket && lobbyCode) {
-      socket.emit('start_draft', { code: lobbyCode }, (resp) => {
+      socket.emit('start_draft', { code: lobbyCode, leagueCode: lobbyLeagueCode }, (resp) => {
         if (resp && resp.ok) setView('draft');
       });
     } else {
@@ -3368,6 +3442,132 @@ function AppContent() {
     }
     setLoadingLegendaries(false);
     return finalMap;
+  };
+
+  // Fetch Mega Evolution Pokémon from PokeAPI
+  const fetchMegaPokemon = async () => {
+    try {
+      // Fetch all Pokemon forms from PokeAPI
+      const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000');
+      const allPokemon = response.data.results;
+      
+      // Filter for mega evolutions
+      const megaForms = allPokemon.filter(p => {
+        const name = p.name.toLowerCase();
+        return name.includes('mega') && !name.includes('meganium') && !name.includes('yanmega');
+      });
+      
+      console.log(`Found ${megaForms.length} mega forms from PokeAPI`);
+      
+      // Fetch detailed data for each mega form
+      const megaList = await Promise.all(
+        megaForms.map(async (form) => {
+          try {
+            const detailResponse = await axios.get(form.url);
+            const data = detailResponse.data;
+            
+            return {
+              id: data.id,
+              name: data.name,
+              img: data.sprites?.front_default || data.sprites?.other?.['official-artwork']?.front_default || '',
+              types: data.types?.map(t => t.type.name) || [],
+              abilities: data.abilities?.map(a => a.ability.name) || [],
+              moves: data.moves?.map(m => m.move.name) || [],
+              generation: Math.floor(data.id / 151) + 1,
+              legendary: false,
+              paradox: false
+            };
+          } catch (err) {
+            console.error(`Failed to fetch details for ${form.name}:`, err);
+            return null;
+          }
+        })
+      );
+      
+      // Filter out any failed fetches
+      const validMega = megaList.filter(p => p !== null);
+      
+      // Add to pokemon list, avoiding duplicates
+      setPokemonList(prev => {
+        const existingNames = new Set(prev.map(p => p.name.toLowerCase()));
+        const newPokemon = validMega.filter(p => !existingNames.has(p.name.toLowerCase()));
+        console.log(`Adding ${newPokemon.length} new mega Pokemon (${validMega.length - newPokemon.length} were duplicates)`);
+        return [...prev, ...newPokemon].sort((a, b) => a.id - b.id);
+      });
+      
+      console.log(`Total mega Pokemon processed: ${validMega.length}`);
+    } catch (err) {
+      console.error('Failed to fetch Mega Pokemon:', err);
+      alert('Failed to load Mega Pokemon. Please try again.');
+    }
+  };
+
+  // Remove Mega Evolution Pokémon from the list
+  const removeMegaPokemon = () => {
+    setPokemonList(prev => prev.filter(p => !p.name.includes('-mega')));
+  };
+
+  // Fetch Gigantamax Pokémon from PokeAPI
+  const fetchGmaxPokemon = async () => {
+    try {
+      // Fetch all Pokemon forms from PokeAPI
+      const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=2000');
+      const allPokemon = response.data.results;
+      
+      // Filter for gigantamax forms and eternamax
+      const gmaxForms = allPokemon.filter(p => {
+        const name = p.name.toLowerCase();
+        return name.includes('gmax') || name.includes('eternamax');
+      });
+      
+      console.log(`Found ${gmaxForms.length} gmax/eternamax forms from PokeAPI`);
+      
+      // Fetch detailed data for each gmax form
+      const gmaxList = await Promise.all(
+        gmaxForms.map(async (form) => {
+          try {
+            const detailResponse = await axios.get(form.url);
+            const data = detailResponse.data;
+            
+            return {
+              id: data.id,
+              name: data.name,
+              img: data.sprites?.front_default || data.sprites?.other?.['official-artwork']?.front_default || '',
+              types: data.types?.map(t => t.type.name) || [],
+              abilities: data.abilities?.map(a => a.ability.name) || [],
+              moves: data.moves?.map(m => m.move.name) || [],
+              generation: 8, // Gigantamax introduced in Gen 8
+              legendary: false,
+              paradox: false
+            };
+          } catch (err) {
+            console.error(`Failed to fetch details for ${form.name}:`, err);
+            return null;
+          }
+        })
+      );
+      
+      // Filter out any failed fetches
+      const validGmax = gmaxList.filter(p => p !== null);
+      
+      // Add to pokemon list, avoiding duplicates
+      setPokemonList(prev => {
+        const existingNames = new Set(prev.map(p => p.name.toLowerCase()));
+        const newPokemon = validGmax.filter(p => !existingNames.has(p.name.toLowerCase()));
+        console.log(`Adding ${newPokemon.length} new gmax Pokemon (${validGmax.length - newPokemon.length} were duplicates)`);
+        return [...prev, ...newPokemon].sort((a, b) => a.id - b.id);
+      });
+      
+      console.log(`Total gmax Pokemon processed: ${validGmax.length}`);
+    } catch (err) {
+      console.error('Failed to fetch Gigantamax Pokemon:', err);
+      alert('Failed to load Gigantamax Pokemon. Please try again.');
+    }
+  };
+
+  // Remove Gigantamax Pokémon from the list
+  const removeGmaxPokemon = () => {
+    setPokemonList(prev => prev.filter(p => !p.name.includes('-gmax') && !p.name.includes('eternamax')));
   };
 
   // Ban all legendaries visible in the current pokemonList (host-only)
@@ -3488,6 +3688,8 @@ function AppContent() {
       }
       if (data && data.code) setLobbyCode(data.code);
       if (data && data.host) setHostId(data.host);
+      if (data && data.leagueCode !== undefined) setLobbyLeagueCode(data.leagueCode || '');
+      if (data && data.lobbyName !== undefined) setLobbyName(data.lobbyName || '');
       if (data && data.settings) {
         setLobbySettings(data.settings);
         // Immediately cache settings to localStorage for draft_complete fallback
@@ -4023,34 +4225,6 @@ function AppContent() {
                   ) : (
                     <button className="gen-button" onClick={() => setShowAuthModal(true)}>Login</button>
                   )}
-                  <button className="gen-button warning ml-8" onClick={() => {
-                    const confirmed = window.confirm(
-                      'Clear all cached data?\n\n' +
-                      'This will delete:\n' +
-                      '• All saved teams from localStorage\n' +
-                      '• All ongoing draft data from localStorage\n\n' +
-                      'This does NOT affect data saved in the database.\n\n' +
-                      'Continue?'
-                    );
-                    if (!confirmed) return;
-                    
-                    try {
-                      // Clear saved teams
-                      localStorage.removeItem('pkmndraft_saved_teams');
-                      // Clear ongoing drafts
-                      localStorage.removeItem('pkmndraft_ongoing_drafts');
-                      // Clear any draft settings
-                      Object.keys(localStorage).forEach(key => {
-                        if (key.startsWith('draftSettings_')) {
-                          localStorage.removeItem(key);
-                        }
-                      });
-                      alert('Cache cleared successfully!');
-                    } catch (e) {
-                      console.error('Failed to clear cache:', e);
-                      alert('Failed to clear cache');
-                    }
-                  }}>Clear Cache</button>
                 </div>
                 
                 <div className="control-group">
@@ -4087,11 +4261,36 @@ function AppContent() {
             )}
           {lobbyCode ? (
             <div className="LobbyBox">
-              <div className="LobbyHeaderRow">
-                  <div>
+              <div className="LobbyHeader">
+                <div className="LobbyHeaderRow">
+                  <div className="LobbyCodeSection">
+                    {socket && hostId && socket.id === hostId && (
+                      <div style={{ display: 'flex', alignItems: 'center', marginRight: '16px' }}>
+                        <label className="label-small" style={{ marginRight: '8px', whiteSpace: 'nowrap' }}>Lobby Name:</label>
+                        <input 
+                          type="text" 
+                          defaultValue={lobbyName} 
+                          onBlur={(e) => {
+                            const newName = e.target.value;
+                            setLobbyName(newName);
+                            if (socket && lobbyCode) {
+                              socket.emit('update_lobby_name', { code: lobbyCode, lobbyName: newName }, (resp) => {
+                                if (!resp || !resp.ok) {
+                                  console.warn('Failed to update lobby name:', resp?.error);
+                                }
+                              });
+                            }
+                          }}
+                          placeholder="Enter a name..." 
+                          style={{ padding: '4px 8px', width: '180px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                    )}
                     <strong>Lobby Code:</strong>
                     <span className="LobbyCode">{lobbyCode}</span>
                     <button className="gen-button ml-8" onClick={copyLobbyCode}>Copy</button>
+                    <span className="ml-8" style={{ color: '#666', fontSize: '14px' }}>| League Code:</span>
+                    <span className="LobbyCode" style={{ fontSize: '14px' }}>{lobbyLeagueCode || 'None'}</span>
                     {socket && hostId && socket.id === hostId && (
                       <>
                         <button className="start-draft-button ml-8" onClick={startDraft}>Start Draft</button>
@@ -4106,34 +4305,16 @@ function AppContent() {
                     <button className="toggle-button btn-mr8" onClick={leaveLobby}>Leave</button>
                   </div>
                 </div>
-                {socket && hostId && socket.id === hostId && (
-                  <div style={{ marginTop: '10px', marginBottom: '10px' }}>
-                    <label className="label-small" style={{ marginRight: '8px' }}>Lobby Name (optional):</label>
-                    <input 
-                      type="text" 
-                      defaultValue={lobbyName} 
-                      onBlur={(e) => {
-                        const newName = e.target.value;
-                        setLobbyName(newName);
-                        if (socket && lobbyCode) {
-                          socket.emit('update_lobby_name', { code: lobbyCode, lobbyName: newName }, (resp) => {
-                            if (!resp || !resp.ok) {
-                              console.warn('Failed to update lobby name:', resp?.error);
-                            }
-                          });
-                        }
-                      }}
-                      placeholder="Enter a name for this draft..." 
-                      style={{ width: '300px', padding: '4px 8px' }}
-                    />
-                  </div>
-                )}
-                <div className="LobbyMeta">Max players: 12</div>
+              </div>
 
               <div className="LobbyMainRow">
                 <div className="PlayersPanel">
-                  <div className="PlayersTitle">Players ({lobbyUsers.length}):</div>
-                  <ul className="PlayerList">
+                  <div className="panel-card">
+                    <div className="panel-header">
+                      <strong>Players ({lobbyUsers.length})</strong>
+                      <span className="panel-meta">Max: 12</span>
+                    </div>
+                    <ul className="PlayerList">
                     {lobbyUsers.map((u) => (
                       <li key={u.id} className="player-list-item">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4154,353 +4335,399 @@ function AppContent() {
                       </li>
                     ))}
                   </ul>
+                  </div>
                 </div>
 
                 <div className="SettingsAndPointsContainer">
-                <div className="SettingsPanel">
-                      <div className="LobbySettingsTitle"><strong>Lobby Settings</strong></div>
-                  {socket && hostId && socket.id === hostId ? (
+                  {/* Lobby Settings - Card-based grid layout */}
+                  <div className="SettingsPanel">
+                    <div className="LobbySettingsTitle"><strong>Lobby Settings</strong></div>
+                    {socket && hostId && socket.id === hostId ? (
                     // Host view with controls
-                    <div>
-                      <div className="row">
-                        <div className="col-1">
-                          <label className="label-small">Points Limit</label>
-                          <input type="number" defaultValue={lobbySettings.pointsLimit} onBlur={(e) => {
-                              const newLimit = Number(e.target.value);
-                              if (newLimit === lobbySettings.pointsLimit) return;
-                              setLobbySettings((s) => ({...s, pointsLimit: newLimit}));
-                              if (socket && lobbyCode && socket.id === hostId) {
-                                socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: newLimit, genFilter: lobbyGenFilter, teamSizeLimit: lobbySettings.teamSizeLimit } }, (resp) => {
-                                  if (!resp || !resp.ok) {
-                                    alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                    e.target.value = lobbySettings.pointsLimit;
-                                  }
-                                });
-                              }
-                            }} className="input-full" />
-                        </div>
-                      </div>
-                      <div className="row mt-8">
-                        <div className="col-1">
-                          <label className="label-small">Team Size Limit</label>
-                          <input type="number" min={1} max={60} defaultValue={lobbySettings.teamSizeLimit} onBlur={(e) => {
-                              const newSize = Math.max(1, Math.min(60, Number(e.target.value) || 0));
-                              if (newSize === lobbySettings.teamSizeLimit) return;
-                              setLobbySettings((s) => ({...s, teamSizeLimit: newSize}));
-                              if (socket && lobbyCode && socket.id === hostId) {
-                                socket.emit('update_settings', { code: lobbyCode, settings: { teamSizeLimit: newSize, pointsLimit: lobbySettings.pointsLimit, genFilter: lobbyGenFilter } }, (resp) => {
-                                  if (!resp || !resp.ok) {
-                                    alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                    e.target.value = lobbySettings.teamSizeLimit;
-                                  }
-                                });
-                              }
-                            }} className="input-full" />
-                        </div>
-                      </div>
-                      <div className="row mt-8">
-                        <div className="col-1">
-                          <label className="label-small">Load Preset</label>
-                          <select value={selectedPreset} onChange={(e) => {
-                              const presetId = e.target.value;
-                              setSelectedPreset(presetId);
-                              
-                              if (presetId && socket && lobbyCode && socket.id === hostId) {
-                                const preset = presetsList.find(p => p.id === presetId);
-                                if (preset) {
-                                  setExportMessage(`Loading preset "${preset.name}"...`);
-                                  
-                                  // Apply preset settings
-                                  const newSettings = {
-                                    pointsLimit: preset.pointsLimit,
-                                    teamSizeLimit: preset.teamSizeLimit,
-                                    genFilter: preset.generationFilter || 0,
-                                    allowTrading: lobbySettings.allowTrading,
-                                    maxTradeLimit: lobbySettings.maxTradeLimit,
-                                    unlimitedTrades: lobbySettings.unlimitedTrades
-                                  };
-                                  
-                                  setLobbySettings(s => ({
-                                    ...s,
-                                    pointsLimit: preset.pointsLimit,
-                                    teamSizeLimit: preset.teamSizeLimit
-                                  }));
-                                  
-                                  if (preset.generationFilter) {
-                                    setLobbyGenFilter(preset.generationFilter);
-                                  }
-                                  
-                                  // Send preset ID to server - server handles all the heavy lifting
-                                  socket.emit('load_preset', { 
-                                    code: lobbyCode, 
-                                    presetId: preset.id 
-                                  }, (resp) => {
-                                    if (resp && resp.ok) {
-                                      // Update local state with server response
-                                      if (resp.settings) {
-                                        setLobbySettings(s => ({
-                                          ...s,
-                                          pointsLimit: resp.settings.pointsLimit,
-                                          teamSizeLimit: resp.settings.teamSizeLimit
-                                        }));
-                                        if (resp.settings.genFilter) {
-                                          setLobbyGenFilter(resp.settings.genFilter);
-                                        }
-                                      }
-                                      setExportMessage(`Preset "${preset.name}" loaded successfully!`);
-                                      setTimeout(() => setExportMessage(''), 3000);
-                                    } else {
-                                      setExportMessage(resp?.error || 'Failed to load preset');
-                                      setTimeout(() => setExportMessage(''), 3000);
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                      {/* Column 1: Points & Team Size */}
+                      <div className="settings-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div className="row">
+                          <div className="col-1">
+                            <label className="label-small">Points Limit</label>
+                            <input type="number" defaultValue={lobbySettings.pointsLimit} onBlur={(e) => {
+                                const newLimit = Number(e.target.value);
+                                if (newLimit === lobbySettings.pointsLimit) return;
+                                setLobbySettings((s) => ({...s, pointsLimit: newLimit}));
+                                if (socket && lobbyCode && socket.id === hostId) {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: newLimit, genFilter: lobbyGenFilter, teamSizeLimit: lobbySettings.teamSizeLimit } }, (resp) => {
+                                    if (!resp || !resp.ok) {
+                                      alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                      e.target.value = lobbySettings.pointsLimit;
                                     }
                                   });
                                 }
-                              }
-                            }} className="input-full">
-                            <option value="">-- Select Preset --</option>
-                            {presetsList.map(preset => (
-                              <option key={preset.id} value={preset.id}>{preset.name}</option>
-                            ))}
-                          </select>
+                              }} className="input-full" />
+                          </div>
+                        </div>
+                        
+                        <div className="row" style={{ marginTop: '10px' }}>
+                          <div className="col-1">
+                            <label className="label-small">Team Size Limit</label>
+                            <input type="number" min={1} max={60} defaultValue={lobbySettings.teamSizeLimit} onBlur={(e) => {
+                                const newSize = Math.max(1, Math.min(60, Number(e.target.value) || 0));
+                                if (newSize === lobbySettings.teamSizeLimit) return;
+                                setLobbySettings((s) => ({...s, teamSizeLimit: newSize}));
+                                if (socket && lobbyCode && socket.id === hostId) {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { teamSizeLimit: newSize, pointsLimit: lobbySettings.pointsLimit, genFilter: lobbyGenFilter } }, (resp) => {
+                                    if (!resp || !resp.ok) {
+                                      alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                      e.target.value = lobbySettings.teamSizeLimit;
+                                    }
+                                  });
+                                }
+                              }} className="input-full" />
+                          </div>
                         </div>
                       </div>
-                      <div className="gen-filter-row">
-                        <div className="col-1">
-                          <label className="label-small">Generation Filter</label>
-                          <select value={lobbyGenFilter} onChange={(e) => {
-                              const newGen = Number(e.target.value);
-                              setLobbyGenFilter(newGen);
+                      
+                      {/* Column 2: Generation Filter & Load Preset */}
+                      <div className="settings-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div className="row">
+                          <div className="col-1">
+                            <label className="label-small">Generation Filter</label>
+                            <select value={lobbyGenFilter} onChange={(e) => {
+                                const newGen = Number(e.target.value);
+                                setLobbyGenFilter(newGen);
+                                if (socket && lobbyCode && socket.id === hostId) {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: lobbySettings.pointsLimit, genFilter: newGen, teamSizeLimit: lobbySettings.teamSizeLimit, allowTrading: lobbySettings.allowTrading, maxTradeLimit: lobbySettings.maxTradeLimit, unlimitedTrades: lobbySettings.unlimitedTrades } }, (resp) => {
+                                    if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                  });
+                                }
+                              }} className="input-full">
+                              <option value={0}>All</option>
+                              {[1,2,3,4,5,6,7,8,9].map(g => <option key={g} value={g}>Gen {g}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="row" style={{ marginTop: '10px' }}>
+                          <div className="col-1">
+                            <label className="label-small">Load Preset</label>
+                            <select value={selectedPreset} onChange={(e) => {
+                                const presetId = e.target.value;
+                                setSelectedPreset(presetId);
+                                
+                                if (presetId && socket && lobbyCode && socket.id === hostId) {
+                                  const preset = presetsList.find(p => p.id === presetId);
+                                  if (preset) {
+                                    setExportMessage(`Loading preset "${preset.name}"...`);
+                                    
+                                    // Apply preset settings including mega/gmax flags
+                                    const newSettings = {
+                                      pointsLimit: preset.pointsLimit,
+                                      teamSizeLimit: preset.teamSizeLimit,
+                                      genFilter: preset.generationFilter || 0,
+                                      allowTrading: lobbySettings.allowTrading,
+                                      maxTradeLimit: lobbySettings.maxTradeLimit,
+                                      unlimitedTrades: lobbySettings.unlimitedTrades,
+                                      allowMega: preset.allowMega || false,
+                                      allowGmax: preset.allowGmax || false
+                                    };
+                                    
+                                    setLobbySettings(s => ({
+                                      ...s,
+                                      pointsLimit: preset.pointsLimit,
+                                      teamSizeLimit: preset.teamSizeLimit,
+                                      allowMega: preset.allowMega || false,
+                                      allowGmax: preset.allowGmax || false
+                                    }));
+                                    
+                                    // Load mega/gmax Pokemon if needed
+                                    if (preset.allowMega) {
+                                      fetchMegaPokemon();
+                                    } else {
+                                      removeMegaPokemon();
+                                    }
+                                    if (preset.allowGmax) {
+                                      fetchGmaxPokemon();
+                                    } else {
+                                      removeGmaxPokemon();
+                                    }
+                                    
+                                    if (preset.generationFilter) {
+                                      setLobbyGenFilter(preset.generationFilter);
+                                    }
+                                    
+                                    // Send preset ID to server - server handles all the heavy lifting
+                                    socket.emit('load_preset', { 
+                                      code: lobbyCode, 
+                                      presetId: preset.id 
+                                    }, (resp) => {
+                                      if (resp && resp.ok) {
+                                        // Update local state with server response
+                                        if (resp.settings) {
+                                          setLobbySettings(s => ({
+                                            ...s,
+                                            pointsLimit: resp.settings.pointsLimit,
+                                            teamSizeLimit: resp.settings.teamSizeLimit
+                                          }));
+                                          if (resp.settings.genFilter) {
+                                            setLobbyGenFilter(resp.settings.genFilter);
+                                          }
+                                        }
+                                        setExportMessage(`Preset "${preset.name}" loaded successfully!`);
+                                        setTimeout(() => setExportMessage(''), 3000);
+                                      } else {
+                                        setExportMessage(resp?.error || 'Failed to load preset');
+                                        setTimeout(() => setExportMessage(''), 3000);
+                                      }
+                                    });
+                                  }
+                                }
+                              }} className="input-full">
+                              <option value="">-- Select Preset --</option>
+                              {presetsList.map(preset => (
+                                <option key={preset.id} value={preset.id}>{preset.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Column 3: Ban Buttons */}
+                      <div className="settings-card">
+                        <label className="label-small" style={{ marginBottom: '6px', display: 'block' }}>Quick Ban Actions</label>
+                        <button className="gen-button ban-legendaries-button" style={{ width: '100%', marginBottom: '6px' }} onClick={() => { if (socket && socket.id === hostId) banAllLegendaries(); }}>Ban Legendaries</button>
+                        <button className="gen-button ban-legendaries-button" style={{ width: '100%', marginBottom: '6px' }} onClick={() => { if (socket && socket.id === hostId) banAllParadox(); }}>Ban Paradox</button>
+                        <button className="gen-button unban-all-button" style={{ width: '100%' }} onClick={() => { if (socket && socket.id === hostId) unbanAll(); }}>Unban All</button>
+                      </div>
+                      
+                      {/* Column 4: Trading & Timer */}
+                      <div className="settings-card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                          <input 
+                            type="checkbox" 
+                            id="allow-trading"
+                            checked={lobbySettings.allowTrading} 
+                            onChange={(e) => {
+                              const newValue = e.target.checked;
+                              // Set default trade limit to 1 when enabling trading
+                              const updatedSettings = {
+                                ...lobbySettings,
+                                allowTrading: newValue,
+                                maxTradeLimit: newValue && lobbySettings.maxTradeLimit === 0 ? 1 : lobbySettings.maxTradeLimit
+                              };
+                              setLobbySettings(updatedSettings);
                               if (socket && lobbyCode && socket.id === hostId) {
-                                socket.emit('update_settings', { code: lobbyCode, settings: { pointsLimit: lobbySettings.pointsLimit, genFilter: newGen, teamSizeLimit: lobbySettings.teamSizeLimit, allowTrading: lobbySettings.allowTrading, maxTradeLimit: lobbySettings.maxTradeLimit, unlimitedTrades: lobbySettings.unlimitedTrades } }, (resp) => {
+                                socket.emit('update_settings', { code: lobbyCode, settings: { ...updatedSettings, genFilter: lobbyGenFilter } }, (resp) => {
+                                  if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                });
+                                // Cache updated settings for draft_complete fallback
+                                try {
+                                  const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                  const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                                  cached.allowTrading = newValue;
+                                  cached.maxTradeLimit = updatedSettings.maxTradeLimit;
+                                  cached.lobbyCode = lobbyCode;
+                                  cached.hostSocketId = socket.id;
+                                  localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                } catch (err) {
+                                  console.warn('Failed to cache setting update:', err);
+                                }
+                              }
+                            }}
+                          />
+                          <label htmlFor="allow-trading" className="label-small" style={{ cursor: 'pointer' }}>Allow Trading</label>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
+                          <input 
+                            type="checkbox" 
+                            id="timer-enabled"
+                            checked={lobbySettings.timerEnabled} 
+                            onChange={(e) => {
+                              const newValue = e.target.checked;
+                              const updatedSettings = {
+                                ...lobbySettings,
+                                timerEnabled: newValue
+                              };
+                              setLobbySettings(updatedSettings);
+                              if (socket && lobbyCode && socket.id === hostId) {
+                                socket.emit('update_settings', { code: lobbyCode, settings: { ...updatedSettings, genFilter: lobbyGenFilter } }, (resp) => {
                                   if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                 });
                               }
-                            }} className="input-full">
-                            <option value={0}>All</option>
-                            {[1,2,3,4,5,6,7,8,9].map(g => <option key={g} value={g}>Gen {g}</option>)}
-                          </select>
+                            }}
+                          />
+                          <label htmlFor="timer-enabled" className="label-small" style={{ cursor: 'pointer' }}>Enable Draft Timer</label>
                         </div>
-                        <div className="col-2">
-                          <button className="gen-button ml-8 ban-legendaries-button" onClick={() => { if (socket && socket.id === hostId) banAllLegendaries(); }}>Ban Legendaries</button>
-                          <button className="gen-button ml-8 ban-legendaries-button" onClick={() => { if (socket && socket.id === hostId) banAllParadox(); }}>Ban Paradox</button>
-                          <button className="gen-button ml-8 unban-all-button" onClick={() => { if (socket && socket.id === hostId) unbanAll(); }}>Unban All</button>
-                        </div>
-                      </div>
-                      
-                      {/* Trading Settings */}
-                      <div className="row mt-8">
-                        <div className="col-1">
-                          <label className="label-small">
-                            <input 
-                              type="checkbox" 
-                              checked={lobbySettings.allowTrading} 
-                              onChange={(e) => {
-                                const newValue = e.target.checked;
-                                // Set default trade limit to 1 when enabling trading
-                                const updatedSettings = {
-                                  ...lobbySettings,
-                                  allowTrading: newValue,
-                                  maxTradeLimit: newValue && lobbySettings.maxTradeLimit === 0 ? 1 : lobbySettings.maxTradeLimit
-                                };
-                                setLobbySettings(updatedSettings);
-                                if (socket && lobbyCode && socket.id === hostId) {
-                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...updatedSettings, genFilter: lobbyGenFilter } }, (resp) => {
-                                    if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                  });
-                                  // Cache updated settings for draft_complete fallback
-                                  try {
-                                    const cacheKey = 'hostDraftSettings_' + lobbyCode;
-                                    const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-                                    cached.allowTrading = newValue;
-                                    cached.maxTradeLimit = updatedSettings.maxTradeLimit;
-                                    cached.lobbyCode = lobbyCode;
-                                    cached.hostSocketId = socket.id;
-                                    localStorage.setItem(cacheKey, JSON.stringify(cached));
-                                  } catch (err) {
-                                    console.warn('Failed to cache setting update:', err);
-                                  }
-                                }
-                              }}
-                            />
-                            {' '}Allow Trading
-                          </label>
-                        </div>
-                      </div>
-                      
-                      {lobbySettings.allowTrading && (
-                        <>
-                          <div className="row mt-8">
-                            <div className="col-1">
-                              <label className="label-small">Max Trades Per Player</label>
-                              <input 
-                                type="number" 
-                                min={0} 
-                                value={lobbySettings.maxTradeLimit} 
-                                onChange={(e) => {
-                                  const newLimit = Math.max(0, Number(e.target.value) || 0);
-                                  setLobbySettings((s) => ({...s, maxTradeLimit: newLimit}));
-                                  if (socket && lobbyCode && socket.id === hostId) {
-                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, maxTradeLimit: newLimit, genFilter: lobbyGenFilter } }, (resp) => {
-                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                    });
-                                    // Cache updated settings
-                                    try {
-                                      const cacheKey = 'hostDraftSettings_' + lobbyCode;
-                                      const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-                                      cached.maxTradeLimit = newLimit;
-                                      cached.lobbyCode = lobbyCode;
-                                      cached.hostSocketId = socket.id;
-                                      localStorage.setItem(cacheKey, JSON.stringify(cached));
-                                    } catch (err) {
-                                      console.warn('Failed to cache setting update:', err);
-                                    }
-                                  }
-                                }} 
-                                className="input-full"
-                                disabled={lobbySettings.unlimitedTrades}
-                              />
-                            </div>
-                          </div>
-                          <div className="row mt-8">
-                            <div className="col-1">
-                              <label className="label-small">
-                                <input 
-                                  type="checkbox" 
-                                  checked={lobbySettings.unlimitedTrades} 
-                                  onChange={(e) => {
-                                    const newValue = e.target.checked;
-                                    setLobbySettings((s) => ({...s, unlimitedTrades: newValue}));
-                                    if (socket && lobbyCode && socket.id === hostId) {
-                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
-                                        // Cache updated settings
-                                        try {
-                                          const cacheKey = 'hostDraftSettings_' + lobbyCode;
-                                          const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-                                          cached.unlimitedTrades = newValue;
-                                          cached.lobbyCode = lobbyCode;
-                                          cached.hostSocketId = socket.id;
-                                          localStorage.setItem(cacheKey, JSON.stringify(cached));
-                                        } catch (err) {
-                                          console.warn('Failed to cache setting update:', err);
-                                        }
-                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                      });
-                                    }
-                                  }}
-                                />
-                                {' '}Allow Unlimited Trades
-                              </label>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      
-                      {/* League Code Setting */}
-                      <div className="row mt-8">
-                        <div className="col-1">
-                          <label className="label-small">League Code (Optional)</label>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
                           <input 
-                            type="text" 
-                            placeholder="Enter league code to link this draft"
-                            value={lobbyLeagueCode || ''}
+                            type="checkbox" 
+                            id="allow-mega"
+                            checked={lobbySettings.allowMega} 
                             onChange={(e) => {
-                              const newCode = e.target.value.trim();
-                              setLobbyLeagueCode(newCode);
+                              const newValue = e.target.checked;
+                              setLobbySettings((s) => ({...s, allowMega: newValue}));
+                              if (newValue) {
+                                fetchMegaPokemon();
+                              } else {
+                                removeMegaPokemon();
+                              }
                               if (socket && lobbyCode && socket.id === hostId) {
-                                socket.emit('update_league_code', { code: lobbyCode, leagueCode: newCode }, (resp) => {
-                                  if (!resp || !resp.ok) {
-                                    alert(resp && resp.error ? resp.error : 'Failed to update league code');
-                                  }
+                                socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, allowMega: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                  if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
                                 });
                               }
                             }}
-                            className="input-full" 
                           />
-                          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-                            Link this draft to a league for tracking
-                          </div>
+                          <label htmlFor="allow-mega" className="label-small" style={{ cursor: 'pointer' }}>Allow Mega</label>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
+                          <input 
+                            type="checkbox" 
+                            id="allow-gmax"
+                            checked={lobbySettings.allowGmax} 
+                            onChange={(e) => {
+                              const newValue = e.target.checked;
+                              setLobbySettings((s) => ({...s, allowGmax: newValue}));
+                              if (newValue) {
+                                fetchGmaxPokemon();
+                              } else {
+                                removeGmaxPokemon();
+                              }
+                              if (socket && lobbyCode && socket.id === hostId) {
+                                socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, allowGmax: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                  if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                });
+                              }
+                            }}
+                          />
+                          <label htmlFor="allow-gmax" className="label-small" style={{ cursor: 'pointer' }}>Allow Gmax</label>
                         </div>
                       </div>
                       
-                      {/* Timer Settings */}
-                      <div className="row mt-8">
-                        <div className="col-1">
-                          <label className="label-small">
-                            <input 
-                              type="checkbox" 
-                              checked={lobbySettings.timerEnabled} 
-                              onChange={(e) => {
-                                const newValue = e.target.checked;
-                                const updatedSettings = {
-                                  ...lobbySettings,
-                                  timerEnabled: newValue
-                                };
-                                setLobbySettings(updatedSettings);
-                                if (socket && lobbyCode && socket.id === hostId) {
-                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...updatedSettings, genFilter: lobbyGenFilter } }, (resp) => {
-                                    if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                  });
-                                }
-                              }}
-                            />
-                            {' '}Enable Draft Timer
-                          </label>
+                      {/* Conditional sections that span full width */}
+                      {lobbySettings.allowTrading && (
+                        <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
+                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                            <div className="row" style={{ flex: '1 1 200px' }}>
+                              <div className="col-1">
+                                <label className="label-small">Max Trades Per Player</label>
+                                <input 
+                                  type="number" 
+                                  min={0} 
+                                  value={lobbySettings.maxTradeLimit} 
+                                  onChange={(e) => {
+                                    const newLimit = Math.max(0, Number(e.target.value) || 0);
+                                    setLobbySettings((s) => ({...s, maxTradeLimit: newLimit}));
+                                    if (socket && lobbyCode && socket.id === hostId) {
+                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, maxTradeLimit: newLimit, genFilter: lobbyGenFilter } }, (resp) => {
+                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                      });
+                                      // Cache updated settings
+                                      try {
+                                        const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                        const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                                        cached.maxTradeLimit = newLimit;
+                                        cached.lobbyCode = lobbyCode;
+                                        cached.hostSocketId = socket.id;
+                                        localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                      } catch (err) {
+                                        console.warn('Failed to cache setting update:', err);
+                                      }
+                                    }
+                                  }} 
+                                  className="input-full"
+                                  disabled={lobbySettings.unlimitedTrades}
+                                />
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 200px' }}>
+                              <input 
+                                type="checkbox" 
+                                id="unlimited-trades"
+                                checked={lobbySettings.unlimitedTrades} 
+                                onChange={(e) => {
+                                  const newValue = e.target.checked;
+                                  setLobbySettings((s) => ({...s, unlimitedTrades: newValue}));
+                                  if (socket && lobbyCode && socket.id === hostId) {
+                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                      // Cache updated settings
+                                      try {
+                                        const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                        const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                                        cached.unlimitedTrades = newValue;
+                                        cached.lobbyCode = lobbyCode;
+                                        cached.hostSocketId = socket.id;
+                                        localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                      } catch (err) {
+                                        console.warn('Failed to cache setting update:', err);
+                                      }
+                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    });
+                                  }
+                                }}
+                              />
+                              <label htmlFor="unlimited-trades" className="label-small" style={{ cursor: 'pointer' }}>Allow Unlimited Trades</label>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       
                       {lobbySettings.timerEnabled && (
-                        <>
-                          <div className="row mt-8">
-                            <div className="col-1">
-                              <label className="label-small">1st Round Timer (format: H:MM or :MM)</label>
-                              <input 
-                                type="text" 
-                                defaultValue={formatTimerMinutes(lobbySettings.firstRoundTimer)}
-                                placeholder="8:00 (8 hours)"
-                                onBlur={(e) => {
-                                  const minutes = parseTimerInput(e.target.value);
-                                  if (minutes !== null) {
-                                    setLobbySettings((s) => ({...s, firstRoundTimer: minutes}));
-                                    if (socket && lobbyCode && socket.id === hostId) {
-                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, firstRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
-                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                      });
+                        <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
+                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                            <div className="row" style={{ flex: '1 1 200px' }}>
+                              <div className="col-1">
+                                <label className="label-small">1st Round Timer (format: H:MM or :MM)</label>
+                                <input 
+                                  type="text" 
+                                  defaultValue={formatTimerMinutes(lobbySettings.firstRoundTimer)}
+                                  placeholder="8:00 (8 hours)"
+                                  onBlur={(e) => {
+                                    const minutes = parseTimerInput(e.target.value);
+                                    if (minutes !== null) {
+                                      setLobbySettings((s) => ({...s, firstRoundTimer: minutes}));
+                                      if (socket && lobbyCode && socket.id === hostId) {
+                                        socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, firstRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
+                                          if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                        });
+                                      }
+                                    } else {
+                                      // Reset to current value if invalid
+                                      e.target.value = formatTimerMinutes(lobbySettings.firstRoundTimer);
                                     }
-                                  } else {
-                                    // Reset to current value if invalid
-                                    e.target.value = formatTimerMinutes(lobbySettings.firstRoundTimer);
-                                  }
-                                }}
-                                className="input-full" 
-                              />
+                                  }}
+                                  className="input-full" 
+                                />
+                              </div>
+                            </div>
+                            <div className="row" style={{ flex: '1 1 200px' }}>
+                              <div className="col-1">
+                                <label className="label-small">Subsequent Rounds Timer (format: H:MM or :MM)</label>
+                                <input 
+                                  type="text" 
+                                  defaultValue={formatTimerMinutes(lobbySettings.subsequentRoundTimer)}
+                                  placeholder="8:00 (8 hours)"
+                                  onBlur={(e) => {
+                                    const minutes = parseTimerInput(e.target.value);
+                                    if (minutes !== null) {
+                                      setLobbySettings((s) => ({...s, subsequentRoundTimer: minutes}));
+                                      if (socket && lobbyCode && socket.id === hostId) {
+                                        socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, subsequentRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
+                                          if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                        });
+                                      }
+                                    } else {
+                                      // Reset to current value if invalid
+                                      e.target.value = formatTimerMinutes(lobbySettings.subsequentRoundTimer);
+                                    }
+                                  }}
+                                  className="input-full" 
+                                />
+                              </div>
                             </div>
                           </div>
-                          <div className="row mt-8">
-                            <div className="col-1">
-                              <label className="label-small">Subsequent Rounds Timer (format: H:MM or :MM)</label>
-                              <input 
-                                type="text" 
-                                defaultValue={formatTimerMinutes(lobbySettings.subsequentRoundTimer)}
-                                placeholder="8:00 (8 hours)"
-                                onBlur={(e) => {
-                                  const minutes = parseTimerInput(e.target.value);
-                                  if (minutes !== null) {
-                                    setLobbySettings((s) => ({...s, subsequentRoundTimer: minutes}));
-                                    if (socket && lobbyCode && socket.id === hostId) {
-                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, subsequentRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
-                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                      });
-                                    }
-                                  } else {
-                                    // Reset to current value if invalid
-                                    e.target.value = formatTimerMinutes(lobbySettings.subsequentRoundTimer);
-                                  }
-                                }}
-                                className="input-full" 
-                              />
-                            </div>
-                          </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   ) : (
@@ -4515,7 +4742,8 @@ function AppContent() {
 
                 {/* Points Table - Always Visible */}
                 <div className="points-section-full-width">
-                  <div className="points-title"><strong>Points Table</strong></div>
+                  <div className="panel-card">
+                    <div className="panel-header"><strong>Points Table</strong></div>
                   
                   {/* Points Assignment Controls - Host Only */}
                   {socket && hostId && socket.id === hostId && (
@@ -4551,7 +4779,7 @@ function AppContent() {
                                   onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
                                   onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
                                 >
-                                  <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
+                                  {p.img ? <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} /> : <div style={{ width: '32px', height: '32px', backgroundColor: '#e5e7eb' }} />}
                                   <span>{p.name}</span>
                                 </div>
                               ))}
@@ -4589,7 +4817,7 @@ function AppContent() {
                                 // Get the latest pointsMap from the last response
                                 const lastResp = responses[responses.length - 1];
                                 if (lastResp && lastResp.pointsMap) {
-                                  setPointsMap(lastResp.pointsMap);
+                                  setPointsMap(normalizePointsMap(lastResp.pointsMap));
                                 }
                                 setSelectedPokemonForPoints([]);
                               }
@@ -4621,7 +4849,7 @@ function AppContent() {
                                 border: '1px solid #c7d2fe'
                               }}
                             >
-                              <img src={p.img} alt={p.name} style={{ width: '20px', height: '20px' }} />
+                              {p.img ? <img src={p.img} alt={p.name} style={{ width: '20px', height: '20px' }} /> : <div style={{ width: '20px', height: '20px', backgroundColor: '#e5e7eb', display: 'inline-block' }} />}
                               <span>{p.name}</span>
                               <button 
                                 onClick={() => setSelectedPokemonForPoints(selectedPokemonForPoints.filter(sp => sp.id !== p.id))}
@@ -4683,7 +4911,7 @@ function AppContent() {
                               if (!resp || !resp.ok) {
                                 alert(resp && resp.error ? resp.error : 'Failed to set points');
                               } else {
-                                setPointsMap(resp.pointsMap || {});
+                                setPointsMap(normalizePointsMap(resp.pointsMap || {}));
                               }
                             });
                           }
@@ -4692,7 +4920,11 @@ function AppContent() {
                         <div className="points-header">{val === 0 ? 'Banned' : `Points ${val}`}</div>
                         <div className="points-list">
                           {pokemonList.filter(p => {
-                              const pm = pointsMap[p.name];
+                              const name = (p.name || '').toLowerCase();
+                              const normalizedName = normalizePokemonName(name);
+                              
+                              // Check both naming conventions
+                              const pm = pointsMap[p.name] ?? pointsMap[name] ?? pointsMap[normalizedName];
                               const pmNum = pm == null ? null : Number(pm);
                               if (val === 0) return pmNum === 0;
                               const effective = (pmNum == null) ? 1 : pmNum;
@@ -4700,7 +4932,16 @@ function AppContent() {
                             }).filter(p => {
                               // For the Banned column (val === 0) always show banned entries
                               if (val === 0) return true;
-                              return (lobbyGenFilter === 0 || p.generation <= lobbyGenFilter) && (!hideLegendaries || !p.legendary);
+                              
+                              // Check if this is a mega/gmax form
+                              const name = p.name.toLowerCase();
+                              const isMega = name.includes('-mega');
+                              const isGmax = name.includes('-gmax');
+                              const shouldIgnoreGen = (isMega && lobbySettings.allowMega) || (isGmax && lobbySettings.allowGmax);
+                              
+                              // Apply generation filter unless it's a mega/gmax form with the setting enabled
+                              const passesGenFilter = shouldIgnoreGen || lobbyGenFilter === 0 || p.generation <= lobbyGenFilter;
+                              return passesGenFilter && (!hideLegendaries || !p.legendary);
                             }).map(p => (
                             <div 
                               key={p.id} 
@@ -4718,7 +4959,7 @@ function AppContent() {
                               }}
                               style={{ cursor: (socket && hostId && socket.id === hostId) ? 'grab' : 'default' }}
                             >
-                              <img src={p.img} alt={p.name} className="points-sprite" />
+                              {p.img ? <img src={p.img} alt={p.name} className="points-sprite" /> : <div className="points-sprite" style={{ backgroundColor: '#e5e7eb' }} />}
                               <span className="points-name">{p.name}</span>
                               { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
                             </div>
@@ -4726,6 +4967,7 @@ function AppContent() {
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 </div>
               </div>
@@ -5527,7 +5769,7 @@ function AppContent() {
                               setSearchTerm('');
                               setDraftSuggestionsVisible(false); 
                             }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}>
-                              <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} />
+                              {p.img ? <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} /> : <div style={{ width: '32px', height: '32px', backgroundColor: '#e5e7eb' }} />}
                               <span>{p.name}</span>
                             </div>
                           ))}
@@ -5727,7 +5969,11 @@ function AppContent() {
               <div className="trade-pokemon-side">
                 <div className="trade-pokemon-preview">
                   <div className="trading-pokemon-card">
-                    <img src={pendingDraftSelection.pokemon.img} alt={pendingDraftSelection.pokemon.name} className="pokemon-img" style={{ width: '120px', height: '120px' }} />
+                    {pendingDraftSelection.pokemon.img ? (
+                      <img src={pendingDraftSelection.pokemon.img} alt={pendingDraftSelection.pokemon.name} className="pokemon-img" style={{ width: '120px', height: '120px' }} />
+                    ) : (
+                      <div className="pokemon-img" style={{ width: '120px', height: '120px', backgroundColor: '#e5e7eb' }} />
+                    )}
                     <div className="pokemon-name" style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '10px' }}>{pendingDraftSelection.pokemon.name}</div>
                     <div className="pokemon-cost-badge" style={{ position: 'relative', margin: '10px auto', fontSize: '16px' }}>
                       Cost: {pointsMap && pointsMap[pendingDraftSelection.pokemon.name] !== undefined ? Number(pointsMap[pendingDraftSelection.pokemon.name]) : 1} points
@@ -6051,7 +6297,11 @@ function AppContent() {
                     )}
                     <div className="slot-number">Slot {slot.slotNumber}</div>
                     <div className="pokemon-builder-card">
-                      <img src={slot.pokemon.img} alt={slot.pokemon.name} className="pokemon-img" />
+                      {slot.pokemon.img ? (
+                        <img src={slot.pokemon.img} alt={slot.pokemon.name} className="pokemon-img" />
+                      ) : (
+                        <div className="pokemon-img" style={{ backgroundColor: '#e5e7eb' }} />
+                      )}
                       <div className="pokemon-name">{slot.pokemon.name}</div>
 
                     <div className="builder-section">
