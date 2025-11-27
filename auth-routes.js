@@ -29,27 +29,34 @@ const authenticateToken = (req, res, next) => {
 // Register new user
 router.post('/register', async (req, res) => {
   try {
+    console.log('[AUTH] Register request received:', { username: req.body.username, email: req.body.email });
+    
     const { username, email, password } = req.body;
 
     // Validation
     if (!username || !email || !password) {
+      console.log('[AUTH] Missing required fields');
       return res.status(400).json({ error: 'Username, email, and password required' });
     }
 
     if (username.length < 3 || username.length > 20) {
+      console.log('[AUTH] Invalid username length');
       return res.status(400).json({ error: 'Username must be 3-20 characters' });
     }
 
     if (password.length < 6) {
+      console.log('[AUTH] Password too short');
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
     // Check email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      console.log('[AUTH] Invalid email format');
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    console.log('[AUTH] Checking for existing user...');
     // Check if username or email already exists
     const existingUser = await User.findOne({
       $or: [
@@ -59,16 +66,19 @@ router.post('/register', async (req, res) => {
     });
 
     if (existingUser) {
+      console.log('[AUTH] User already exists');
       if (existingUser.username.toLowerCase() === username.toLowerCase()) {
         return res.status(400).json({ error: 'Username already taken' });
       }
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    console.log('[AUTH] Hashing password...');
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    console.log('[AUTH] Creating new user...');
     // Create user
     const user = new User({
       username: username.trim(),
@@ -78,6 +88,7 @@ router.post('/register', async (req, res) => {
     });
 
     await user.save();
+    console.log('[AUTH] User saved successfully:', user.username);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -90,6 +101,7 @@ router.post('/register', async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    console.log('[AUTH] Registration successful');
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -103,20 +115,24 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('[AUTH] Registration error:', error);
+    res.status(500).json({ error: 'Registration failed: ' + error.message });
   }
 });
 
 // Login
 router.post('/login', async (req, res) => {
   try {
+    console.log('[AUTH] Login request received:', { usernameOrEmail: req.body.usernameOrEmail });
+    
     const { usernameOrEmail, password } = req.body;
 
     if (!usernameOrEmail || !password) {
+      console.log('[AUTH] Missing credentials');
       return res.status(400).json({ error: 'Username/email and password required' });
     }
 
+    console.log('[AUTH] Searching for user...');
     // Find user by username or email
     const user = await User.findOne({
       $or: [
@@ -126,20 +142,25 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
+      console.log('[AUTH] User not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!user.isActive) {
+      console.log('[AUTH] Account is inactive');
       return res.status(403).json({ error: 'Account is inactive' });
     }
 
+    console.log('[AUTH] Verifying password...');
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
     
     if (!validPassword) {
+      console.log('[AUTH] Invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    console.log('[AUTH] Updating last login...');
     // Update last login
     user.lastLogin = new Date();
     await user.save();
@@ -155,6 +176,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    console.log('[AUTH] Login successful:', user.username);
     res.json({
       success: true,
       message: 'Login successful',
@@ -168,8 +190,8 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    console.error('[AUTH] Login error:', error);
+    res.status(500).json({ error: 'Login failed: ' + error.message });
   }
 });
 

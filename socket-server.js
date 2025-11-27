@@ -17,12 +17,18 @@ const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // Connect to MongoDB
+console.log('Connecting to MongoDB...');
 mongoose.connect(MONGODB_URI)
 .then(() => {
+  console.log('✓ MongoDB connected successfully');
+  console.log('Database:', mongoose.connection.db.databaseName);
   // Start cleanup job
   startCleanupJob();
 })
-.catch(err => console.error('MongoDB connection error:', err));
+.catch(err => {
+  console.error('✗ MongoDB connection error:', err);
+  process.exit(1); // Exit if DB connection fails
+});
 
 // Cleanup job to delete empty drafts
 function startCleanupJob() {

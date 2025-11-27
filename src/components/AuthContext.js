@@ -125,6 +125,8 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password) => {
     try {
+      console.log('[AuthContext] Attempting registration to:', `${API_BASE}/api/auth/register`);
+      
       const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -133,8 +135,11 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, email, password })
       });
 
+      console.log('[AuthContext] Response status:', response.status);
+
       // Check if response has content
       const text = await response.text();
+      console.log('[AuthContext] Response text:', text);
       
       if (!text) {
         throw new Error('Server returned empty response. Is the server running?');
@@ -144,12 +149,14 @@ export const AuthProvider = ({ children }) => {
       let data;
       try {
         data = JSON.parse(text);
+        console.log('[AuthContext] Parsed data:', data);
       } catch (parseError) {
-        console.error('Failed to parse response:', text);
+        console.error('[AuthContext] Failed to parse response:', text);
         throw new Error('Server returned invalid JSON response');
       }
 
       if (!response.ok) {
+        console.error('[AuthContext] Registration failed with status:', response.status, 'Error:', data.error);
         throw new Error(data.error || 'Registration failed');
       }
 
@@ -161,15 +168,18 @@ export const AuthProvider = ({ children }) => {
       // Register this device for future auto-login
       await registerDevice(data.token);
 
+      console.log('[AuthContext] Registration successful');
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('[AuthContext] Registration error:', error);
       return { success: false, error: error.message };
     }
   };
 
   const login = async (usernameOrEmail, password) => {
     try {
+      console.log('[AuthContext] Attempting login to:', `${API_BASE}/api/auth/login`);
+      
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -178,8 +188,12 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ usernameOrEmail, password })
       });
 
+      console.log('[AuthContext] Response status:', response.status);
+      console.log('[AuthContext] Response headers:', Object.fromEntries(response.headers.entries()));
+
       // Check if response has content
       const text = await response.text();
+      console.log('[AuthContext] Response text:', text);
       
       if (!text) {
         throw new Error('Server returned empty response. Is the server running?');
@@ -189,12 +203,14 @@ export const AuthProvider = ({ children }) => {
       let data;
       try {
         data = JSON.parse(text);
+        console.log('[AuthContext] Parsed data:', data);
       } catch (parseError) {
-        console.error('Failed to parse response:', text);
+        console.error('[AuthContext] Failed to parse response:', text);
         throw new Error('Server returned invalid JSON response');
       }
 
       if (!response.ok) {
+        console.error('[AuthContext] Login failed with status:', response.status, 'Error:', data.error);
         throw new Error(data.error || 'Login failed');
       }
 
@@ -206,9 +222,10 @@ export const AuthProvider = ({ children }) => {
       // Register this device for future auto-login
       await registerDevice(data.token);
 
+      console.log('[AuthContext] Login successful');
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[AuthContext] Login error:', error);
       return { success: false, error: error.message };
     }
   };
