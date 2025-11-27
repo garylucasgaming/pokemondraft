@@ -66,7 +66,14 @@ app.use(cors({
   origin: ['https://pokemondraft.com', 'https://www.pokemondraft.com', 'http://localhost:3000', 'http://localhost:4001'],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
 
 // Health check
 app.get('/', (req, res) => res.send('OK'));
@@ -83,6 +90,12 @@ app.use('/api', savedTeamRoutes);
 
 // Draft session API routes
 app.use('/api', draftRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Express error:', err);
+  res.status(500).json({ error: err.message || 'Internal server error' });
+});
 
 // Create HTTP server from Express app
 const server = http.createServer(app);
