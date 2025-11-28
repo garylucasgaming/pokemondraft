@@ -23,6 +23,7 @@ const leagueSchema = new mongoose.Schema({
   name: { type: String, required: true },
   code: { type: String, required: true, unique: true }, // Like lobby codes
   commissionerName: { type: String, required: true }, // Username of creator
+  imageUrl: { type: String }, // Base64 or URL for league image
   isPublic: { type: Boolean, default: true },
   maxPlayers: { type: Number, default: 8 },
   splitIntoPools: { type: Boolean, default: false },
@@ -36,7 +37,16 @@ const leagueSchema = new mongoose.Schema({
     allowedGenerations: [Number],
     bannedPokemon: [String],
     allowMega: { type: Boolean, default: false },
-    allowGmax: { type: Boolean, default: false }
+    allowGmax: { type: Boolean, default: false },
+    allowTrading: { type: Boolean, default: false },
+    maxTradeLimit: { type: Number, default: 0 },
+    unlimitedTrades: { type: Boolean, default: false },
+    allowSeasonalTrading: { type: Boolean, default: false },
+    maxSeasonalTradeLimit: { type: Number, default: 1 },
+    unlimitedSeasonalTrades: { type: Boolean, default: false },
+    timerEnabled: { type: Boolean, default: false },
+    firstRoundTimer: { type: Number, default: 720 },
+    subsequentRoundTimer: { type: Number, default: 360 }
   },
   captainRules: {
     captainCount: { type: Number, default: 2 },
@@ -75,6 +85,24 @@ const leagueSchema = new mongoose.Schema({
       round: Number,
       nextMatchId: String,
       replay: String
+    }]
+  },
+  playoffBracket: {
+    started: { type: Boolean, default: false },
+    matches: [{
+      id: String,
+      player1: String,
+      player2: String,
+      winner: String,
+      score: String,
+      week: Number,
+      round: Number,
+      matchNumber: Number,
+      nextMatchId: String,
+      replayLink: String,
+      flaggedWinner: String,
+      flaggedBy: String,
+      needsApproval: Boolean
     }]
   },
   status: { type: String, enum: ['open', 'in_progress', 'completed'], default: 'open' },

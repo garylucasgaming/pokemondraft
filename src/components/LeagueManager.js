@@ -9,7 +9,12 @@ import axios from 'axios';
 import { createLeague, browseLeagues, getLeagueByCode, joinLeague, getLeaguePlayers, updateLeague, updateLeagueSchedule, acceptPlayerRequest, kickPlayer, requestToJoinLeague, generateInviteCode, joinByInviteCode } from './api';
 import './LeagueManager.css';
 
-const LeagueManager = ({ username }) => {
+const API_BASE = process.env.REACT_APP_SOCKET_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? window.location.origin 
+    : 'http://localhost:8080');
+
+const LeagueManager = ({ username, onStartLeagueDraft }) => {
   const [view, setView] = useState('dashboard'); // 'dashboard', 'browse', 'create', 'view'
   const [leagues, setLeagues] = useState([]);
   const [myLeagues, setMyLeagues] = useState([]); // Leagues user is active in
@@ -22,6 +27,7 @@ const LeagueManager = ({ username }) => {
   // Browse filters
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'open', 'in_progress', 'completed'
   const [formatFilter, setFormatFilter] = useState('all'); // 'all', 'National Dex', 'SV OU', etc.
+  const [searchQuery, setSearchQuery] = useState(''); // Search by league name
 
   // Create league form state
   const [leagueName, setLeagueName] = useState('');
@@ -39,6 +45,7 @@ const LeagueManager = ({ username }) => {
 
   // Draft format modal state
   const [showDraftFormatModal, setShowDraftFormatModal] = useState(false);
+  const [draftFormatModalKey, setDraftFormatModalKey] = useState(0);
   
   // Schedule modal state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -53,6 +60,12 @@ const LeagueManager = ({ username }) => {
   // Bracket modal state
   const [showBracketModal, setShowBracketModal] = useState(false);
   const [bracketMatches, setBracketMatches] = useState([]);
+  const [currentBracketWeek, setCurrentBracketWeek] = useState(1);
+  const [playoffMatches, setPlayoffMatches] = useState([]);
+  const [showPlayoffsTab, setShowPlayoffsTab] = useState(false);
+  const [playoffsStarted, setPlayoffsStarted] = useState(false);
+  const [currentPlayoffWeek, setCurrentPlayoffWeek] = useState(1);
+  const [bracketView, setBracketView] = useState('regular'); // 'regular' or 'playoffs'
   
   // Edit League Settings modal state
   const [showEditLeagueModal, setShowEditLeagueModal] = useState(false);
@@ -61,6 +74,11 @@ const LeagueManager = ({ username }) => {
   const [eventType, setEventType] = useState('match');
   const [events, setEvents] = useState([]);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
+  
+  // League image upload state
+  const [leagueImageUrl, setLeagueImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  
   const [draftFormat, setDraftFormat] = useState('');
   const [draftPointsLimit, setDraftPointsLimit] = useState(120);
   const [draftTeamSize, setDraftTeamSize] = useState(12);
@@ -115,6 +133,16 @@ const LeagueManager = ({ username }) => {
   const [showReplayModal, setShowReplayModal] = useState(false);
   const [selectedMatchForReplay, setSelectedMatchForReplay] = useState(null);
   const [replayLink, setReplayLink] = useState('');
+
+  // Match replay upload modal state
+  const [showMatchReplayModal, setShowMatchReplayModal] = useState(false);
+  const [selectedMatchForUpload, setSelectedMatchForUpload] = useState(null);
+  const [matchReplayLink, setMatchReplayLink] = useState('');
+
+  // Team submission modal state
+  const [showTeamSubmissionModal, setShowTeamSubmissionModal] = useState(false);
+  const [savedTeamsForSubmission, setSavedTeamsForSubmission] = useState([]);
+  const [selectedTeamForSubmission, setSelectedTeamForSubmission] = useState(null);
 
   const DEFAULT_DRAFT_RULES = `-credit to abriel and princess autumn for this default text-
 You have up to 120 points with which to draft 10-12 Pokémon. Costs are listed on the draft board.
@@ -184,6 +212,7 @@ Replays must be posted to the appropriate channel.`;
       loadMyLeagues();
     } else if (view === 'browse') {
       loadLeagues();
+      loadMyLeagues(); // Also load user's leagues to show badges in browse view
     }
   }, [view]);
 
@@ -261,12 +290,17 @@ Replays must be posted to the appropriate channel.`;
       
       setDraftPokemonList(uniquePokemon);
       
-      // Initialize all Pokemon with 1 point
-      const initialPoints = {};
-      uniquePokemon.forEach(p => {
-        initialPoints[p.name] = 1;
+      // Initialize points for Pokemon that don't already have a value
+      // DON'T overwrite existing points from database
+      setDraftPointsMap(prev => {
+        const newPoints = { ...prev };
+        uniquePokemon.forEach(p => {
+          if (newPoints[p.name] === undefined) {
+            newPoints[p.name] = 1;
+          }
+        });
+        return newPoints;
       });
-      setDraftPointsMap(initialPoints);
     } catch (err) {
       console.error('Failed to fetch Pokemon:', err);
     }
@@ -357,30 +391,27 @@ Replays must be posted to the appropriate channel.`;
     }
     try {
       setLoading(true);
-      // TODO: Create API endpoint to get leagues by player username
-      // For now, just filter from all leagues
-      const data = await browseLeagues();
-      const allLeagues = data.leagues || [];
+      console.log('[loadMyLeagues] Fetching leagues for:', username);
+      // Fetch leagues where user is commissioner or player
+      const response = await fetch(`${API_BASE}/api/leagues?username=${username}`);
+      console.log('[loadMyLeagues] Response status:', response.status);
       
-      // Separate leagues by role
-      const hostedLeagues = [];
-      const joinedLeagues = [];
-      
-      for (const league of allLeagues) {
-        // Check if user is commissioner
-        if (league.commissionerName === username) {
-          hostedLeagues.push({ ...league, role: 'host' });
-        }
-        
-        // TODO: Check if user is in players list once we have that endpoint
-        // For now, we'll need to fetch players for each league to determine this
-        // This is inefficient and should be replaced with a proper API endpoint
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[loadMyLeagues] Error response:', errorText);
+        throw new Error('Failed to load leagues');
       }
       
-      // Combine both with role indicator
-      setMyLeagues([...hostedLeagues, ...joinedLeagues]);
+      const data = await response.json();
+      console.log('[loadMyLeagues] Received data:', data);
+      const leagues = data.leagues || [];
+      console.log('[loadMyLeagues] Setting leagues:', leagues.length);
+      console.log('[loadMyLeagues] League roles:', leagues.map(l => ({ name: l.name, role: l.role })));
+      
+      setMyLeagues(leagues);
       setError('');
     } catch (err) {
+      console.error('[loadMyLeagues] Error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -445,6 +476,7 @@ Replays must be posted to the appropriate channel.`;
     try {
       setLoading(true);
       const leagueData = await getLeagueByCode(code);
+      console.log('Full league data received:', leagueData);
       const playersData = await getLeaguePlayers(code);
       
       setCurrentLeague(leagueData.league);
@@ -455,11 +487,27 @@ Replays must be posted to the appropriate channel.`;
       
       // Load draft format data
       setDraftFormat(leagueData.league.format || '');
+      console.log('Loading format from DB:', leagueData.league.format);
+      console.log('Loading pokemonPointValues from DB:', leagueData.league.pokemonPointValues);
+      console.log('pokemonPointValues type:', typeof leagueData.league.pokemonPointValues);
+      console.log('pokemonPointValues keys:', leagueData.league.pokemonPointValues ? Object.keys(leagueData.league.pokemonPointValues).length : 'null');
+      
       setDraftPointsLimit(leagueData.league.rules?.pointsLimit || 120);
       setDraftTeamSize(leagueData.league.rules?.teamSize || 12);
       setDraftGenerations(leagueData.league.rules?.allowedGenerations || [1,2,3,4,5,6,7,8,9]);
       setDraftBannedPokemon(leagueData.league.rules?.bannedPokemon || []);
       setDraftPointsMap(leagueData.league.pokemonPointValues || {});
+      setAllowMega(leagueData.league.rules?.allowMega || false);
+      setAllowGmax(leagueData.league.rules?.allowGmax || false);
+      setAllowTrading(leagueData.league.rules?.allowTrading || false);
+      setMaxTradeLimit(leagueData.league.rules?.maxTradeLimit || 0);
+      setUnlimitedTrades(leagueData.league.rules?.unlimitedTrades || false);
+      setAllowSeasonalTrading(leagueData.league.rules?.allowSeasonalTrading || false);
+      setMaxSeasonalTradeLimit(leagueData.league.rules?.maxSeasonalTradeLimit || 1);
+      setUnlimitedSeasonalTrades(leagueData.league.rules?.unlimitedSeasonalTrades || false);
+      setEnableTimer(leagueData.league.rules?.timerEnabled || false);
+      setFirstRoundTimer(leagueData.league.rules?.firstRoundTimer || 720);
+      setSubsequentRoundTimer(leagueData.league.rules?.subsequentRoundTimer || 360);
       
       // Load captain rules data
       setCaptainCount(leagueData.league.captainRules?.captainCount || 2);
@@ -474,9 +522,33 @@ Replays must be posted to the appropriate channel.`;
         setEvents(leagueData.league.schedule);
       }
       
+      // Load league image if exists
+      console.log('League object keys:', Object.keys(leagueData.league));
+      console.log('Loading league image URL:', leagueData.league.imageUrl);
+      console.log('Image URL type:', typeof leagueData.league.imageUrl);
+      setLeagueImageUrl(leagueData.league.imageUrl || '');
+      
       // Load bracket if exists
       if (leagueData.league.bracket && leagueData.league.bracket.matches) {
         setBracketMatches(leagueData.league.bracket.matches);
+      }
+      
+      // Load playoff bracket if exists
+      console.log('Loading league, playoffBracket:', leagueData.league.playoffBracket);
+      
+      if (leagueData.league.playoffBracket) {
+        if (leagueData.league.playoffBracket.matches) {
+          setPlayoffMatches(leagueData.league.playoffBracket.matches);
+          console.log('Loaded playoff matches:', leagueData.league.playoffBracket.matches.length);
+        }
+        if (leagueData.league.playoffBracket.started) {
+          setPlayoffsStarted(true);
+          setShowPlayoffsTab(true);
+          setBracketView('playoffs'); // Switch to playoffs view when loading active playoffs
+          console.log('Playoffs are started, switching to playoffs view');
+        }
+      } else {
+        console.log('No playoff bracket found in league data');
       }
       
       // Debug log for commissioner comparison
@@ -522,36 +594,47 @@ Replays must be posted to the appropriate channel.`;
 
     try {
       setLoading(true);
+      
+      const rulesToSave = {
+        pointsLimit: draftPointsLimit,
+        teamSize: draftTeamSize,
+        allowedGenerations: draftGenerations,
+        bannedPokemon: draftBannedPokemon,
+        allowMega: allowMega,
+        allowGmax: allowGmax,
+        allowTrading: allowTrading,
+        maxTradeLimit: maxTradeLimit,
+        unlimitedTrades: unlimitedTrades,
+        allowSeasonalTrading: allowSeasonalTrading,
+        maxSeasonalTradeLimit: maxSeasonalTradeLimit,
+        unlimitedSeasonalTrades: unlimitedSeasonalTrades,
+        timerEnabled: enableTimer,
+        firstRoundTimer: firstRoundTimer,
+        subsequentRoundTimer: subsequentRoundTimer
+      };
+      
+      console.log('Saving draft format with rules:', rulesToSave);
+      console.log('Saving format name:', draftFormat);
+      console.log('Saving pokemon points map:', draftPointsMap);
+      console.log('Number of pokemon with points:', Object.keys(draftPointsMap).length);
+      
       await updateLeague(currentLeague.code, {
         format: draftFormat,
-        rules: {
-          pointsLimit: draftPointsLimit,
-          teamSize: draftTeamSize,
-          allowedGenerations: draftGenerations,
-          bannedPokemon: draftBannedPokemon,
-          allowMega: allowMega,
-          allowGmax: allowGmax
-        },
+        rules: rulesToSave,
         pokemonPointValues: draftPointsMap
       });
       
       setCurrentLeague({
         ...currentLeague,
         format: draftFormat,
-        rules: {
-          pointsLimit: draftPointsLimit,
-          teamSize: draftTeamSize,
-          allowedGenerations: draftGenerations,
-          bannedPokemon: draftBannedPokemon,
-          allowMega: allowMega,
-          allowGmax: allowGmax
-        },
+        rules: rulesToSave,
         pokemonPointValues: draftPointsMap
       });
       setShowDraftFormatModal(false);
       setMessage('Draft format saved successfully!');
       setError('');
     } catch (err) {
+      console.error('Save error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -600,6 +683,651 @@ Replays must be posted to the appropriate channel.`;
       console.error('Save draft rules error:', err);
       setError(err.message);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSavedTeamsForSubmission = async () => {
+    if (!currentLeague || !username) return;
+    
+    try {
+      // Fetch saved teams that match the current username and league code
+      const response = await fetch(`${API_BASE}/api/saved-teams?username=${username}&leagueCode=${currentLeague.code}`);
+      if (!response.ok) throw new Error('Failed to load saved teams');
+      
+      const data = await response.json();
+      setSavedTeamsForSubmission(data.teams || []);
+    } catch (err) {
+      console.error('Error loading saved teams:', err);
+      setError('Failed to load saved teams');
+    }
+  };
+
+  const handleSubmitTeam = async () => {
+    if (!selectedTeamForSubmission || !currentLeague) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/api/leagues/${currentLeague.code}/submit-team`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          teamId: selectedTeamForSubmission._id
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to submit team');
+      
+      // Reload players to reflect team submission
+      const playersData = await getLeaguePlayers(currentLeague.code);
+      setPlayers(playersData.players);
+      
+      setShowTeamSubmissionModal(false);
+      setMessage('Team submitted successfully!');
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle replay link upload for a match
+  const handleUploadReplayLink = (match) => {
+    setSelectedMatchForUpload(match);
+    setMatchReplayLink(match.replayLink || '');
+    setShowMatchReplayModal(true);
+  };
+
+  const handleSaveReplayLink = async () => {
+    if (!selectedMatchForUpload) return;
+    
+    try {
+      setLoading(true);
+      
+      // Determine if this is a playoff match
+      const isPlayoffMatch = playoffMatches.some(m => m.id === selectedMatchForUpload.id);
+      const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+      const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+      
+      const updated = matches.map(m =>
+        m === selectedMatchForUpload ? { ...m, replayLink: matchReplayLink } : m
+      );
+      setMatches(updated);
+      
+      // Save to backend
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updated, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updated } };
+      
+      await updateLeague(currentLeague.code, updatePayload);
+      
+      setMessage('Replay link saved successfully!');
+      setTimeout(() => setMessage(''), 3000);
+      setShowMatchReplayModal(false);
+      setMatchReplayLink('');
+      setSelectedMatchForUpload(null);
+    } catch (err) {
+      setError('Failed to save replay link: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle player flagging a match result
+  const handleFlagMatchResult = async (match, winner) => {
+    if (match.player1 !== username && match.player2 !== username) {
+      setError('You can only flag results for matches you are in.');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Determine if this is a playoff match
+      const isPlayoffMatch = playoffMatches.some(m => m.id === match.id);
+      const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+      const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+      
+      const updated = matches.map(m =>
+        m === match ? { 
+          ...m, 
+          flaggedWinner: winner,
+          flaggedBy: username,
+          needsApproval: true 
+        } : m
+      );
+      setMatches(updated);
+      
+      // Save to backend
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updated, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updated } };
+      
+      await updateLeague(currentLeague.code, updatePayload);
+      
+      setMessage('Match result flagged for admin approval!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Failed to flag match result: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Admin approves flagged match result
+  const handleApproveMatchResult = async (match) => {
+    try {
+      setLoading(true);
+      
+      // Determine if this is a playoff match
+      const isPlayoffMatch = playoffMatches.some(m => m.id === match.id);
+      const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+      const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+      
+      let updated = matches.map(m =>
+        m === match ? { 
+          ...m, 
+          winner: m.flaggedWinner,
+          flaggedWinner: null,
+          flaggedBy: null,
+          needsApproval: false 
+        } : m
+      );
+      
+      // Advance winner to next match for Single Elimination (both regular and playoffs)
+      if (currentLeague.bracketType === 'single_elimination' || isPlayoffMatch) {
+        const completedMatch = updated.find(m => m.id === match.id);
+        updated = advanceWinnerToNextMatch(updated, completedMatch);
+      }
+      
+      setMatches(updated);
+      
+      // Save to backend
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updated, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updated } };
+      
+      await updateLeague(currentLeague.code, updatePayload);
+      
+      setMessage('Match result approved!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Failed to approve match result: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Advance winner to next match in Single Elimination
+  const advanceWinnerToNextMatch = (updatedMatches, completedMatch) => {
+    if (!completedMatch.nextMatchId || !completedMatch.winner) return updatedMatches;
+    
+    // Find the next match
+    const nextMatch = updatedMatches.find(m => m.id === completedMatch.nextMatchId);
+    if (!nextMatch) return updatedMatches;
+    
+    // Determine which position the winner should go to
+    // First match in a pair goes to player1, second goes to player2
+    const matchesInSameRound = updatedMatches.filter(m => m.round === completedMatch.round);
+    const matchIndex = matchesInSameRound.findIndex(m => m.id === completedMatch.id);
+    const isFirstOfPair = matchIndex % 2 === 0;
+    
+    // Update the next match with the winner
+    return updatedMatches.map(m => {
+      if (m.id === completedMatch.nextMatchId) {
+        return {
+          ...m,
+          [isFirstOfPair ? 'player1' : 'player2']: completedMatch.winner
+        };
+      }
+      return m;
+    });
+  };
+
+  // Handle admin checkbox change with winner advancement
+  const handleAdminSetWinner = async (match, player) => {
+    // Determine if this is a playoff match
+    const isPlayoffMatch = playoffMatches.some(m => m.id === match.id);
+    const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+    const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+    
+    let updated = matches.map(m =>
+      m === match ? { ...m, winner: m.winner === player ? null : player } : m
+    );
+    
+    // Advance winner to next match for Single Elimination (both regular and playoffs)
+    if (currentLeague.bracketType === 'single_elimination' || isPlayoffMatch) {
+      const completedMatch = updated.find(m => m.id === match.id);
+      if (completedMatch.winner) {
+        updated = advanceWinnerToNextMatch(updated, completedMatch);
+      }
+    }
+    
+    setMatches(updated);
+    try {
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updated, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updated } };
+      
+      await updateLeague(currentLeague.code, updatePayload);
+    } catch (error) {
+      console.error('Error saving bracket:', error);
+    }
+  };
+
+  // Admin rejects flagged match result
+  const handleRejectMatchResult = async (match) => {
+    try {
+      setLoading(true);
+      
+      // Determine if this is a playoff match
+      const isPlayoffMatch = playoffMatches.some(m => m.id === match.id);
+      const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+      const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+      
+      const updated = matches.map(m =>
+        m === match ? { 
+          ...m, 
+          flaggedWinner: null,
+          flaggedBy: null,
+          needsApproval: false 
+        } : m
+      );
+      setMatches(updated);
+      
+      // Save to backend
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updated, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updated } };
+      
+      await updateLeague(currentLeague.code, updatePayload);
+      
+      setMessage('Match result rejected.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Failed to reject match result: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Admin regenerates bracket with randomized matches
+  const handleRegenerateDraft = async () => {
+    if (!window.confirm('Are you sure you want to regenerate the bracket? This will create new randomized matchups and cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // First clear the bracket state
+      setBracketMatches([]);
+      
+      // Wait a moment for state to update, then generate new bracket
+      setTimeout(async () => {
+        try {
+          let generatedMatches = null;
+          
+          // Generate new bracket based on current bracket type
+          if (currentLeague?.bracketType === 'round_robin') {
+            generatedMatches = generateRoundRobinMatches();
+          } else if (currentLeague?.bracketType === 'single_elimination') {
+            generatedMatches = generateSingleEliminationBracket();
+          } else if (currentLeague?.bracketType === 'double_elimination') {
+            generatedMatches = generateDoubleEliminationBracket();
+          } else if (currentLeague?.bracketType === 'swiss') {
+            generatedMatches = generateSwissBracket();
+          } else {
+            setError(`Bracket type "${currentLeague?.bracketType}" not yet implemented`);
+            setLoading(false);
+            return;
+          }
+          
+          if (!generatedMatches) {
+            setError('Failed to generate bracket matches');
+            setLoading(false);
+            return;
+          }
+          
+          // Save the newly generated bracket to database
+          await updateLeague(currentLeague.code, {
+            bracket: {
+              type: currentLeague.bracketType,
+              matches: generatedMatches
+            }
+          });
+          
+          setMessage('Bracket regenerated and saved successfully!');
+          setTimeout(() => setMessage(''), 3000);
+          setLoading(false);
+          
+        } catch (genError) {
+          console.error('Error in bracket regeneration:', genError);
+          setError('Failed to regenerate bracket: ' + genError.message);
+          setLoading(false);
+        }
+      }, 100);
+      
+    } catch (err) {
+      setError('Failed to regenerate bracket: ' + err.message);
+      setLoading(false);
+    }
+  };
+
+  const handleStartLeagueDraft = () => {
+    if (!currentLeague) return;
+    
+    // Prepare draft settings from league data
+    const draftSettings = {
+      pointsLimit: currentLeague.rules?.pointsLimit || 120,
+      teamSize: currentLeague.rules?.teamSize || 12,
+      allowedGenerations: currentLeague.rules?.allowedGenerations || [1,2,3,4,5,6,7,8,9],
+      bannedPokemon: currentLeague.rules?.bannedPokemon || [],
+      pokemonPointValues: draftPointsMap || {},
+      allowMega: currentLeague.rules?.allowMega || false,
+      allowGmax: currentLeague.rules?.allowGmax || false,
+      allowTrading: currentLeague.rules?.allowTrading || false,
+      maxTradeLimit: currentLeague.rules?.maxTradeLimit || 0,
+      unlimitedTrades: currentLeague.rules?.unlimitedTrades || false,
+      timerEnabled: currentLeague.rules?.timerEnabled || false,
+      firstRoundTimer: currentLeague.rules?.firstRoundTimer || 480,
+      subsequentRoundTimer: currentLeague.rules?.subsequentRoundTimer || 480
+    };
+    
+    // Call the parent callback to navigate and set up draft
+    if (onStartLeagueDraft) {
+      onStartLeagueDraft(currentLeague.code, draftSettings);
+    }
+  };
+
+  const handleOpenDraftFormatModal = () => {
+    if (!currentLeague) return;
+    
+    console.log('Opening draft format modal with league:', currentLeague);
+    console.log('League rules:', currentLeague.rules);
+    console.log('League format:', currentLeague.format);
+    console.log('League pokemonPointValues:', currentLeague.pokemonPointValues);
+    console.log('pokemonPointValues type:', typeof currentLeague.pokemonPointValues);
+    console.log('pokemonPointValues is object?:', currentLeague.pokemonPointValues && typeof currentLeague.pokemonPointValues === 'object');
+    console.log('pokemonPointValues keys:', currentLeague.pokemonPointValues ? Object.keys(currentLeague.pokemonPointValues) : 'null/undefined');
+    console.log('pokemonPointValues keys count:', currentLeague.pokemonPointValues ? Object.keys(currentLeague.pokemonPointValues).length : 0);
+    
+    // Load current draft format data from league
+    setDraftFormat(currentLeague.format || '');
+    setDraftPointsLimit(currentLeague.rules?.pointsLimit || 120);
+    setDraftTeamSize(currentLeague.rules?.teamSize || 12);
+    setDraftGenerations(currentLeague.rules?.allowedGenerations || [1,2,3,4,5,6,7,8,9]);
+    setDraftBannedPokemon(currentLeague.rules?.bannedPokemon || []);
+    setDraftPointsMap(currentLeague.pokemonPointValues || {});
+    console.log('Set draftPointsMap to:', currentLeague.pokemonPointValues || {});
+    setAllowMega(currentLeague.rules?.allowMega || false);
+    setAllowGmax(currentLeague.rules?.allowGmax || false);
+    setAllowTrading(currentLeague.rules?.allowTrading || false);
+    setMaxTradeLimit(currentLeague.rules?.maxTradeLimit || 0);
+    setUnlimitedTrades(currentLeague.rules?.unlimitedTrades || false);
+    setAllowSeasonalTrading(currentLeague.rules?.allowSeasonalTrading || false);
+    setMaxSeasonalTradeLimit(currentLeague.rules?.maxSeasonalTradeLimit || 1);
+    setUnlimitedSeasonalTrades(currentLeague.rules?.unlimitedSeasonalTrades || false);
+    setEnableTimer(currentLeague.rules?.timerEnabled || false);
+    setFirstRoundTimer(currentLeague.rules?.firstRoundTimer || 720);
+    setSubsequentRoundTimer(currentLeague.rules?.subsequentRoundTimer || 360);
+    
+    console.log('Set enableTimer to:', currentLeague.rules?.timerEnabled);
+    console.log('Set allowTrading to:', currentLeague.rules?.allowTrading);
+    
+    // Increment key to force modal re-render with fresh values
+    setDraftFormatModalKey(prev => prev + 1);
+    
+    // Open the modal
+    setShowDraftFormatModal(true);
+  };
+
+  const handleCancelPlayoffs = async () => {
+    if (!window.confirm('Cancel playoffs? This will remove the playoff bracket and return to regular season view.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Clear playoff data
+      setPlayoffMatches([]);
+      setPlayoffsStarted(false);
+      setShowPlayoffsTab(false);
+      setBracketView('regular');
+      setCurrentPlayoffWeek(1);
+
+      // Remove playoff bracket from database
+      console.log('Cancelling playoffs for league:', currentLeague.code);
+      
+      const cancelResult = await updateLeague(currentLeague.code, {
+        playoffBracket: null
+      });
+      
+      console.log('Cancel playoffs result:', cancelResult);
+
+      // Update local league state
+      setCurrentLeague({ ...currentLeague, playoffBracket: null });
+
+      setMessage('Playoffs cancelled successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Failed to cancel playoffs: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveLeagueImageUrl = async () => {
+    if (!leagueImageUrl.trim()) {
+      setError('Please enter an image URL');
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(leagueImageUrl);
+    } catch (err) {
+      setError('Please enter a valid URL');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      console.log('Saving image URL:', leagueImageUrl);
+      console.log('For league code:', currentLeague.code);
+      
+      const result = await updateLeague(currentLeague.code, {
+        imageUrl: leagueImageUrl
+      });
+      
+      console.log('Update result:', result);
+      setCurrentLeague({ ...currentLeague, imageUrl: leagueImageUrl });
+      setMessage('League image updated successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('Save image URL error:', err);
+      setError('Failed to save image URL: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveLeagueImage = async () => {
+    if (!window.confirm('Remove league image?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await updateLeague(currentLeague.code, {
+        imageUrl: null
+      });
+
+      setLeagueImageUrl('');
+      setCurrentLeague({ ...currentLeague, imageUrl: null });
+      setMessage('League image removed successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Failed to remove image: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartPlayoffs = async () => {
+    if (!window.confirm('Start playoffs with the top 50% of players? This will create a single elimination bracket.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Get top 50% of players sorted by win rate
+      const sortedPlayers = [...players].sort((a, b) => {
+        const aWins = a.wins || 0;
+        const aLosses = a.losses || 0;
+        const bWins = b.wins || 0;
+        const bLosses = b.losses || 0;
+        
+        const aWinRate = aWins + aLosses > 0 ? aWins / (aWins + aLosses) : 0;
+        const bWinRate = bWins + bLosses > 0 ? bWins / (bWins + bLosses) : 0;
+        
+        if (bWinRate !== aWinRate) return bWinRate - aWinRate;
+        
+        // Tiebreaker: total wins
+        return bWins - aWins;
+      });
+
+      const topHalfCount = Math.ceil(sortedPlayers.length / 2);
+      const topPlayers = sortedPlayers.slice(0, topHalfCount);
+
+      // Generate single elimination bracket for top players
+      const playerList = topPlayers.map(p => p.username);
+      const n = playerList.length;
+      
+      const rounds = Math.ceil(Math.log2(n));
+      const bracketSize = Math.pow(2, rounds);
+      const byes = bracketSize - n;
+      
+      // Seed players by rank (no shuffling for playoffs)
+      const seededPlayers = [...playerList];
+      
+      // Add byes
+      for (let i = 0; i < byes; i++) {
+        seededPlayers.push(null);
+      }
+      
+      const matches = [];
+      let matchId = 0;
+      
+      // Generate Round 1
+      const round1Matches = [];
+      for (let i = 0; i < seededPlayers.length; i += 2) {
+        const player1 = seededPlayers[i];
+        const player2 = seededPlayers[i + 1];
+        
+        if (!player1 && !player2) continue;
+        
+        const match = {
+          id: `playoff-r1-m${matchId}`,
+          round: 1,
+          week: 1,
+          matchNumber: matchId + 1,
+          player1: player1,
+          player2: player2,
+          winner: null,
+          score: null,
+          nextMatchId: null
+        };
+        
+        // Auto-advance byes
+        if (player1 && !player2) {
+          match.winner = player1;
+        } else if (!player1 && player2) {
+          match.winner = player2;
+        }
+        
+        round1Matches.push(match);
+        matches.push(match);
+        matchId++;
+      }
+      
+      // Generate subsequent rounds
+      let previousRoundMatches = round1Matches;
+      for (let round = 2; round <= rounds; round++) {
+        const roundMatches = [];
+        matchId = 0;
+        
+        for (let i = 0; i < previousRoundMatches.length; i += 2) {
+          const match = {
+            id: `playoff-r${round}-m${matchId}`,
+            round: round,
+            week: round,
+            matchNumber: matchId + 1,
+            player1: null,
+            player2: null,
+            winner: null,
+            score: null,
+            nextMatchId: null
+          };
+          
+          if (previousRoundMatches[i]) {
+            previousRoundMatches[i].nextMatchId = match.id;
+          }
+          if (previousRoundMatches[i + 1]) {
+            previousRoundMatches[i + 1].nextMatchId = match.id;
+          }
+          
+          roundMatches.push(match);
+          matches.push(match);
+          matchId++;
+        }
+        
+        previousRoundMatches = roundMatches;
+      }
+      
+      setPlayoffMatches(matches);
+      setPlayoffsStarted(true);
+      setShowPlayoffsTab(true);
+      setBracketView('playoffs');
+      setCurrentPlayoffWeek(1);
+      
+      // Save playoffs to database
+      const playoffData = {
+        matches: matches,
+        started: true
+      };
+      
+      console.log('Saving playoff bracket to database:', {
+        leagueCode: currentLeague.code,
+        playoffBracket: playoffData,
+        matchCount: matches.length
+      });
+      
+      const updateResult = await updateLeague(currentLeague.code, {
+        playoffBracket: playoffData
+      });
+      
+      console.log('Playoff bracket save result:', updateResult);
+
+      // Update local league state
+      setCurrentLeague({ 
+        ...currentLeague, 
+        playoffBracket: playoffData
+      });
+      
+      setMessage(`Playoffs started with top ${topHalfCount} players!`);
+      setTimeout(() => setMessage(''), 3000);
+      setLoading(false);
+      
+    } catch (err) {
+      console.error('Error starting playoffs:', err);
+      setError('Failed to start playoffs: ' + err.message);
       setLoading(false);
     }
   };
@@ -1064,11 +1792,12 @@ Replays must be posted to the appropriate channel.`;
   const generateRoundRobinMatches = () => {
     if (!players || players.length < 2) {
       setError('Need at least 2 players to generate matches');
-      return;
+      return null;
     }
 
     const matches = [];
-    const playerList = players.map(p => p.username || p);
+    // Shuffle players for randomized matchups
+    const playerList = players.map(p => p.username || p).sort(() => Math.random() - 0.5);
     const totalWeeks = currentLeague?.leagueWeeks || 8;
     const n = playerList.length;
 
@@ -1138,13 +1867,15 @@ Replays must be posted to the appropriate channel.`;
       .join(', ');
     
     setMessage(`Generated ${generatedMatches.length} matches (${distribution})`);
+    
+    return generatedMatches;
   };
 
   // Generate single elimination bracket
   const generateSingleEliminationBracket = () => {
     if (!players || players.length < 2) {
       setError('Need at least 2 players to generate bracket');
-      return;
+      return null;
     }
 
     const playerList = players.map(p => p.username || p);
@@ -1236,6 +1967,7 @@ Replays must be posted to the appropriate channel.`;
     
     setBracketMatches(matches);
     setMessage(`Generated single elimination bracket with ${rounds} rounds (${n} players, ${byes} byes)`);
+    return matches;
   };
 
   // Generate double elimination bracket
@@ -1498,13 +2230,14 @@ Replays must be posted to the appropriate channel.`;
     
     setBracketMatches(matches);
     setMessage(`Generated double elimination bracket (${n} players, ${byes} byes, ${matches.length} total matches)`);
+    return matches;
   };
 
   // Generate Swiss system bracket
   const generateSwissBracket = () => {
     if (!players || players.length < 2) {
       setError('Need at least 2 players to generate bracket');
-      return;
+      return null;
     }
 
     const playerList = players.map(p => p.username || p);
@@ -1593,6 +2326,7 @@ Replays must be posted to the appropriate channel.`;
     
     setBracketMatches(matches);
     setMessage(`Generated Swiss system bracket: ${numRounds} rounds, ${n} players`);
+    return matches;
   };
 
   // Calculate Swiss pairings for next round based on current standings
@@ -1815,23 +2549,27 @@ Replays must be posted to the appropriate channel.`;
     try {
       setLoading(true);
       
+      // Determine if this is a playoff match
+      const isPlayoffMatch = playoffMatches.some(m => m.id === selectedMatchForReplay.id);
+      const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+      const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+      
       // Update the match with the replay link
-      const updatedMatches = bracketMatches.map(m => {
+      const updatedMatches = matches.map(m => {
         if (m.id === selectedMatchForReplay.id) {
           return { ...m, replay: replayLink };
         }
         return m;
       });
 
-      setBracketMatches(updatedMatches);
+      setMatches(updatedMatches);
 
       // Save to backend
-      await updateLeague(currentLeague.code, {
-        bracket: {
-          type: currentLeague.bracketType,
-          matches: updatedMatches
-        }
-      });
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updatedMatches, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updatedMatches } };
+      
+      await updateLeague(currentLeague.code, updatePayload);
 
       setMessage('Replay link saved successfully');
       setShowReplayModal(false);
@@ -1868,11 +2606,12 @@ Replays must be posted to the appropriate channel.`;
     }
   };
 
-  // Filter leagues based on status and format
+  // Filter leagues based on status, format, and search query
   const filteredLeagues = leagues.filter(league => {
     const statusMatch = statusFilter === 'all' || league.status === statusFilter;
     const formatMatch = formatFilter === 'all' || league.format === formatFilter;
-    return statusMatch && formatMatch;
+    const searchMatch = searchQuery === '' || league.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return statusMatch && formatMatch && searchMatch;
   });
 
   // Get unique formats from all leagues for filter dropdown
@@ -1916,63 +2655,37 @@ Replays must be posted to the appropriate channel.`;
           ) : myLeagues.length === 0 ? (
             <p>You are not active in any leagues. Browse or create a league to get started!</p>
           ) : (
-            <>
-              {/* Leagues you host */}
-              {myLeagues.filter(l => l.role === 'host').length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '20px', marginBottom: '15px', color: '#1d8ca8' }}>
-                    Leagues You Host
-                  </h3>
-                  <div className="leagues-grid">
-                    {myLeagues.filter(l => l.role === 'host').map(league => (
-                      <div key={league._id} className="league-card league-card-host">
-                        <div className="league-role-badge">Host</div>
-                        <h3>{league.name}</h3>
-                        <p><strong>Code:</strong> {league.code}</p>
-                        <p><strong>Format:</strong> {league.format}</p>
-                        <p><strong>Status:</strong> {league.status}</p>
-                        <p><strong>Rules:</strong></p>
-                        <ul>
-                          <li>Points Limit: {league.rules.pointsLimit}</li>
-                          <li>Team Size: {league.rules.teamSize}</li>
-                        </ul>
-                        <button onClick={() => handleViewLeague(league.code)}>
-                          Manage League
-                        </button>
-                      </div>
-                    ))}
+            <div className="leagues-grid">
+              {myLeagues.map(league => (
+                <div 
+                  key={league._id} 
+                  className={`league-card ${league.role === 'host' ? 'league-card-host' : 'league-card-player'}`}
+                  style={{
+                    backgroundImage: league.imageUrl ? `url(${league.imageUrl})` : 'none',
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    position: 'relative'
+                  }}
+                >
+                  <div className="league-role-badge">{league.role === 'host' ? 'Host' : 'Player'}</div>
+                  <div className="league-card-content">
+                    <h3>{league.name}</h3>
+                    <p><strong>Code:</strong> {league.code}</p>
+                    <p><strong>Format:</strong> {league.format}</p>
+                    <p><strong>Status:</strong> {league.status}</p>
+                    <p><strong>Rules:</strong></p>
+                    <ul>
+                      <li>Points Limit: {league.rules.pointsLimit}</li>
+                      <li>Team Size: {league.rules.teamSize}</li>
+                    </ul>
+                    <button onClick={() => handleViewLeague(league.code)}>
+                      {league.role === 'host' ? 'Manage League' : 'View League'}
+                    </button>
                   </div>
-                </>
-              )}
-              
-              {/* Leagues you're a player in */}
-              {myLeagues.filter(l => l.role === 'player').length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '30px', marginBottom: '15px', color: '#1d8ca8' }}>
-                    Leagues You're Playing In
-                  </h3>
-                  <div className="leagues-grid">
-                    {myLeagues.filter(l => l.role === 'player').map(league => (
-                      <div key={league._id} className="league-card league-card-player">
-                        <div className="league-role-badge">Player</div>
-                        <h3>{league.name}</h3>
-                        <p><strong>Code:</strong> {league.code}</p>
-                        <p><strong>Format:</strong> {league.format}</p>
-                        <p><strong>Status:</strong> {league.status}</p>
-                        <p><strong>Rules:</strong></p>
-                        <ul>
-                          <li>Points Limit: {league.rules.pointsLimit}</li>
-                          <li>Team Size: {league.rules.teamSize}</li>
-                        </ul>
-                        <button onClick={() => handleViewLeague(league.code)}>
-                          View League
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -1988,6 +2701,23 @@ Replays must be posted to the appropriate channel.`;
             >
               Join by Invite Code
             </button>
+          </div>
+          
+          <div className="form-group" style={{ marginBottom: '20px' }}>
+            <input
+              type="text"
+              placeholder="Search leagues by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                padding: '12px',
+                fontSize: '14px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            />
           </div>
           
           <div className="filters-row">
@@ -2019,33 +2749,58 @@ Replays must be posted to the appropriate channel.`;
             <p>No leagues found matching your filters.</p>
           ) : (
             <div className="leagues-grid">
-              {filteredLeagues.map(league => (
-                <div key={league._id} className="league-card">
-                  <h3>{league.name}</h3>
-                  <p><strong>Format:</strong> {league.format}</p>
-                  <p><strong>Commissioner:</strong> {league.commissionerName}</p>
-                  <p><strong>Status:</strong> {league.status}</p>
-                  <p><strong>Rules:</strong></p>
-                  <ul>
-                    <li>Points Limit: {league.rules.pointsLimit}</li>
-                    <li>Team Size: {league.rules.teamSize}</li>
-                    <li>Generations: {league.rules.allowedGenerations?.join(', ')}</li>
-                  </ul>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => handleViewLeague(league.code)}>
-                      View Details
-                    </button>
-                    {league.status === 'open' && !players.some(p => (p.username || p) === username) && (
-                      <button 
-                        onClick={() => handleRequestToJoin(league.code)}
-                        style={{ background: '#10b981' }}
-                      >
-                        Request to Join
-                      </button>
+              {filteredLeagues.map(league => {
+                // Determine user's role in this league
+                const isHost = league.commissionerName === username;
+                const myLeague = myLeagues.find(l => l.code === league.code);
+                const isPlayer = myLeague && myLeague.role === 'player';
+                const role = isHost ? 'host' : isPlayer ? 'player' : null;
+                
+                return (
+                  <div 
+                    key={league._id} 
+                    className={`league-card ${role === 'host' ? 'league-card-host' : role === 'player' ? 'league-card-player' : ''}`}
+                    style={{
+                      backgroundImage: league.imageUrl ? `url(${league.imageUrl})` : 'none',
+                      backgroundSize: 'contain',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      position: 'relative'
+                    }}
+                  >
+                    {role && (
+                      <div className="league-role-badge">
+                        {role === 'host' ? 'Host' : 'Player'}
+                      </div>
                     )}
+                    <div className="league-card-content">
+                      <h3>{league.name}</h3>
+                      <p><strong>Format:</strong> {league.format}</p>
+                      <p><strong>Commissioner:</strong> {league.commissionerName}</p>
+                      <p><strong>Status:</strong> {league.status}</p>
+                      <p><strong>Rules:</strong></p>
+                      <ul>
+                        <li>Points Limit: {league.rules.pointsLimit}</li>
+                        <li>Team Size: {league.rules.teamSize}</li>
+                        <li>Generations: {league.rules.allowedGenerations?.join(', ')}</li>
+                      </ul>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleViewLeague(league.code)}>
+                          View Details
+                        </button>
+                        {league.status === 'open' && !role && (
+                          <button 
+                            onClick={() => handleRequestToJoin(league.code)}
+                            style={{ background: '#10b981' }}
+                          >
+                            Request to Join
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -2142,7 +2897,9 @@ Replays must be posted to the appropriate channel.`;
       )}
 
       {view === 'view' && currentLeague && (
-        <div className="view-section">
+        <div 
+          className="view-section"
+        >
           <button onClick={() => setView('dashboard')} className="back-btn">
             ← Back to Dashboard
           </button>
@@ -2155,7 +2912,16 @@ Replays must be posted to the appropriate channel.`;
                 <span className="admin-badge">Administrator</span>
               </div>
 
-              <div className="league-info-grid">
+              <div 
+                className="league-info-grid"
+                style={{
+                  backgroundImage: leagueImageUrl ? `url(${leagueImageUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  position: 'relative'
+                }}
+              >
                 <div className="league-info-item">
                   <div className="league-info-label">League Code</div>
                   <div className="league-info-value">{currentLeague.code}</div>
@@ -2201,10 +2967,10 @@ Replays must be posted to the appropriate channel.`;
               <div className="admin-section">
                 <h3>League Management</h3>
                 <div className="admin-buttons">
+                  <button onClick={handleStartLeagueDraft} className="admin-btn">Start League Draft</button>
                   <button onClick={() => setShowEditLeagueModal(true)} className="admin-btn">Edit League Settings</button>
-                  <button onClick={() => setShowBracketModal(true)} className="admin-btn">Bracket</button>
                   <button onClick={() => setShowManagePlayersModal(true)} className="admin-btn">Manage Players</button>
-                  <button onClick={() => setShowDraftFormatModal(true)} className="admin-btn">Set Draft Format</button>
+                  <button onClick={handleOpenDraftFormatModal} className="admin-btn">Set Draft Format</button>
                   <button onClick={() => setShowDraftRulesModal(true)} className="admin-btn">Set Draft Rules</button>
                   <button onClick={() => setShowScheduleModal(true)} className="admin-btn">Edit Schedule</button>
                 </div>
@@ -2362,6 +3128,1234 @@ Replays must be posted to the appropriate channel.`;
                 </div>
               </div>
 
+              {/* Bracket Section - Visible to all, editable by admin */}
+              <div className="league-section">
+                {/* Tabs for Regular Season and Playoffs (only show Playoffs tab for round robin with playoffs started) */}
+                {currentLeague?.bracketType === 'round_robin' && showPlayoffsTab && (
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', borderBottom: '2px solid #e5e7eb' }}>
+                    <button
+                      onClick={() => setBracketView('regular')}
+                      style={{
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        background: bracketView === 'regular' ? '#3b82f6' : 'transparent',
+                        color: bracketView === 'regular' ? '#fff' : '#64748b',
+                        border: 'none',
+                        borderBottom: bracketView === 'regular' ? '2px solid #3b82f6' : '2px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Regular Season
+                    </button>
+                    <button
+                      onClick={() => setBracketView('playoffs')}
+                      style={{
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        background: bracketView === 'playoffs' ? '#ec4899' : 'transparent',
+                        color: bracketView === 'playoffs' ? '#fff' : '#64748b',
+                        border: 'none',
+                        borderBottom: bracketView === 'playoffs' ? '2px solid #ec4899' : '2px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Playoffs 🏆
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                    <h3 style={{ margin: 0 }}>{bracketView === 'playoffs' ? 'Playoffs Bracket' : 'Bracket'}</h3>
+                    {bracketView === 'regular' && bracketMatches.length > 0 && (() => {
+                      const maxWeek = Math.max(...bracketMatches.map(m => m.week || 1));
+                      return maxWeek > 1 && (
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => setCurrentBracketWeek(prev => Math.max(1, prev - 1))}
+                            disabled={currentBracketWeek === 1}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '13px',
+                              background: currentBracketWeek === 1 ? '#e5e7eb' : '#3b82f6',
+                              color: currentBracketWeek === 1 ? '#94a3b8' : '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: currentBracketWeek === 1 ? 'not-allowed' : 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            ← Prev
+                          </button>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#334155', minWidth: '80px', textAlign: 'center' }}>
+                            Week {currentBracketWeek}
+                          </span>
+                          <button
+                            onClick={() => setCurrentBracketWeek(prev => Math.min(maxWeek, prev + 1))}
+                            disabled={currentBracketWeek === maxWeek}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '13px',
+                              background: currentBracketWeek === maxWeek ? '#e5e7eb' : '#3b82f6',
+                              color: currentBracketWeek === maxWeek ? '#94a3b8' : '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: currentBracketWeek === maxWeek ? 'not-allowed' : 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {bracketView === 'playoffs' && playoffMatches.length > 0 && (() => {
+                      const maxWeek = Math.max(...playoffMatches.map(m => m.week || 1));
+                      return maxWeek > 1 && (
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => setCurrentPlayoffWeek(prev => Math.max(1, prev - 1))}
+                            disabled={currentPlayoffWeek === 1}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '13px',
+                              background: currentPlayoffWeek === 1 ? '#e5e7eb' : '#ec4899',
+                              color: currentPlayoffWeek === 1 ? '#94a3b8' : '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: currentPlayoffWeek === 1 ? 'not-allowed' : 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            ← Prev
+                          </button>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#334155', minWidth: '100px', textAlign: 'center' }}>
+                            Round {currentPlayoffWeek}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPlayoffWeek(prev => Math.min(maxWeek, prev + 1))}
+                            disabled={currentPlayoffWeek === maxWeek}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '13px',
+                              background: currentPlayoffWeek === maxWeek ? '#e5e7eb' : '#ec4899',
+                              color: currentPlayoffWeek === maxWeek ? '#94a3b8' : '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: currentPlayoffWeek === maxWeek ? 'not-allowed' : 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {currentLeague.commissionerName === username && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {bracketView === 'regular' && currentLeague?.bracketType === 'round_robin' && !playoffsStarted && (
+                        <button
+                          onClick={handleStartPlayoffs}
+                          disabled={loading || players.length < 2}
+                          style={{
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            background: players.length < 2 ? '#e5e7eb' : '#ec4899',
+                            color: players.length < 2 ? '#94a3b8' : '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: players.length < 2 ? 'not-allowed' : 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          🏆 Start Playoffs
+                        </button>
+                      )}
+                      {bracketView === 'playoffs' && playoffsStarted && (
+                        <button
+                          onClick={handleCancelPlayoffs}
+                          disabled={loading}
+                          style={{
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            background: '#ef4444',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          ✕ Cancel Playoffs
+                        </button>
+                      )}
+                      {bracketView === 'regular' && (
+                        <button
+                          onClick={handleRegenerateDraft}
+                          className="admin-btn"
+                          style={{
+                            padding: '8px 16px',
+                            fontSize: '13px',
+                            background: '#f59e0b',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          Regenerate Bracket
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {bracketView === 'playoffs' && !playoffsStarted ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#666', background: '#fef3f2', borderRadius: '8px', border: '2px dashed #ec4899' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>🏆</div>
+                    <p style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '600', color: '#ec4899' }}>Playoffs Not Started Yet</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>
+                      {currentLeague.commissionerName === username 
+                        ? 'Click "Start Playoffs" to generate a bracket with the top 50% of players.' 
+                        : 'The commissioner will start playoffs when the regular season is complete.'}
+                    </p>
+                  </div>
+                ) : bracketView === 'playoffs' && playoffsStarted && playoffMatches.length > 0 ? (
+                  <div>
+                    {/* Playoffs Display - Single Elimination bracket */}
+                    {(() => {
+                      const weekMatches = playoffMatches.filter(m => m.week === currentPlayoffWeek);
+                      
+                      return (
+                        <div>
+                          <div style={{ marginBottom: '15px', padding: '12px', background: '#fef3f2', borderRadius: '6px', border: '1px solid #ec4899' }}>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#ec4899', marginBottom: '4px' }}>
+                              🏆 Playoffs - {weekMatches.length === 1 ? 'Finals' : `Round ${currentPlayoffWeek}`}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                              Top 50% players competing in single elimination format
+                            </div>
+                          </div>
+                          {weekMatches.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', background: '#f8f9fa', borderRadius: '8px' }}>
+                              No playoff matches scheduled for Round {currentPlayoffWeek}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                              {weekMatches.map((match, idx) => {
+                                const isPlayer1 = match.player1 === username;
+                                const isPlayer2 = match.player2 === username;
+                                const isPlayerInMatch = isPlayer1 || isPlayer2;
+
+                                return (
+                                  <div key={match.id} style={{
+                                    background: match.winner ? '#f0fdf4' : '#fff',
+                                    border: `2px solid ${match.winner ? '#16a34a' : '#ec4899'}`,
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    position: 'relative'
+                                  }}>
+                                    {match.winner && (
+                                      <div style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        right: '8px',
+                                        background: '#16a34a',
+                                        color: '#fff',
+                                        padding: '4px 8px',
+                                        borderRadius: '12px',
+                                        fontSize: '11px',
+                                        fontWeight: '600'
+                                      }}>
+                                        ✓ Complete
+                                      </div>
+                                    )}
+                                    
+                                    <div style={{ marginBottom: '10px', fontSize: '12px', fontWeight: '600', color: '#ec4899' }}>
+                                      Playoff Match {idx + 1}
+                                    </div>
+                                    
+                                    {/* Player 1 */}
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '8px',
+                                      background: match.winner === match.player1 ? '#dcfce7' : isPlayer1 ? '#dbeafe' : '#f8f9fa',
+                                      borderRadius: '4px',
+                                      marginBottom: '6px',
+                                      border: match.winner === match.player1 ? '2px solid #16a34a' : '1px solid #e5e7eb'
+                                    }}>
+                                      <span style={{ fontWeight: '600', fontSize: '13px', color: '#334155' }}>
+                                        {match.player1}
+                                      </span>
+                                      {currentLeague.commissionerName === username && !match.winner && (
+                                        <input
+                                          type="checkbox"
+                                          checked={false}
+                                          onChange={() => handleAdminSetWinner(match, match.player1)}
+                                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                      )}
+                                      {match.winner === match.player1 && (
+                                        <span style={{ color: '#16a34a', fontSize: '16px', fontWeight: 'bold' }}>✓</span>
+                                      )}
+                                    </div>
+
+                                    {/* VS */}
+                                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', fontWeight: '600', margin: '4px 0' }}>
+                                      VS
+                                    </div>
+
+                                    {/* Player 2 */}
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '8px',
+                                      background: match.winner === match.player2 ? '#dcfce7' : isPlayer2 ? '#dbeafe' : '#f8f9fa',
+                                      borderRadius: '4px',
+                                      marginBottom: '8px',
+                                      border: match.winner === match.player2 ? '2px solid #16a34a' : '1px solid #e5e7eb'
+                                    }}>
+                                      <span style={{ fontWeight: '600', fontSize: '13px', color: '#334155' }}>
+                                        {match.player2}
+                                      </span>
+                                      {currentLeague.commissionerName === username && !match.winner && (
+                                        <input
+                                          type="checkbox"
+                                          checked={false}
+                                          onChange={() => handleAdminSetWinner(match, match.player2)}
+                                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                      )}
+                                      {match.winner === match.player2 && (
+                                        <span style={{ color: '#16a34a', fontSize: '16px', fontWeight: 'bold' }}>✓</span>
+                                      )}
+                                    </div>
+
+                                    {/* Replay Link */}
+                                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
+                                      {match.replayLink ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>REPLAY:</span>
+                                          <a
+                                            href={match.replayLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              fontSize: '11px',
+                                              color: '#3b82f6',
+                                              textDecoration: 'none',
+                                              flex: 1,
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap'
+                                            }}
+                                          >
+                                            {match.replayLink}
+                                          </a>
+                                        </div>
+                                      ) : isPlayerInMatch && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedMatchForUpload(match);
+                                            setMatchReplayLink('');
+                                            setShowMatchReplayModal(true);
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            padding: '6px',
+                                            fontSize: '11px',
+                                            background: '#f1f5f9',
+                                            color: '#64748b',
+                                            border: '1px dashed #cbd5e1',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600'
+                                          }}
+                                        >
+                                          + Add Replay Link
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* Flag Win Button */}
+                                    {isPlayerInMatch && !match.winner && (
+                                      <div style={{ marginTop: '8px' }}>
+                                        <button
+                                          onClick={() => handleFlagMatchResult(match, username)}
+                                          disabled={match.needsApproval}
+                                          style={{
+                                            width: '100%',
+                                            padding: '8px',
+                                            fontSize: '12px',
+                                            background: match.needsApproval ? '#f1f5f9' : '#3b82f6',
+                                            color: match.needsApproval ? '#94a3b8' : '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: match.needsApproval ? 'not-allowed' : 'pointer',
+                                            fontWeight: '600'
+                                          }}
+                                        >
+                                          {match.needsApproval ? '⏳ Pending Approval' : '🚩 Flag Win'}
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* Admin Approval Section */}
+                                    {currentLeague.commissionerName === username && match.needsApproval && match.flaggedWinner && (
+                                      <div style={{
+                                        marginTop: '10px',
+                                        padding: '10px',
+                                        background: '#fef3c7',
+                                        borderRadius: '6px',
+                                        border: '1px solid #f59e0b'
+                                      }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', color: '#92400e', marginBottom: '6px' }}>
+                                          PENDING APPROVAL
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#78350f', marginBottom: '8px' }}>
+                                          <strong>{match.flaggedWinner}</strong> flagged as winner
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                          <button
+                                            onClick={() => handleApproveMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#16a34a',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✓ Approve
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#ef4444',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✕ Reject
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : bracketView === 'regular' && bracketMatches.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#666', background: '#f8f9fa', borderRadius: '8px' }}>
+                    <p style={{ margin: 0 }}>No bracket has been generated yet.</p>
+                    {currentLeague.commissionerName === username && (
+                      <p style={{ fontSize: '14px', marginTop: '8px', color: '#94a3b8' }}>Click "Generate Bracket" to create matchups.</p>
+                    )}
+                  </div>
+                ) : bracketView === 'regular' ? (
+                  <div>
+                    {/* Round Robin Display */}
+                    {currentLeague?.bracketType === 'round_robin' && (() => {
+                      const weekMatches = bracketMatches.filter(m => m.week === currentBracketWeek);
+                      
+                      return (
+                        <div>
+                          {weekMatches.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', background: '#f8f9fa', borderRadius: '8px' }}>
+                              No matches scheduled for Week {currentBracketWeek}
+                            </div>
+                          ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
+                                {weekMatches.map((match, idx) => {
+                                  const isPlayerInMatch = match.player1 === username || match.player2 === username;
+                                  
+                                  return (
+                                  <div 
+                                    key={idx}
+                                    style={{
+                                      background: '#fff',
+                                      border: match.needsApproval ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+                                      borderRadius: '8px',
+                                      padding: '14px',
+                                      position: 'relative'
+                                    }}
+                                  >
+                                    {match.needsApproval && (
+                                      <div style={{ 
+                                        position: 'absolute',
+                                        top: '-8px',
+                                        right: '10px',
+                                        background: '#f59e0b',
+                                        color: '#fff',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontSize: '10px',
+                                        fontWeight: '700'
+                                      }}>
+                                        PENDING APPROVAL
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '10px', fontWeight: '600' }}>
+                                      Match {match.matchNumber || idx + 1}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px',
+                                        background: match.winner === match.player1 || match.flaggedWinner === match.player1 ? '#d1fae5' : '#f8f9fa',
+                                        borderRadius: '4px',
+                                        border: match.winner === match.player1 ? '2px solid #10b981' : match.flaggedWinner === match.player1 ? '2px solid #f59e0b' : 'none'
+                                      }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '600' }}>{match.player1}</span>
+                                        {currentLeague.commissionerName === username && !match.needsApproval && (
+                                          <input
+                                            type="checkbox"
+                                            checked={match.winner === match.player1}
+                                            onChange={async () => {
+                                              const updated = bracketMatches.map(m =>
+                                                m === match ? { ...m, winner: m.winner === match.player1 ? null : match.player1 } : m
+                                              );
+                                              setBracketMatches(updated);
+                                              await updateLeague(currentLeague.code, {
+                                                bracket: { type: currentLeague.bracketType, matches: updated }
+                                              });
+                                            }}
+                                            style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                          />
+                                        )}
+                                        {currentLeague.commissionerName !== username && match.winner === match.player1 && (
+                                          <span style={{ color: '#10b981', fontWeight: '700', fontSize: '18px' }}>✓</span>
+                                        )}
+                                        {isPlayerInMatch && !match.winner && !match.needsApproval && (
+                                          <button
+                                            onClick={() => handleFlagMatchResult(match, match.player1)}
+                                            style={{
+                                              padding: '4px 8px',
+                                              fontSize: '11px',
+                                              background: '#3b82f6',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer'
+                                            }}
+                                          >
+                                            Flag Win
+                                          </button>
+                                        )}
+                                      </div>
+                                      <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '600' }}>vs</div>
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px',
+                                        background: match.winner === match.player2 || match.flaggedWinner === match.player2 ? '#d1fae5' : '#f8f9fa',
+                                        borderRadius: '4px',
+                                        border: match.winner === match.player2 ? '2px solid #10b981' : match.flaggedWinner === match.player2 ? '2px solid #f59e0b' : 'none'
+                                      }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '600' }}>{match.player2}</span>
+                                        {currentLeague.commissionerName === username && !match.needsApproval && (
+                                          <input
+                                            type="checkbox"
+                                            checked={match.winner === match.player2}
+                                            onChange={async () => {
+                                              const updated = bracketMatches.map(m =>
+                                                m === match ? { ...m, winner: m.winner === match.player2 ? null : match.player2 } : m
+                                              );
+                                              setBracketMatches(updated);
+                                              await updateLeague(currentLeague.code, {
+                                                bracket: { type: currentLeague.bracketType, matches: updated }
+                                              });
+                                            }}
+                                            style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                          />
+                                        )}
+                                        {currentLeague.commissionerName !== username && match.winner === match.player2 && (
+                                          <span style={{ color: '#10b981', fontWeight: '700', fontSize: '18px' }}>✓</span>
+                                        )}
+                                        {isPlayerInMatch && !match.winner && !match.needsApproval && (
+                                          <button
+                                            onClick={() => handleFlagMatchResult(match, match.player2)}
+                                            style={{
+                                              padding: '4px 8px',
+                                              fontSize: '11px',
+                                              background: '#3b82f6',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer'
+                                            }}
+                                          >
+                                            Flag Win
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Replay Link Section */}
+                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                                      {match.replayLink ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                          <a 
+                                            href={match.replayLink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            style={{ 
+                                              color: '#3b82f6',
+                                              fontSize: '13px',
+                                              textDecoration: 'none',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '4px'
+                                            }}
+                                          >
+                                            🎬 View Replay
+                                          </a>
+                                          {isPlayerInMatch && (
+                                            <button
+                                              onClick={() => handleUploadReplayLink(match)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#6b7280',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer'
+                                              }}
+                                            >
+                                              Update Link
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        isPlayerInMatch && (
+                                          <button
+                                            onClick={() => handleUploadReplayLink(match)}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '12px',
+                                              background: '#6366f1',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              width: '100%'
+                                            }}
+                                          >
+                                            📤 Upload Replay
+                                          </button>
+                                        )
+                                      )}
+                                    </div>
+
+                                    {/* Admin Approval Section */}
+                                    {match.needsApproval && currentLeague.commissionerName === username && (
+                                      <div style={{ 
+                                        marginTop: '12px', 
+                                        padding: '10px',
+                                        background: '#fef3c7',
+                                        borderRadius: '6px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '8px'
+                                      }}>
+                                        <div style={{ fontSize: '12px', color: '#92400e', fontWeight: '600' }}>
+                                          {match.flaggedBy} flagged {match.flaggedWinner} as winner
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                          <button
+                                            onClick={() => handleApproveMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#10b981',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✓ Approve
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#ef4444',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✕ Reject
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  );
+                                })}
+                              </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Single Elimination Display */}
+                    {currentLeague?.bracketType === 'single_elimination' && (() => {
+                      const weekMatches = bracketMatches.filter(m => m.week === currentBracketWeek);
+                      
+                      return (
+                        <div>
+                          {weekMatches.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', background: '#f8f9fa', borderRadius: '8px' }}>
+                              No matches scheduled for Week {currentBracketWeek}
+                            </div>
+                          ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                                {weekMatches.map((match, idx) => {
+                                  const isPlayer1 = match.player1 === username;
+                                  const isPlayer2 = match.player2 === username;
+                                  const isPlayerInMatch = isPlayer1 || isPlayer2;
+                                  const canFlagPlayer1 = isPlayerInMatch && !match.winner && !match.needsApproval;
+                                  const canFlagPlayer2 = isPlayerInMatch && !match.winner && !match.needsApproval;
+                                  
+                                  return (
+                                  <div 
+                                    key={idx}
+                                    style={{
+                                      background: '#fff',
+                                      border: match.needsApproval ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+                                      borderRadius: '6px',
+                                      padding: '12px',
+                                      position: 'relative'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>
+                                        Match {match.matchNumber || idx + 1}
+                                      </div>
+                                      {match.needsApproval && (
+                                        <div style={{ 
+                                          fontSize: '10px', 
+                                          color: '#f59e0b', 
+                                          fontWeight: '700',
+                                          background: '#fef3c7',
+                                          padding: '2px 6px',
+                                          borderRadius: '3px'
+                                        }}>
+                                          PENDING APPROVAL
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '6px',
+                                        background: match.winner === match.player1 ? '#d1fae5' : '#f8f9fa',
+                                        borderRadius: '4px',
+                                        border: match.winner === match.player1 ? '2px solid #10b981' : 'none'
+                                      }}>
+                                        <span style={{ fontSize: '14px', fontWeight: match.winner === match.player1 ? '700' : '500' }}>
+                                          {match.player1 || 'TBD'}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          {canFlagPlayer1 && (
+                                            <button
+                                              onClick={() => handleFlagMatchResult(match, match.player1)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#fbbf24',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                              }}
+                                            >
+                                              Flag Win
+                                            </button>
+                                          )}
+                                          {currentLeague.commissionerName === username && match.player1 && (
+                                            <input
+                                              type="checkbox"
+                                              checked={match.winner === match.player1}
+                                              onChange={() => handleAdminSetWinner(match, match.player1)}
+                                              style={{ cursor: 'pointer' }}
+                                            />
+                                          )}
+                                          {currentLeague.commissionerName !== username && match.winner === match.player1 && (
+                                            <span style={{ color: '#10b981', fontWeight: '700' }}>✓</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '600' }}>vs</div>
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '6px',
+                                        background: match.winner === match.player2 ? '#d1fae5' : '#f8f9fa',
+                                        borderRadius: '4px',
+                                        border: match.winner === match.player2 ? '2px solid #10b981' : 'none'
+                                      }}>
+                                        <span style={{ fontSize: '14px', fontWeight: match.winner === match.player2 ? '700' : '500' }}>
+                                          {match.player2 || 'TBD'}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          {canFlagPlayer2 && (
+                                            <button
+                                              onClick={() => handleFlagMatchResult(match, match.player2)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#fbbf24',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                              }}
+                                            >
+                                              Flag Win
+                                            </button>
+                                          )}
+                                          {currentLeague.commissionerName === username && match.player2 && (
+                                            <input
+                                              type="checkbox"
+                                              checked={match.winner === match.player2}
+                                              onChange={() => handleAdminSetWinner(match, match.player2)}
+                                              style={{ cursor: 'pointer' }}
+                                            />
+                                          )}
+                                          {currentLeague.commissionerName !== username && match.winner === match.player2 && (
+                                            <span style={{ color: '#10b981', fontWeight: '700' }}>✓</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Replay Link Section */}
+                                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
+                                      {match.replayLink ? (
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          <a 
+                                            href={match.replayLink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              flex: 1,
+                                              fontSize: '12px',
+                                              color: '#3b82f6',
+                                              textDecoration: 'none',
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap'
+                                            }}
+                                          >
+                                            🎥 View Replay
+                                          </a>
+                                          {isPlayerInMatch && (
+                                            <button
+                                              onClick={() => handleUploadReplayLink(match)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#e5e7eb',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer'
+                                              }}
+                                            >
+                                              Update
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : isPlayerInMatch ? (
+                                        <button
+                                          onClick={() => handleUploadReplayLink(match)}
+                                          style={{
+                                            width: '100%',
+                                            padding: '6px',
+                                            fontSize: '12px',
+                                            background: '#3b82f6',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          + Upload Replay Link
+                                        </button>
+                                      ) : (
+                                        <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center' }}>
+                                          No replay uploaded yet
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Admin Approval Section */}
+                                    {currentLeague.commissionerName === username && match.needsApproval && (
+                                      <div style={{
+                                        marginTop: '10px',
+                                        padding: '10px',
+                                        background: '#fef3c7',
+                                        borderRadius: '4px',
+                                        border: '1px solid #fbbf24'
+                                      }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '6px', color: '#92400e' }}>
+                                          {match.flaggedBy} flagged {match.flaggedWinner} as winner
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                          <button
+                                            onClick={() => handleApproveMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#10b981',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✓ Approve
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#ef4444',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✕ Reject
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  );
+                                })}
+                              </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Swiss System Display */}
+                    {currentLeague?.bracketType === 'swiss' && (() => {
+                      const weekMatches = bracketMatches.filter(m => m.week === currentBracketWeek);
+                      
+                      return (
+                        <div>
+                          {weekMatches.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', background: '#f8f9fa', borderRadius: '8px' }}>
+                              No matches scheduled for Week {currentBracketWeek}
+                            </div>
+                          ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                                {weekMatches.map((match, idx) => {
+                                  const isPlayer1 = match.player1 === username;
+                                  const isPlayer2 = match.player2 === username;
+                                  const isPlayerInMatch = isPlayer1 || isPlayer2;
+                                  const canFlagPlayer1 = isPlayerInMatch && !match.winner && !match.needsApproval;
+                                  const canFlagPlayer2 = isPlayerInMatch && !match.winner && !match.needsApproval;
+                                  
+                                  return (
+                                  <div 
+                                    key={idx}
+                                    style={{
+                                      background: '#fff',
+                                      border: match.needsApproval ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+                                      borderRadius: '6px',
+                                      padding: '12px',
+                                      position: 'relative'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>
+                                        Match {match.matchNumber || idx + 1}
+                                      </div>
+                                      {match.needsApproval && (
+                                        <div style={{ 
+                                          fontSize: '10px', 
+                                          color: '#f59e0b', 
+                                          fontWeight: '700',
+                                          background: '#fef3c7',
+                                          padding: '2px 6px',
+                                          borderRadius: '3px'
+                                        }}>
+                                          PENDING APPROVAL
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '6px',
+                                        background: match.winner === match.player1 ? '#d1fae5' : '#f8f9fa',
+                                        borderRadius: '4px',
+                                        border: match.winner === match.player1 ? '2px solid #10b981' : 'none'
+                                      }}>
+                                        <span style={{ fontSize: '14px', fontWeight: match.winner === match.player1 ? '700' : '500' }}>
+                                          {match.player1 || 'TBD'}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          {canFlagPlayer1 && (
+                                            <button
+                                              onClick={() => handleFlagMatchResult(match, match.player1)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#fbbf24',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                              }}
+                                            >
+                                              Flag Win
+                                            </button>
+                                          )}
+                                          {currentLeague.commissionerName === username && match.player1 && (
+                                            <input
+                                              type="checkbox"
+                                              checked={match.winner === match.player1}
+                                              onChange={() => handleAdminSetWinner(match, match.player1)}
+                                              style={{ cursor: 'pointer' }}
+                                            />
+                                          )}
+                                          {currentLeague.commissionerName !== username && match.winner === match.player1 && (
+                                            <span style={{ color: '#10b981', fontWeight: '700' }}>✓</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '600' }}>vs</div>
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '6px',
+                                        background: match.winner === match.player2 ? '#d1fae5' : '#f8f9fa',
+                                        borderRadius: '4px',
+                                        border: match.winner === match.player2 ? '2px solid #10b981' : 'none'
+                                      }}>
+                                        <span style={{ fontSize: '14px', fontWeight: match.winner === match.player2 ? '700' : '500' }}>
+                                          {match.player2 || 'TBD'}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          {canFlagPlayer2 && (
+                                            <button
+                                              onClick={() => handleFlagMatchResult(match, match.player2)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#fbbf24',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                              }}
+                                            >
+                                              Flag Win
+                                            </button>
+                                          )}
+                                          {currentLeague.commissionerName === username && match.player2 && (
+                                            <input
+                                              type="checkbox"
+                                              checked={match.winner === match.player2}
+                                              onChange={() => handleAdminSetWinner(match, match.player2)}
+                                              style={{ cursor: 'pointer' }}
+                                            />
+                                          )}
+                                          {currentLeague.commissionerName !== username && match.winner === match.player2 && (
+                                            <span style={{ color: '#10b981', fontWeight: '700' }}>✓</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Replay Link Section */}
+                                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
+                                      {match.replayLink ? (
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          <a 
+                                            href={match.replayLink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              flex: 1,
+                                              fontSize: '12px',
+                                              color: '#3b82f6',
+                                              textDecoration: 'none',
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap'
+                                            }}
+                                          >
+                                            🎥 View Replay
+                                          </a>
+                                          {isPlayerInMatch && (
+                                            <button
+                                              onClick={() => handleUploadReplayLink(match)}
+                                              style={{
+                                                padding: '4px 8px',
+                                                fontSize: '11px',
+                                                background: '#e5e7eb',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer'
+                                              }}
+                                            >
+                                              Update
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : isPlayerInMatch ? (
+                                        <button
+                                          onClick={() => handleUploadReplayLink(match)}
+                                          style={{
+                                            width: '100%',
+                                            padding: '6px',
+                                            fontSize: '12px',
+                                            background: '#3b82f6',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          + Upload Replay Link
+                                        </button>
+                                      ) : (
+                                        <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center' }}>
+                                          No replay uploaded yet
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Admin Approval Section */}
+                                    {currentLeague.commissionerName === username && match.needsApproval && (
+                                      <div style={{
+                                        marginTop: '10px',
+                                        padding: '10px',
+                                        background: '#fef3c7',
+                                        borderRadius: '4px',
+                                        border: '1px solid #fbbf24'
+                                      }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '6px', color: '#92400e' }}>
+                                          {match.flaggedBy} flagged {match.flaggedWinner} as winner
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                          <button
+                                            onClick={() => handleApproveMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#10b981',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✓ Approve
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectMatchResult(match)}
+                                            style={{
+                                              flex: 1,
+                                              padding: '6px',
+                                              fontSize: '12px',
+                                              background: '#ef4444',
+                                              color: '#fff',
+                                              border: 'none',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontWeight: '600'
+                                            }}
+                                          >
+                                            ✕ Reject
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  );
+                                })}
+                              </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Unsupported bracket type message */}
+                    {currentLeague?.bracketType && 
+                     currentLeague.bracketType !== 'round_robin' && 
+                     currentLeague.bracketType !== 'single_elimination' && 
+                     currentLeague.bracketType !== 'swiss' && (
+                      <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', background: '#f8f9fa', borderRadius: '8px' }}>
+                        <p style={{ margin: 0 }}>Bracket type "{currentLeague.bracketType}" is not yet supported for display.</p>
+                        <p style={{ fontSize: '14px', marginTop: '8px' }}>Currently supported: Round Robin, Single Elimination, Swiss System</p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
               <div className="league-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div>
@@ -2387,6 +4381,7 @@ Replays must be posted to the appropriate channel.`;
                         <th>Wins</th>
                         <th>Losses</th>
                         <th>Win %</th>
+                        <th>Team</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2402,6 +4397,24 @@ Replays must be posted to the appropriate channel.`;
                             <td>{player.wins || 0}</td>
                             <td>{player.losses || 0}</td>
                             <td>{winRate}%</td>
+                            <td>
+                              {player.username === username && !player.teamSubmitted ? (
+                                <button 
+                                  onClick={() => {
+                                    setShowTeamSubmissionModal(true);
+                                    loadSavedTeamsForSubmission();
+                                  }} 
+                                  className="admin-btn"
+                                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                                >
+                                  Upload Team
+                                </button>
+                              ) : player.teamSubmitted ? (
+                                <span style={{ color: '#16a34a', fontSize: '13px' }}>✓ Submitted</span>
+                              ) : (
+                                <span style={{ color: '#94a3b8', fontSize: '13px' }}>-</span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -2598,7 +4611,16 @@ Replays must be posted to the appropriate channel.`;
                 <h2>{currentLeague.name}</h2>
               </div>
 
-              <div className="league-info-grid">
+              <div 
+                className="league-info-grid"
+                style={{
+                  backgroundImage: leagueImageUrl ? `url(${leagueImageUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  position: 'relative'
+                }}
+              >
                 {players.some(p => p.username === username) && (
                   <div className="league-info-item">
                     <div className="league-info-label">League Code</div>
@@ -2645,6 +4667,7 @@ Replays must be posted to the appropriate channel.`;
                         <th>Wins</th>
                         <th>Losses</th>
                         <th>Win %</th>
+                        <th>Team</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2660,6 +4683,24 @@ Replays must be posted to the appropriate channel.`;
                             <td>{player.wins || 0}</td>
                             <td>{player.losses || 0}</td>
                             <td>{winRate}%</td>
+                            <td>
+                              {player.username === username && !player.teamSubmitted ? (
+                                <button 
+                                  onClick={() => {
+                                    setShowTeamSubmissionModal(true);
+                                    loadSavedTeamsForSubmission();
+                                  }} 
+                                  className="admin-btn"
+                                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                                >
+                                  Upload Team
+                                </button>
+                              ) : player.teamSubmitted ? (
+                                <span style={{ color: '#16a34a', fontSize: '13px' }}>✓ Submitted</span>
+                              ) : (
+                                <span style={{ color: '#94a3b8', fontSize: '13px' }}>-</span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -2862,7 +4903,7 @@ Replays must be posted to the appropriate channel.`;
       {/* Draft Format Modal */}
       {showDraftFormatModal && (
         <div className="modal-overlay" onClick={() => setShowDraftFormatModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} key={draftFormatModalKey}>
             <div className="modal-header">
               <h2>Set Draft Format</h2>
               <button onClick={() => setShowDraftFormatModal(false)} className="modal-close">&times;</button>
@@ -5370,6 +7411,93 @@ Replays must be posted to the appropriate channel.`;
             
             <div className="modal-body">
               <div className="form-group">
+                <label>League Image URL:</label>
+                <div style={{ marginTop: '10px' }}>
+                  {leagueImageUrl ? (
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ position: 'relative', display: 'inline-block', marginBottom: '10px' }}>
+                        <img 
+                          src={leagueImageUrl} 
+                          alt="League" 
+                          style={{ 
+                            maxWidth: '100%',
+                            maxHeight: '200px', 
+                            borderRadius: '8px',
+                            display: 'block'
+                          }} 
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.parentElement.innerHTML = '<div style="padding: 20px; border: 2px dashed #ef4444; border-radius: 8px; color: #ef4444; text-align: center;">Invalid image URL</div>';
+                          }}
+                        />
+                      </div>
+                      <button
+                        onClick={handleRemoveLeagueImage}
+                        disabled={uploadingImage}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#ef4444',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: uploadingImage ? 'not-allowed' : 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '20px', 
+                      border: '2px dashed #cbd5e1', 
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      color: '#94a3b8',
+                      marginBottom: '10px'
+                    }}>
+                      No image set
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                      value={leagueImageUrl}
+                      onChange={(e) => setLeagueImageUrl(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '4px',
+                        border: '1px solid #cbd5e1',
+                        marginBottom: '10px'
+                      }}
+                    />
+                    <button
+                      onClick={handleSaveLeagueImageUrl}
+                      disabled={uploadingImage || !leagueImageUrl.trim()}
+                      style={{
+                        padding: '8px 16px',
+                        background: (uploadingImage || !leagueImageUrl.trim()) ? '#e5e7eb' : '#3b82f6',
+                        color: (uploadingImage || !leagueImageUrl.trim()) ? '#94a3b8' : '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: (uploadingImage || !leagueImageUrl.trim()) ? 'not-allowed' : 'pointer',
+                        fontWeight: '600',
+                        fontSize: '13px'
+                      }}
+                    >
+                      {uploadingImage ? 'Saving...' : 'Save Image URL'}
+                    </button>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
+                      Use a direct link to an image (Imgur, Discord CDN, etc.)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
                 <label>League Status:</label>
                 <select 
                   value={currentLeague.status}
@@ -5407,7 +7535,48 @@ Replays must be posted to the appropriate channel.`;
                 <label>Bracket Type:</label>
                 <select 
                   value={currentLeague.bracketType}
-                  onChange={(e) => setCurrentLeague({ ...currentLeague, bracketType: e.target.value })}
+                  onChange={async (e) => {
+                    const newBracketType = e.target.value;
+                    setCurrentLeague({ ...currentLeague, bracketType: newBracketType });
+                    
+                    try {
+                      // Clear current bracket
+                      setBracketMatches([]);
+                      
+                      // Wait a bit for state to settle
+                      setTimeout(async () => {
+                        // Generate new matches based on bracket type
+                        let generatedMatches = null;
+                        if (newBracketType === 'round_robin') {
+                          generatedMatches = generateRoundRobinMatches();
+                        } else if (newBracketType === 'single_elimination') {
+                          generatedMatches = generateSingleEliminationBracket();
+                        } else if (newBracketType === 'swiss') {
+                          generatedMatches = generateSwissBracket();
+                        }
+                        
+                        // Save bracket type AND generated matches to database
+                        if (generatedMatches && generatedMatches.length > 0) {
+                          await updateLeague(currentLeague.code, { 
+                            bracketType: newBracketType,
+                            bracket: {
+                              type: newBracketType,
+                              matches: generatedMatches
+                            }
+                          });
+                          setMessage('Bracket type updated and matches regenerated!');
+                        } else {
+                          // Just save bracket type if no matches were generated
+                          await updateLeague(currentLeague.code, { bracketType: newBracketType });
+                          setMessage('Bracket type updated!');
+                        }
+                        setTimeout(() => setMessage(''), 3000);
+                      }, 100);
+                    } catch (err) {
+                      console.error('Failed to update bracket type:', err);
+                      setError('Failed to update bracket type: ' + err.message);
+                    }
+                  }}
                 >
                   <option value="round_robin">Round Robin</option>
                   <option value="single_elimination">Single Elimination</option>
@@ -5868,6 +8037,149 @@ Replays must be posted to the appropriate channel.`;
         </div>
       )}
 
+      {/* Team Submission Modal */}
+      {showTeamSubmissionModal && (
+        <div className="modal-overlay" onClick={() => setShowTeamSubmissionModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', padding: '30px' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Submit Your Team</h2>
+            
+            <div style={{ marginBottom: '20px', fontSize: '14px', color: '#666' }}>
+              Select a saved team from your drafts to submit to this league:
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                Loading your saved teams...
+              </div>
+            ) : savedTeamsForSubmission.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '40px', 
+                background: '#f8f9fa', 
+                borderRadius: '8px',
+                color: '#666'
+              }}>
+                <div style={{ fontSize: '16px', marginBottom: '10px' }}>No saved teams found</div>
+                <div style={{ fontSize: '13px' }}>
+                  Complete a draft with this league code first to save a team for this league.
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                maxHeight: '400px', 
+                overflowY: 'auto', 
+                marginBottom: '20px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}>
+                {savedTeamsForSubmission.map((team) => (
+                  <div
+                    key={team._id}
+                    onClick={() => setSelectedTeamForSubmission(team._id)}
+                    style={{
+                      padding: '15px',
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      background: selectedTeamForSubmission === team._id ? '#eff6ff' : '#fff',
+                      transition: 'background 0.15s',
+                      ':hover': { background: '#f8f9fa' }
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedTeamForSubmission !== team._id) {
+                        e.currentTarget.style.background = '#f8f9fa';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedTeamForSubmission !== team._id) {
+                        e.currentTarget.style.background = '#fff';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                      <input
+                        type="radio"
+                        checked={selectedTeamForSubmission === team._id}
+                        onChange={() => setSelectedTeamForSubmission(team._id)}
+                        style={{ marginRight: '10px', cursor: 'pointer' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+                          Team from {new Date(team.createdAt).toLocaleDateString()}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                          {team.pokemon.length} Pokémon · {team.pointsUsed}/{team.pointsLimit} points
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      fontSize: '12px', 
+                      color: '#475569',
+                      marginLeft: '30px',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px'
+                    }}>
+                      {team.pokemon.slice(0, 6).map((p, i) => (
+                        <span key={i} style={{ 
+                          background: '#e2e8f0',
+                          padding: '2px 8px',
+                          borderRadius: '3px'
+                        }}>
+                          {p.name}
+                        </span>
+                      ))}
+                      {team.pokemon.length > 6 && (
+                        <span style={{ color: '#94a3b8', padding: '2px 4px' }}>
+                          +{team.pokemon.length - 6} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="modal-actions" style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  setShowTeamSubmissionModal(false);
+                  setSelectedTeamForSubmission(null);
+                  setSavedTeamsForSubmission([]);
+                }}
+                style={{ 
+                  padding: '12px 24px',
+                  background: '#e5e7eb',
+                  color: '#1f2937',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSubmitTeam}
+                disabled={loading || !selectedTeamForSubmission}
+                style={{ 
+                  padding: '12px 24px',
+                  background: selectedTeamForSubmission ? '#6366f1' : '#cbd5e1',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: selectedTeamForSubmission ? 'pointer' : 'not-allowed',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                {loading ? 'Submitting...' : 'Submit Team'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Replay Modal */}
       {showReplayModal && (
         <div className="modal-overlay" onClick={() => setShowReplayModal(false)}>
@@ -5940,6 +8252,68 @@ Replays must be posted to the appropriate channel.`;
               >
                 {loading ? 'Saving...' : 'Save Replay'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Match Replay Upload Modal */}
+      {showMatchReplayModal && (
+        <div className="modal-overlay" onClick={() => setShowMatchReplayModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Upload Replay Link</h2>
+              <button onClick={() => setShowMatchReplayModal(false)} className="modal-close">&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '15px', color: '#666' }}>
+                Enter the Pokemon Showdown replay link for this match
+              </p>
+              <input
+                type="url"
+                value={matchReplayLink}
+                onChange={(e) => setMatchReplayLink(e.target.value)}
+                placeholder="https://replay.pokemonshowdown.com/..."
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '14px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  marginBottom: '15px'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => {
+                    setShowMatchReplayModal(false);
+                    setMatchReplayLink('');
+                  }}
+                  style={{ 
+                    padding: '8px 16px',
+                    background: '#e0e0e0',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveReplayLink}
+                  disabled={loading || !matchReplayLink.trim()}
+                  style={{ 
+                    padding: '8px 16px',
+                    background: matchReplayLink.trim() ? '#3b82f6' : '#ccc',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: matchReplayLink.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

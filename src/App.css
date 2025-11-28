@@ -3,8 +3,6 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 25px;
   flex-direction: column;
-  justify-content: center;
-  align-items:  center;
   width: 100%;
   min-height: 100vh;
   background: linear-gradient(to bottom, #ffffff 0%, #e5e7eb 100%);

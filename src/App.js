@@ -1925,7 +1925,13 @@ function AppContent() {
         teamSizeLimit: settings.teamSizeLimit || 6,
         allowTrading: settings.allowTrading || false,
         maxTradeLimit: settings.maxTradeLimit || 0,
-        unlimitedTrades: settings.unlimitedTrades || false
+        unlimitedTrades: settings.unlimitedTrades || false,
+        genFilter: settings.genFilter || 0,
+        timerEnabled: settings.timerEnabled || false,
+        firstRoundTimer: settings.firstRoundTimer || 480,
+        subsequentRoundTimer: settings.subsequentRoundTimer || 480,
+        allowMega: settings.allowMega || false,
+        allowGmax: settings.allowGmax || false
       });
 
       // Set points map
@@ -2081,6 +2087,11 @@ function AppContent() {
           const mappedCurrentTurn = turnUser?.id || `mongo-${fullDraft.currentTurn}`;
           setCurrentTurn(mappedCurrentTurn);
         }
+      }
+      
+      // Set current turn start time if available (for timer persistence)
+      if (fullDraft.currentTurnStartTime) {
+        setCurrentTurnStartTime(fullDraft.currentTurnStartTime);
       }
 
       // Update connection status in MongoDB
@@ -6562,7 +6573,69 @@ function AppContent() {
           <button className="gen-button" onClick={() => setView('lobby')} style={{ margin: '20px' }}>
             Back to Lobby
           </button>
-          <LeagueManager username={PokemonName || 'Guest'} />
+          <LeagueManager 
+            username={PokemonName || 'Guest'} 
+            onStartLeagueDraft={(leagueCode, draftSettings) => {
+              // Set lobby league code
+              setLobbyLeagueCode(leagueCode);
+              
+              // Apply draft settings to lobby
+              const newSettings = {
+                pointsLimit: draftSettings.pointsLimit || 120,
+                teamSizeLimit: draftSettings.teamSize || 12,
+                allowTrading: draftSettings.allowTrading || false,
+                maxTradeLimit: draftSettings.maxTradeLimit || 0,
+                unlimitedTrades: draftSettings.unlimitedTrades || false,
+                genFilter: draftSettings.allowedGenerations?.[draftSettings.allowedGenerations.length - 1] || 0,
+                timerEnabled: draftSettings.timerEnabled || false,
+                firstRoundTimer: draftSettings.firstRoundTimer || 480,
+                subsequentRoundTimer: draftSettings.subsequentRoundTimer || 480,
+                allowMega: draftSettings.allowMega || false,
+                allowGmax: draftSettings.allowGmax || false
+              };
+              setLobbySettings(newSettings);
+              
+              // Set points map and ban list
+              const newPointsMap = draftSettings.pokemonPointValues || {};
+              const newBanList = draftSettings.bannedPokemon || [];
+              setPointsMap(newPointsMap);
+              setBanList(newBanList);
+              
+              // Create lobby with the settings
+              restoreFullPokemonList();
+              const name = (PokemonName && PokemonName.trim()) ? PokemonName.trim() : `Player-${Math.floor(Math.random()*1000)}`;
+              if (socket) {
+                socket.emit('create_lobby', { 
+                  name,
+                  settings: newSettings,
+                  pointsMap: newPointsMap,
+                  banList: newBanList,
+                  leagueCode: leagueCode
+                }, (resp) => {
+                  if (resp && resp.ok) {
+                    setLobbyCode(resp.code);
+                    setLobbyUsers(resp.users || [name]);
+                    setLocalPlayerName(name);
+                    if (resp.host) setHostId(resp.host);
+                    // Update with confirmed settings from server
+                    if (resp.settings) setLobbySettings(resp.settings);
+                    if (resp.pointsMap) setPointsMap(normalizePointsMap(resp.pointsMap));
+                    if (resp.banList) setBanList(Array.isArray(resp.banList) ? resp.banList : []);
+                    if (resp.pointsRemaining) setPointsRemaining(resp.pointsRemaining);
+                    if (resp.leagueCode) setLobbyLeagueCode(resp.leagueCode);
+                    setView('lobby');
+                  }
+                });
+              } else {
+                // fallback to client-only behavior
+                const code = `${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+                setLobbyCode(code);
+                setLobbyUsers([{ id: `local-${Date.now()}`, name }]);
+                setLocalPlayerName(name);
+                setView('lobby');
+              }
+            }}
+          />
         </div>
       )}
 

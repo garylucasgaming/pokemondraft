@@ -1,8 +1,8 @@
 .league-manager {
   padding: 20px;
   width: 100%;
-  max-width: 100%;
-  margin: 0;
+  max-width: 1000px;
+  margin: 0 auto;
   align-self: stretch;
 }
 
@@ -125,6 +125,7 @@
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
+  z-index: 10;
 }
 
 .league-card-host .league-role-badge {
@@ -138,21 +139,21 @@
 }
 
 .league-card h3 {
-  color: #1d8ca8;
+  color: #00a2ca;
   margin-top: 0;
 }
 
 .league-card p {
   margin: 8px 0;
   font-size: 14px;
-  color: #333;
+  color: #ffffff;
 }
 
 .league-card ul {
   margin: 10px 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #333;
+  color: #ffffff;
 }
 
 .league-card button {
@@ -169,6 +170,22 @@
 
 .league-card button:hover {
   background: #176d83;
+}
+
+.league-card-content {
+  background: rgba(90, 90, 90, 0.75);
+  padding: 15px;
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
+}
+
+.league-card-content h3 {
+  color: #ffffff;
+  background-color: #1d8ca8;
+  margin: 0px;
+  padding-top: 0px; padding-bottom: 4px;
+  border-radius: 6px;
+  padding-left: 8px; padding-right: 8px;
 }
 
 .create-section, .join-section {
@@ -490,22 +507,29 @@
 }
 
 .league-info-item {
-  display: flex;
+  display:flex;
   flex-direction: column;
+  background: rgba(87, 87, 87, 0.623);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 100px;
+  backdrop-filter: blur(5px);
 }
 
 .league-info-label {
   font-weight: bold;
-  color: #1d8ca8;
+  color: #60a5fa;
   font-size: 12px;
   text-transform: uppercase;
+  align-self: center;
   letter-spacing: 0.5px;
   margin-bottom: 5px;
 }
 
 .league-info-value {
   font-size: 16px;
-  color: #333;
+  align-self: center;
+  color: #ffffff;
 }
 
 .status-badge {
@@ -548,9 +572,26 @@
 }
 
 .admin-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 12px;
+  overflow-x: auto;
+}
+
+.admin-buttons .admin-btn {
+  padding: 12px 16px;
+  background: #1d8ca8;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-align: center;
+  white-space: nowrap;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .admin-btn {
@@ -566,7 +607,8 @@
   text-align: center;
 }
 
-.admin-btn:hover {
+.admin-btn:hover,
+.admin-buttons .admin-btn:hover {
   background: #176d83;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(29, 140, 168, 0.3);

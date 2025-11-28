@@ -194,7 +194,12 @@ async function saveDraftSession(lobby) {
         allowTrading: lobby.settings.allowTrading || false,
         maxTradeLimit: lobby.settings.maxTradeLimit || 0,
         unlimitedTrades: lobby.settings.unlimitedTrades || false,
-        genFilter: lobby.settings.genFilter || 0
+        genFilter: lobby.settings.genFilter || 0,
+        timerEnabled: lobby.settings.timerEnabled || false,
+        firstRoundTimer: lobby.settings.firstRoundTimer || 480,
+        subsequentRoundTimer: lobby.settings.subsequentRoundTimer || 480,
+        allowMega: lobby.settings.allowMega || false,
+        allowGmax: lobby.settings.allowGmax || false
       },
       participants: finalParticipants,
       // Map turn order to usernames (not socket IDs which change)
@@ -224,6 +229,7 @@ async function saveDraftSession(lobby) {
             return lobby.currentTurn;
           })()
         : (session?.currentTurn),
+      currentTurnStartTime: lobby.currentTurnStartTime || (session?.currentTurnStartTime) || null,
       draftPokemon: lobby.draftPokemonList || (session?.draftPokemon) || [],
       pointsMap: lobby.pointsMap || (session?.pointsMap) || {},
       banList: lobby.banList || (session?.banList) || [],
@@ -283,20 +289,27 @@ function generateLobbyCode(length = 6) {
 
 io.on('connection', (socket) => {
 
-  socket.on('create_lobby', ({ name, leagueCode }, callback) => {
+  socket.on('create_lobby', ({ name, leagueCode, settings, pointsMap, banList }, callback) => {
     const code = generateLobbyCode();
+    
+    // Use provided settings or defaults
+    const lobbySettings = settings || { pointsLimit: 100, teamSizeLimit: 10, genFilter: 0 };
+    const initialPointsLimit = lobbySettings.pointsLimit || 100;
+    
     const lobby = {
       code,
       lobbyName: '', // Host can set this later
       leagueCode: leagueCode || null, // Optional league association
       host: socket.id,
       users: [{ id: socket.id, name: name || 'Host' }],
-      settings: { pointsLimit: 100, teamSizeLimit: 10, genFilter: 0 },
-      pointsMap: {},
+      settings: lobbySettings,
+      pointsMap: pointsMap || {},
+      banList: banList || [],
       selections: {},
-      pointsRemaining: { [socket.id]: 100 },
+      pointsRemaining: { [socket.id]: initialPointsLimit },
       draftStarted: false,
       currentTurn: null,
+      currentTurnStartTime: null, // ISO timestamp when current turn started
       draftOrder: [],
       snakeDraftDirection: 1, // 1 for forward, -1 for backward
       currentRound: 0,
@@ -313,10 +326,12 @@ io.on('connection', (socket) => {
       ok: true,
       code,
       lobbyName: lobby.lobbyName,
+      leagueCode: lobby.leagueCode,
       host: socket.id,
       users: lobby.users,
       settings: lobby.settings,
       pointsMap: lobby.pointsMap,
+      banList: lobby.banList,
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining
     });
@@ -371,10 +386,12 @@ io.on('connection', (socket) => {
       users: lobby.users,
       settings: lobby.settings,
       pointsMap: lobby.pointsMap,
+      banList: lobby.banList,
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining,
       draftOrder: lobby.draftOrder,
       currentTurn: lobby.currentTurn,
+      currentTurnStartTime: lobby.currentTurnStartTime,
       draftStarted: lobby.draftStarted,
       leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
@@ -414,10 +431,12 @@ io.on('connection', (socket) => {
         users: lobby.users,
         settings: lobby.settings,
         pointsMap: lobby.pointsMap,
+        banList: lobby.banList,
         selections: lobby.selections,
         pointsRemaining: lobby.pointsRemaining,
         draftOrder: lobby.draftOrder,
         currentTurn: lobby.currentTurn,
+        currentTurnStartTime: lobby.currentTurnStartTime,
         leagueCode: lobby.leagueCode,
         tradesCompleted: lobby.tradesCompleted || {},
         playersFinishedTrading: lobby.playersFinishedTrading || []
@@ -446,9 +465,11 @@ io.on('connection', (socket) => {
       users: lobby.users,
       settings: lobby.settings,
       pointsMap: lobby.pointsMap,
+      banList: lobby.banList,
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining,
       currentTurn: lobby.currentTurn,
+      currentTurnStartTime: lobby.currentTurnStartTime,
       leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
       playersFinishedTrading: lobby.playersFinishedTrading || []
@@ -480,9 +501,11 @@ io.on('connection', (socket) => {
       users: lobby.users,
       settings: lobby.settings,
       pointsMap: lobby.pointsMap,
+      banList: lobby.banList,
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining,
       currentTurn: lobby.currentTurn,
+      currentTurnStartTime: lobby.currentTurnStartTime,
       leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
       playersFinishedTrading: lobby.playersFinishedTrading || []
@@ -557,6 +580,8 @@ io.on('connection', (socket) => {
       host: lobby.host,
       users: lobby.users,
       settings: lobby.settings,
+      pointsMap: lobby.pointsMap,
+      banList: lobby.banList,
       leagueCode: lobby.leagueCode
     });
   });
@@ -575,6 +600,7 @@ io.on('connection', (socket) => {
     }
     lobby.draftOrder = userIds;
     lobby.currentTurn = lobby.draftOrder[0];
+    lobby.currentTurnStartTime = new Date().toISOString(); // Set timer start
     lobby.snakeDraftDirection = 1; // Start going forward
     lobby.currentRound = 0;
     
@@ -593,10 +619,12 @@ io.on('connection', (socket) => {
       users: lobby.users,
       settings: lobby.settings,
       pointsMap: lobby.pointsMap,
+      banList: lobby.banList,
       selections: lobby.selections,
       pointsRemaining: lobby.pointsRemaining,
       draftOrder: lobby.draftOrder,
       currentTurn: lobby.currentTurn,
+      currentTurnStartTime: lobby.currentTurnStartTime,
       draftStarted: true,
       leagueCode: lobby.leagueCode,
       tradesCompleted: lobby.tradesCompleted || {},
@@ -659,6 +687,7 @@ io.on('connection', (socket) => {
       const playerExists = lobby.users.some(u => u.id === nextPlayerId);
       if (playerExists) {
         lobby.currentTurn = nextPlayerId;
+        lobby.currentTurnStartTime = new Date().toISOString(); // Reset timer for new turn
         break;
       }
       // Move in the current direction to find next active player
@@ -985,10 +1014,12 @@ io.on('connection', (socket) => {
             users: lobby.users,
             settings: lobby.settings,
             pointsMap: lobby.pointsMap,
+            banList: lobby.banList,
             selections: lobby.selections,
             pointsRemaining: lobby.pointsRemaining,
             draftOrder: lobby.draftOrder,
             currentTurn: lobby.currentTurn,
+            currentTurnStartTime: lobby.currentTurnStartTime,
             leagueCode: lobby.leagueCode,
             tradesCompleted: lobby.tradesCompleted || {},
             playersFinishedTrading: lobby.playersFinishedTrading || []

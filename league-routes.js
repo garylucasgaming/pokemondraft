@@ -59,6 +59,19 @@ router.post('/leagues', async (req, res) => {
   }
 });
 
+// Search leagues by name (for admin purposes)
+router.get('/leagues/search/:name', async (req, res) => {
+  try {
+    const leagues = await League.find({ 
+      name: { $regex: req.params.name, $options: 'i' } 
+    }).select('name code commissionerName status');
+    
+    res.json({ ok: true, leagues });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Get league by code
 router.get('/leagues/:code', async (req, res) => {
   try {
@@ -77,7 +90,13 @@ router.get('/leagues/:code', async (req, res) => {
       }
     }
     
-    res.json({ ok: true, league });
+    // Convert Map to plain object for JSON serialization
+    const leagueObj = league.toObject();
+    if (leagueObj.pokemonPointValues instanceof Map) {
+      leagueObj.pokemonPointValues = Object.fromEntries(leagueObj.pokemonPointValues);
+    }
+    
+    res.json({ ok: true, league: leagueObj });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -249,9 +268,71 @@ router.post('/leagues/invite/:inviteCode/join', async (req, res) => {
 // Get all leagues (for browsing)
 router.get('/leagues', async (req, res) => {
   try {
+    const { username } = req.query;
+    
+    if (username) {
+      console.log('[GET /leagues] Fetching leagues for username:', username);
+      
+      // Get leagues where user is either commissioner or player
+      const commissionerLeagues = await League.find({ 
+        commissionerName: username 
+      }).sort({ createdAt: -1 });
+      console.log('[GET /leagues] Commissioner leagues found:', commissionerLeagues.length);
+      
+      // Get player records for this username (case-insensitive)
+      const playerRecords = await Player.find({ 
+        username: { $regex: new RegExp(`^${username}$`, 'i') }
+      }).populate('leagueId');
+      console.log('[GET /leagues] Player records found:', playerRecords.length);
+      console.log('[GET /leagues] Searching for username:', username);
+      if (playerRecords.length > 0) {
+        console.log('[GET /leagues] Player records:', playerRecords.map(p => ({ 
+          username: p.username, 
+          leagueId: p.leagueId?._id,
+          leagueCode: p.leagueId?.code 
+        })));
+      }
+      
+      // Get league codes from the populated leagueId
+      const playerLeagueCodes = playerRecords
+        .map(p => p.leagueId?.code)
+        .filter(code => code); // Remove any null/undefined values
+      console.log('[GET /leagues] Player league codes:', playerLeagueCodes);
+      
+      // Get leagues where user is a player
+      const playerLeagues = await League.find({ 
+        code: { $in: playerLeagueCodes }
+      }).sort({ createdAt: -1 });
+      console.log('[GET /leagues] Player leagues found:', playerLeagues.length);
+      
+      // Combine and deduplicate by code
+      const leagueMap = new Map();
+      
+      commissionerLeagues.forEach(league => {
+        const leagueObj = { ...league.toObject(), role: 'host' };
+        console.log('[GET /leagues] Adding host league:', league.code, 'with role:', leagueObj.role);
+        leagueMap.set(league.code, leagueObj);
+      });
+      
+      playerLeagues.forEach(league => {
+        if (!leagueMap.has(league.code)) {
+          const leagueObj = { ...league.toObject(), role: 'player' };
+          console.log('[GET /leagues] Adding player league:', league.code, 'with role:', leagueObj.role);
+          leagueMap.set(league.code, leagueObj);
+        }
+      });
+      
+      const leagues = Array.from(leagueMap.values());
+      console.log('[GET /leagues] Returning', leagues.length, 'leagues');
+      console.log('[GET /leagues] League roles:', leagues.map(l => ({ code: l.code, role: l.role })));
+      return res.json({ ok: true, leagues });
+    }
+    
+    // If no username, return all public leagues
     const leagues = await League.find().sort({ createdAt: -1 }).limit(50);
     res.json({ ok: true, leagues });
   } catch (err) {
+    console.error('[GET /leagues] Error:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -260,16 +341,44 @@ router.get('/leagues', async (req, res) => {
 router.put('/leagues/:code', async (req, res) => {
   try {
     const updates = req.body;
+    console.log('Received league update for code:', req.params.code);
+    console.log('Update payload:', updates);
+    
     const league = await League.findOne({ code: req.params.code });
     
     if (!league) {
       return res.status(404).json({ ok: false, error: 'League not found' });
     }
     
-    // Apply updates
+    console.log('League found, current imageUrl:', league.imageUrl);
+    
+    // Deep merge rules if they exist in updates
+    if (updates.rules) {
+      league.rules = {
+        ...league.rules,
+        ...updates.rules
+      };
+      delete updates.rules; // Remove from updates to prevent overwrite
+    }
+    
+    // Apply remaining updates (shallow merge for top-level fields)
     Object.assign(league, updates);
+    console.log('After updates, imageUrl:', league.imageUrl);
+    console.log('After updates, rules:', league.rules);
+    console.log('After updates, format:', league.format);
+    console.log('After updates, pokemonPointValues type:', typeof league.pokemonPointValues);
+    console.log('After updates, pokemonPointValues keys:', league.pokemonPointValues ? Object.keys(league.pokemonPointValues) : 'null');
+    
     await league.save();
-    res.json({ ok: true, league });
+    console.log('League saved successfully');
+    
+    // Convert Map to plain object for JSON serialization
+    const leagueObj = league.toObject();
+    if (leagueObj.pokemonPointValues instanceof Map) {
+      leagueObj.pokemonPointValues = Object.fromEntries(leagueObj.pokemonPointValues);
+    }
+    
+    res.json({ ok: true, league: leagueObj });
   } catch (err) {
     console.error('League update error:', err);
     res.status(500).json({ ok: false, error: err.message });
