@@ -96,6 +96,26 @@ router.get('/leagues/:code', async (req, res) => {
       leagueObj.pokemonPointValues = Object.fromEntries(leagueObj.pokemonPointValues);
     }
     
+    // Convert teams Maps in bracket matches
+    if (leagueObj.bracket && leagueObj.bracket.matches) {
+      leagueObj.bracket.matches = leagueObj.bracket.matches.map(match => {
+        if (match.teams instanceof Map) {
+          match.teams = Object.fromEntries(match.teams);
+        }
+        return match;
+      });
+    }
+    
+    // Convert teams Maps in playoff bracket matches
+    if (leagueObj.playoffBracket && leagueObj.playoffBracket.matches) {
+      leagueObj.playoffBracket.matches = leagueObj.playoffBracket.matches.map(match => {
+        if (match.teams instanceof Map) {
+          match.teams = Object.fromEntries(match.teams);
+        }
+        return match;
+      });
+    }
+    
     res.json({ ok: true, league: leagueObj });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

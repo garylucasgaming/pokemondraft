@@ -2,10 +2,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-loop-func */
 /* eslint-disable no-dupe-keys */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import axios from 'axios';
+import html2canvas from 'html2canvas';
 import { createLeague, browseLeagues, getLeagueByCode, joinLeague, getLeaguePlayers, updateLeague, updateLeagueSchedule, acceptPlayerRequest, kickPlayer, requestToJoinLeague, generateInviteCode, joinByInviteCode } from './api';
 import './LeagueManager.css';
 
@@ -139,6 +140,16 @@ const LeagueManager = ({ username, onStartLeagueDraft }) => {
   const [selectedMatchForUpload, setSelectedMatchForUpload] = useState(null);
   const [matchReplayLink, setMatchReplayLink] = useState('');
 
+  // Match team upload modal state
+  const [showMatchTeamModal, setShowMatchTeamModal] = useState(false);
+  const [selectedMatchForTeamUpload, setSelectedMatchForTeamUpload] = useState(null);
+  const [matchTeamText, setMatchTeamText] = useState('');
+
+  // View match teams modal state
+  const [showViewMatchTeamsModal, setShowViewMatchTeamsModal] = useState(false);
+  const [selectedMatchForView, setSelectedMatchForView] = useState(null);
+  const matchExportRef = useRef(null);
+
   // Team submission modal state
   const [showTeamSubmissionModal, setShowTeamSubmissionModal] = useState(false);
   const [savedTeamsForSubmission, setSavedTeamsForSubmission] = useState([]);
@@ -154,6 +165,9 @@ const LeagueManager = ({ username, onStartLeagueDraft }) => {
   const [editTeamImage, setEditTeamImage] = useState('');
   const [editTeamColor, setEditTeamColor] = useState('#667eea');
   const [editTeamColorEnd, setEditTeamColorEnd] = useState('#764ba2');
+
+  // Ref for exporting team cards
+  const teamCardsRef = useRef(null);
 
   const DEFAULT_DRAFT_RULES = `-credit to abriel and princess autumn for this default text-
 You have up to 120 points with which to draft 10-12 Pokémon. Costs are listed on the draft board.
@@ -541,6 +555,8 @@ Replays must be posted to the appropriate channel.`;
       
       // Load bracket if exists
       if (leagueData.league.bracket && leagueData.league.bracket.matches) {
+        console.log('Loading bracket matches:', leagueData.league.bracket.matches);
+        console.log('First match teams data:', leagueData.league.bracket.matches[0]?.teams);
         setBracketMatches(leagueData.league.bracket.matches);
       }
       
@@ -861,6 +877,260 @@ Replays must be posted to the appropriate channel.`;
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle team upload for a match
+  const handleUploadMatchTeam = (match) => {
+    // Check if user already uploaded a team
+    const existingTeam = match.teams?.[username];
+    
+    if (existingTeam) {
+      const confirmOverwrite = window.confirm(
+        'You have already uploaded a team for this match. Do you want to overwrite it?'
+      );
+      if (!confirmOverwrite) {
+        return; // User cancelled
+      }
+    }
+    
+    setSelectedMatchForTeamUpload(match);
+    // Load existing team for this user if it exists
+    setMatchTeamText(existingTeam || '');
+    setShowMatchTeamModal(true);
+  };
+
+  const handleSaveMatchTeam = async () => {
+    if (!selectedMatchForTeamUpload) return;
+    
+    try {
+      setLoading(true);
+      
+      // Determine if this is a playoff match
+      const isPlayoffMatch = playoffMatches.some(m => m.id === selectedMatchForTeamUpload.id);
+      const matches = isPlayoffMatch ? playoffMatches : bracketMatches;
+      const setMatches = isPlayoffMatch ? setPlayoffMatches : setBracketMatches;
+      
+      const updated = matches.map(m => {
+        if (m === selectedMatchForTeamUpload) {
+          return { 
+            ...m, 
+            teams: { 
+              ...m.teams, 
+              [username]: matchTeamText 
+            }
+          };
+        }
+        return m;
+      });
+      setMatches(updated);
+      
+      console.log('Saving team to match. Updated matches:', updated);
+      console.log('First match with teams:', updated.find(m => m.teams));
+      
+      // Save to backend
+      const updatePayload = isPlayoffMatch
+        ? { playoffBracket: { matches: updated, started: true } }
+        : { bracket: { type: currentLeague.bracketType, matches: updated } };
+      
+      console.log('Update payload:', updatePayload);
+      
+      await updateLeague(currentLeague.code, updatePayload);
+      
+      setMessage('Team saved successfully!');
+      setTimeout(() => setMessage(''), 3000);
+      setShowMatchTeamModal(false);
+      setMatchTeamText('');
+      setSelectedMatchForTeamUpload(null);
+    } catch (err) {
+      setError('Failed to save team: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle viewing match teams
+  const handleViewMatchTeams = (match) => {
+    console.log('handleViewMatchTeams called with match:', match);
+    console.log('Match has teams:', match.teams);
+    setSelectedMatchForView(match);
+    setShowViewMatchTeamsModal(true);
+    console.log('Modal should open now');
+  };
+
+  // Handle exporting match as image
+  const handleExportMatch = async () => {
+    if (!matchExportRef.current) return;
+
+    try {
+      setLoading(true);
+      const canvas = await html2canvas(matchExportRef.current, {
+        backgroundColor: '#1a1a2e',
+        scale: 2,
+        logging: false,
+        useCORS: true
+      });
+      
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const matchName = `${selectedMatchForView?.player1 || 'Team1'}_vs_${selectedMatchForView?.player2 || 'Team2'}`;
+        link.download = `match_${matchName}.png`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      
+      setMessage('Match exported successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Failed to export match: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Parse Showdown format team text to extract Pokemon names
+  const parseTeamText = (teamText) => {
+    if (!teamText) return [];
+    
+    const lines = teamText.split('\n');
+    const pokemon = [];
+    
+    for (let line of lines) {
+      line = line.trim();
+      if (!line || line.startsWith('-') || line.startsWith('Ability:') || 
+          line.startsWith('EVs:') || line.startsWith('Tera Type:') || 
+          line.startsWith('IVs:') || line.startsWith('Shiny:') || 
+          line.includes('Nature')) {
+        continue;
+      }
+      
+      // Extract pokemon name (before @ if item, or whole line)
+      let pokemonName = line.split('@')[0].trim();
+      if (pokemonName && pokemon.length < 6) {
+        pokemon.push(pokemonName.toLowerCase());
+      }
+    }
+    
+    return pokemon;
+  };
+
+  // Get Pokemon sprite URL from name
+  const getPokemonSpriteUrl = (pokemonName) => {
+    if (!pokemonName) return null;
+    
+    // Normalize the name for PokeAPI
+    let normalizedName = pokemonName.toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-') // Replace special chars with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    
+    // Handle special cases
+    const specialCases = {
+      'nidoran-f': 'nidoran-f',
+      'nidoran-m': 'nidoran-m',
+      'mr-mime': 'mr-mime',
+      'mime-jr': 'mime-jr',
+      'type-null': 'type-null',
+      'jangmo-o': 'jangmo-o',
+      'hakamo-o': 'hakamo-o',
+      'kommo-o': 'kommo-o',
+      'tapu-koko': 'tapu-koko',
+      'tapu-lele': 'tapu-lele',
+      'tapu-bulu': 'tapu-bulu',
+      'tapu-fini': 'tapu-fini',
+      'porygon-z': 'porygon-z',
+      'ho-oh': 'ho-oh'
+    };
+    
+    if (specialCases[normalizedName]) {
+      normalizedName = specialCases[normalizedName];
+    }
+    
+    return `https://pokeapi.co/api/v2/pokemon/${normalizedName}`;
+  };
+
+  // Pokemon Card Component for displaying individual pokemon with sprite
+  const PokemonCard = ({ pokemonName, gradientStart, gradientEnd }) => {
+    const [spriteUrl, setSpriteUrl] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
+    
+    React.useEffect(() => {
+      const fetchSprite = async () => {
+        try {
+          const apiUrl = getPokemonSpriteUrl(pokemonName);
+          const response = await fetch(apiUrl);
+          if (response.ok) {
+            const data = await response.json();
+            setSpriteUrl(data.sprites.front_default);
+          }
+        } catch (err) {
+          console.error('Failed to fetch sprite for', pokemonName, err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchSprite();
+    }, [pokemonName]);
+    
+    return (
+      <div 
+        style={{
+          aspectRatio: '1',
+          border: '1px solid rgba(255, 255, 255, 0.5)',
+          borderRadius: '8px',
+          background: `linear-gradient(135deg, ${gradientStart} 0%, ${gradientEnd} 100%)`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px',
+          transition: 'transform 0.2s, box-shadow 0.2s',
+          cursor: 'pointer',
+          position: 'relative'
+        }}
+        title={pokemonName}
+      >
+        {loading ? (
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '8px' }}>Loading...</div>
+        ) : spriteUrl ? (
+          <>
+            <img 
+              src={spriteUrl} 
+              alt={pokemonName}
+              style={{
+                width: '80%',
+                height: 'auto',
+                imageRendering: 'pixelated',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+              }}
+            />
+            <div style={{ 
+              fontSize: '8px', 
+              color: '#fff',
+              fontWeight: '600',
+              textAlign: 'center',
+              textTransform: 'capitalize',
+              wordBreak: 'break-word',
+              marginTop: '2px'
+            }}>
+              {pokemonName}
+            </div>
+          </>
+        ) : (
+          <div style={{ 
+            fontSize: '8px', 
+            color: '#fff',
+            fontWeight: '600',
+            textAlign: 'center',
+            textTransform: 'capitalize',
+            wordBreak: 'break-word'
+          }}>
+            {pokemonName}
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Handle player flagging a match result
@@ -1264,6 +1534,77 @@ Replays must be posted to the appropriate channel.`;
       setError('Failed to remove image: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportTeams = async () => {
+    console.log('handleExportTeams called');
+    console.log('teamCardsRef.current:', teamCardsRef.current);
+    console.log('players.length:', players?.length);
+    console.log('loading:', loading);
+    
+    if (loading) {
+      setError('Please wait for teams to finish loading');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    
+    if (!players || players.length === 0) {
+      setError('No teams available to export');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    
+    if (!teamCardsRef.current) {
+      setError('Team cards element not found. Please try again.');
+      setTimeout(() => setError(''), 3000);
+      console.error('teamCardsRef.current is null');
+      return;
+    }
+
+    try {
+      setMessage('Generating image...');
+
+      // Wait a moment for any state updates
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      console.log('Starting export with element:', teamCardsRef.current);
+      console.log('Element children:', teamCardsRef.current.children.length);
+
+      const canvas = await html2canvas(teamCardsRef.current, {
+        backgroundColor: '#f4f8ff',
+        scale: 2, // Higher quality
+        logging: true, // Enable logging for debugging
+        useCORS: true, // Allow cross-origin images
+        allowTaint: true
+      });
+
+      console.log('Canvas created:', canvas.width, 'x', canvas.height);
+
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setError('Failed to create image');
+          setTimeout(() => setError(''), 3000);
+          return;
+        }
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const leagueName = currentLeague?.name || 'league';
+        const sanitizedName = leagueName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `${sanitizedName}_teams.png`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        
+        setMessage('Teams exported successfully!');
+        setTimeout(() => setMessage(''), 3000);
+      });
+    } catch (err) {
+      console.error('Export error:', err);
+      setError('Failed to export teams: ' + err.message);
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -2992,13 +3333,12 @@ Replays must be posted to the appropriate channel.`;
             ← Back to Dashboard
           </button>
           
-          {/* Admin View */}
-          {currentLeague.commissionerName === username ? (
-            <>
-              <div className="league-view-header">
-                <h2>{currentLeague.name}</h2>
-                <span className="admin-badge">Administrator</span>
-              </div>
+          {/* League View */}
+          <>
+            <div className="league-view-header">
+              <h2>{currentLeague.name}</h2>
+              {currentLeague.commissionerName === username && <span className="admin-badge">Administrator</span>}
+            </div>
 
               <div 
                 className="league-info-grid"
@@ -3344,64 +3684,62 @@ Replays must be posted to the appropriate channel.`;
                       );
                     })()}
                   </div>
-                  {currentLeague.commissionerName === username && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {bracketView === 'regular' && currentLeague?.bracketType === 'round_robin' && !playoffsStarted && (
-                        <button
-                          onClick={handleStartPlayoffs}
-                          disabled={loading || players.length < 2}
-                          style={{
-                            padding: '8px 14px',
-                            fontSize: '13px',
-                            background: players.length < 2 ? '#e5e7eb' : '#ec4899',
-                            color: players.length < 2 ? '#94a3b8' : '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: players.length < 2 ? 'not-allowed' : 'pointer',
-                            fontWeight: '600'
-                          }}
-                        >
-                          🏆 Start Playoffs
-                        </button>
-                      )}
-                      {bracketView === 'playoffs' && playoffsStarted && (
-                        <button
-                          onClick={handleCancelPlayoffs}
-                          disabled={loading}
-                          style={{
-                            padding: '8px 14px',
-                            fontSize: '13px',
-                            background: '#ef4444',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            fontWeight: '600'
-                          }}
-                        >
-                          ✕ Cancel Playoffs
-                        </button>
-                      )}
-                      {bracketView === 'regular' && (
-                        <button
-                          onClick={handleRegenerateDraft}
-                          className="admin-btn"
-                          style={{
-                            padding: '8px 16px',
-                            fontSize: '13px',
-                            background: '#f59e0b',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: '600'
-                          }}
-                        >
-                          Regenerate Bracket
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {currentLeague.commissionerName === username && bracketView === 'regular' && currentLeague?.bracketType === 'round_robin' && !playoffsStarted && (
+                      <button
+                        onClick={handleStartPlayoffs}
+                        disabled={loading || players.length < 2}
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '13px',
+                          background: players.length < 2 ? '#e5e7eb' : '#ec4899',
+                          color: players.length < 2 ? '#94a3b8' : '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: players.length < 2 ? 'not-allowed' : 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        🏆 Start Playoffs
+                      </button>
+                    )}
+                    {currentLeague.commissionerName === username && bracketView === 'playoffs' && playoffsStarted && (
+                      <button
+                        onClick={handleCancelPlayoffs}
+                        disabled={loading}
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '13px',
+                          background: '#ef4444',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✕ Cancel Playoffs
+                      </button>
+                    )}
+                    {currentLeague.commissionerName === username && bracketView === 'regular' && (
+                      <button
+                        onClick={handleRegenerateDraft}
+                        className="admin-btn"
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          background: '#f59e0b',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Regenerate Bracket
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {bracketView === 'playoffs' && !playoffsStarted ? (
@@ -3861,6 +4199,53 @@ Replays must be posted to the appropriate channel.`;
                                           </button>
                                         )
                                       )}
+                                    </div>
+
+                                    {/* Team Upload Section */}
+                                    <div style={{ marginTop: '8px' }}>
+                                      {isPlayerInMatch && (
+                                        <button
+                                          onClick={() => handleUploadMatchTeam(match)}
+                                          style={{
+                                            padding: '6px 12px',
+                                            fontSize: '12px',
+                                            background: match.teams?.[username] ? '#10b981' : '#8b5cf6',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            width: '100%'
+                                          }}
+                                        >
+                                          {match.teams?.[username] ? '✓ Team Uploaded' : '📋 Upload Team'}
+                                        </button>
+                                      )}
+                                      {match.teams && Object.keys(match.teams).length > 0 && (
+                                        <div style={{ marginTop: '6px', fontSize: '11px', color: '#666' }}>
+                                          {Object.keys(match.teams).map(playerName => (
+                                            <div key={playerName} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: '#10b981' }}>✓</span>
+                                              <span>{playerName}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <button
+                                        onClick={() => handleViewMatchTeams(match)}
+                                        style={{
+                                          padding: '6px 12px',
+                                          fontSize: '12px',
+                                          background: '#3b82f6',
+                                          color: '#fff',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          width: '100%',
+                                          marginTop: '6px'
+                                        }}
+                                      >
+                                        👁️ View Teams
+                                      </button>
                                     </div>
 
                                     {/* Admin Approval Section */}
@@ -4373,6 +4758,53 @@ Replays must be posted to the appropriate channel.`;
                                       )}
                                     </div>
 
+                                    {/* Team Upload Section */}
+                                    <div style={{ marginTop: '8px' }}>
+                                      {isPlayerInMatch && (
+                                        <button
+                                          onClick={() => handleUploadMatchTeam(match)}
+                                          style={{
+                                            padding: '6px 12px',
+                                            fontSize: '12px',
+                                            background: match.teams?.[username] ? '#10b981' : '#8b5cf6',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            width: '100%'
+                                          }}
+                                        >
+                                          {match.teams?.[username] ? '✓ Team Uploaded' : '📋 Upload Team'}
+                                        </button>
+                                      )}
+                                      {match.teams && Object.keys(match.teams).length > 0 && (
+                                        <div style={{ marginTop: '6px', fontSize: '11px', color: '#666' }}>
+                                          {Object.keys(match.teams).map(playerName => (
+                                            <div key={playerName} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: '#10b981' }}>✓</span>
+                                              <span>{playerName}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <button
+                                        onClick={() => handleViewMatchTeams(match)}
+                                        style={{
+                                          padding: '6px 12px',
+                                          fontSize: '12px',
+                                          background: '#3b82f6',
+                                          color: '#fff',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          width: '100%',
+                                          marginTop: '6px'
+                                        }}
+                                      >
+                                        👁️ View Teams
+                                      </button>
+                                    </div>
+
                                     {/* Admin Approval Section */}
                                     {currentLeague.commissionerName === username && match.needsApproval && (
                                       <div style={{
@@ -4444,13 +4876,23 @@ Replays must be posted to the appropriate channel.`;
                 ) : null}
               </div>
 
-                <div className="league-section">
+                <div className="league-section" ref={teamCardsRef}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div>
                     <h3 style={{ margin: 0 }}>Players</h3>
                     <p className="player-count" style={{ margin: '5px 0 0 0' }}>{players.length}/{currentLeague.maxPlayers || '∞'} players</p>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
+                    {players.length > 0 && (
+                      <button 
+                        onClick={handleExportTeams}
+                        className="admin-btn" 
+                        style={{ margin: 0 }}
+                        disabled={loading}
+                      >
+                        📸 Export Teams
+                      </button>
+                    )}
                     {players.some(p => p.username === username) && (
                       <>
                         <button 
@@ -4497,12 +4939,14 @@ Replays must be posted to the appropriate channel.`;
                 ) : players.length === 0 ? (
                   <p>No players have joined yet.</p>
                 ) : (
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    gap: '16px',
-                    marginTop: '20px'
-                  }}>
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      gap: '16px',
+                      marginTop: '20px'
+                    }}
+                  >
                     {players.map((player, idx) => {
                       const winRate = player.wins + player.losses > 0
                         ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1)
@@ -4885,500 +5329,6 @@ Replays must be posted to the appropriate channel.`;
                 </div>
               </div>
             </>
-          ) : (
-            /* Player View */
-            <>
-              <div className="league-view-header">
-                <h2>{currentLeague.name}</h2>
-              </div>
-
-              <div 
-                className="league-info-grid"
-                style={{
-                  backgroundImage: leagueImageUrl ? `url(${leagueImageUrl})` : 'none',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  position: 'relative'
-                }}
-              >
-                {players.some(p => p.username === username) && (
-                  <div className="league-info-item">
-                    <div className="league-info-label">League Code</div>
-                    <div className="league-info-value">{currentLeague.code}</div>
-                  </div>
-                )}
-                <div className="league-info-item">
-                  <div className="league-info-label">Commissioner</div>
-                  <div className="league-info-value">{currentLeague.commissionerName || currentLeague.commissioner}</div>
-                </div>
-                <div className="league-info-item">
-                  <div className="league-info-label">Status</div>
-                  <div className="league-info-value">
-                    <span className={`status-badge ${currentLeague.status}`}>
-                      {currentLeague.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="league-info-item">
-                  <div className="league-info-label">Duration</div>
-                  <div className="league-info-value">{currentLeague.leagueWeeks || 'Not set'} weeks</div>
-                </div>
-                <div className="league-info-item">
-                  <div className="league-info-label">Bracket Type</div>
-                  <div className="league-info-value">
-                    {currentLeague.bracketType ? currentLeague.bracketType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Not set'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="league-section">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>Standings</h3>
-                    <p className="player-count" style={{ margin: '5px 0 0 0' }}>{players.length} players</p>
-                  </div>
-                  {players.some(p => p.username === username) && (
-                    <button 
-                      onClick={() => {
-                        setShowTeamSubmissionModal(true);
-                        loadSavedTeamsForSubmission();
-                      }} 
-                      className="admin-btn" 
-                      style={{ margin: 0 }}
-                    >
-                      Submit Draft Team
-                    </button>
-                  )}
-                </div>
-                {loading ? (
-                  <p>Loading standings...</p>
-                ) : players.length === 0 ? (
-                  <p>No players have joined yet.</p>
-                ) : (
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    gap: '16px',
-                    marginTop: '20px'
-                  }}>
-                    {players.map((player, idx) => {
-                      const winRate = player.wins + player.losses > 0
-                        ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1)
-                        : '0.0';
-                      
-                      const teamData = player.submittedTeamId && playerTeamData[player.submittedTeamId] 
-                        ? playerTeamData[player.submittedTeamId] 
-                        : null;
-                      
-                      return (
-                        <div 
-                          key={player._id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '24px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            padding: '24px',
-                            background: `linear-gradient(135deg, ${player.teamCustomization?.cardColor || '#667eea'} 0%, ${player.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                            transition: 'transform 0.2s, box-shadow 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateX(4px)';
-                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateX(0)';
-                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                          }}
-                        >
-                            {/* Team Image */}
-                            <div style={{
-                              width: '80px',
-                              height: '80px',
-                              borderRadius: '12px',
-                              background: 'rgba(255, 255, 255, 0.2)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                              fontSize: '32px',
-                              fontWeight: '700',
-                              color: '#fff',
-                              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                              overflow: 'hidden'
-                            }}>
-                              {(player.teamCustomization?.teamImage?.startsWith('http') || player.teamCustomization?.teamImage?.startsWith('data:')) ? (
-                                <img 
-                                  key={player.teamCustomization.teamImage}
-                                  src={player.teamCustomization.teamImage} 
-                                  alt="Team" 
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                  onError={(e) => {
-                                    console.log('Image failed to load (standings)');
-                                    e.target.style.display = 'none';
-                                    e.target.parentElement.textContent = (player.teamCustomization?.teamName || teamData?.name || player.username || 'T').charAt(0).toUpperCase();
-                                  }}
-                                  onLoad={() => console.log('Image loaded (standings)')}
-                                />
-                              ) : (
-                                player.teamCustomization?.teamImage || (player.teamCustomization?.teamName || teamData?.name || player.username || 'T').charAt(0).toUpperCase()
-                              )}
-                            </div>
-
-                          {/* Team Info */}
-                          <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
-                            <h4 style={{ 
-                              margin: '0 0 4px 0', 
-                              fontSize: '18px', 
-                              fontWeight: '600',
-                              color: '#fff'
-                            }}>
-                              {player.teamCustomization?.teamName || teamData?.name || `Team ${idx + 1}`}
-                            </h4>
-                            <div style={{ 
-                              fontSize: '14px', 
-                              color: 'rgba(255, 255, 255, 0.9)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px'
-                            }}>
-                              <span>Coach: <span style={{ fontWeight: '500', color: '#fff' }}>{player.username}</span></span>
-                              {player.username === username && player.teamSubmitted && (
-                                <button
-                                  onClick={() => {
-                                    setEditingTeam(player);
-                                    setEditTeamName(player.teamCustomization?.teamName || teamData?.name || `Team ${idx + 1}`);
-                                    setEditTeamImage(player.teamCustomization?.teamImage || '');
-                                    setEditTeamColor(player.teamCustomization?.cardColor || '#667eea');
-                                    setEditTeamColorEnd(player.teamCustomization?.cardColorEnd || '#764ba2');
-                                    setShowEditTeamModal(true);
-                                  }}
-                                  style={{
-                                    padding: '4px 12px',
-                                    fontSize: '12px',
-                                    background: '#3b82f6',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    transition: 'background 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#2563eb'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = '#3b82f6'}
-                                >
-                                  Edit Team
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Stats */}
-                          <div style={{ 
-                            display: 'flex', 
-                            gap: '32px',
-                            flexShrink: 0
-                          }}>
-                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
-                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Wins</div>
-                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{player.wins || 0}</div>
-                            </div>
-                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
-                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Losses</div>
-                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{player.losses || 0}</div>
-                            </div>
-                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
-                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Win %</div>
-                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{winRate}%</div>
-                            </div>
-                          </div>
-
-                          {/* Pokemon Team */}
-                          <div style={{ 
-                            borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
-                            paddingLeft: '24px',
-                            flexShrink: 0
-                          }}>
-                            {teamData ? (
-                              <div style={{
-                                background: 'rgba(255, 255, 255, 0.15)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                borderRadius: '12px',
-                                padding: '12px',
-                                backdropFilter: 'blur(10px)'
-                              }}>
-                                <div style={{
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  color: '#fff',
-                                  marginBottom: '10px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>
-                                  Pokémon Team
-                                </div>
-                                <div style={{ 
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(5, 56px)',
-                                  gap: '8px'
-                                }}>
-                                  {teamData.pokemon.map((pokemon, idx) => (
-                                    <div 
-                                      key={idx}
-                                      style={{
-                                        width: '56px',
-                                        height: '56px',
-                                        border: '1px solid rgba(255, 255, 255, 0.5)',
-                                        borderRadius: '8px',
-                                        background: `linear-gradient(135deg, ${player.teamCustomization?.cardColor || '#667eea'} 0%, ${player.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        transition: 'transform 0.2s, box-shadow 0.2s',
-                                        cursor: 'pointer'
-                                      }}
-                                      title={pokemon.name}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'scale(1.1)';
-                                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'scale(1)';
-                                        e.currentTarget.style.boxShadow = 'none';
-                                      }}
-                                    >
-                                      <img
-                                        src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id || idx + 1}.png`}
-                                        alt={pokemon.name}
-                                        style={{ 
-                                          width: '48px', 
-                                          height: '48px',
-                                          objectFit: 'contain'
-                                        }}
-                                        onError={(e) => {
-                                          e.target.style.display = 'none';
-                                        }}
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : player.teamSubmitted ? (
-                              <div style={{ 
-                                color: '#fff',
-                                fontSize: '14px',
-                                fontWeight: '500'
-                              }}>
-                                ✓ Team Submitted (Loading...)
-                              </div>
-                            ) : (
-                              <div style={{ 
-                                color: 'rgba(255, 255, 255, 0.7)',
-                                fontSize: '14px'
-                              }}>
-                                No team submitted
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Rules Section - Read-only for players */}
-              <div className="league-section">
-                <h3>League Rules</h3>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{ color: '#1d8ca8', marginBottom: '8px' }}>Draft Rules</h4>
-                  <div style={{
-                    background: '#f8f9fa',
-                    padding: '15px',
-                    borderRadius: '4px',
-                    border: '1px solid #e5e7eb',
-                    whiteSpace: 'pre-wrap',
-                    fontSize: '14px',
-                    lineHeight: '1.6'
-                  }}>
-                    {draftRules}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 style={{ color: '#1d8ca8', marginBottom: '8px' }}>Battle Rules</h4>
-                  <div style={{
-                    background: '#f8f9fa',
-                    padding: '15px',
-                    borderRadius: '4px',
-                    border: '1px solid #e5e7eb',
-                    whiteSpace: 'pre-wrap',
-                    fontSize: '14px',
-                    lineHeight: '1.6'
-                  }}>
-                    {battleRules}
-                  </div>
-                </div>
-              </div>
-
-              {/* Schedule Section - Player View */}
-              <div className="league-section">
-                <h3>Schedule</h3>
-                <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '15px' }}>
-                  {/* Week Navigation */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <button 
-                      onClick={() => {
-                        const newWeek = new Date(currentWeekStart);
-                        newWeek.setDate(newWeek.getDate() - 7);
-                        setCurrentWeekStart(newWeek);
-                      }}
-                      className="back-btn"
-                      style={{ padding: '5px 15px' }}
-                    >
-                      ← Previous Week
-                    </button>
-                    <span style={{ fontWeight: '600', fontSize: '15px' }}>
-                      {currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                    <button 
-                      onClick={() => {
-                        const newWeek = new Date(currentWeekStart);
-                        newWeek.setDate(newWeek.getDate() + 7);
-                        setCurrentWeekStart(newWeek);
-                      }}
-                      className="admin-btn"
-                      style={{ padding: '5px 15px' }}
-                    >
-                      Next Week →
-                    </button>
-                  </div>
-
-                  {/* Week View */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', overflow: 'visible' }}>
-                    {Array.from({ length: 7 }).map((_, index) => {
-                      const day = new Date(currentWeekStart);
-                      day.setDate(day.getDate() + index);
-                      const dayEvents = events.filter(e => 
-                        new Date(e.date).toDateString() === day.toDateString()
-                      );
-                      const isToday = day.toDateString() === new Date().toDateString();
-
-                      return (
-                        <div 
-                          key={index}
-                          style={{
-                            border: isToday ? '2px solid #1d8ca8' : '1px solid #e0e0e0',
-                            borderRadius: '6px',
-                            padding: '10px',
-                            background: isToday ? '#e6f7ff' : '#f8f9fa',
-                            minHeight: '120px',
-                            overflow: 'visible',
-                            position: 'relative'
-                          }}
-                        >
-                          <div style={{ fontSize: '11px', fontWeight: '600', color: '#666', marginBottom: '3px' }}>
-                            {day.toLocaleDateString('en-US', { weekday: 'short' })}
-                          </div>
-                          <div style={{ fontSize: '18px', fontWeight: '700', color: '#333', marginBottom: '8px' }}>
-                            {day.getDate()}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'visible', position: 'relative' }}>
-                            {dayEvents.map(event => (
-                              <div
-                                key={event.id}
-                                style={{
-                                  position: 'relative'
-                                }}
-                                onMouseEnter={() => setHoveredEvent(event.id)}
-                                onMouseLeave={() => setHoveredEvent(null)}
-                              >
-                                <div
-                                  style={{
-                                    padding: '4px 6px',
-                                    borderRadius: '3px',
-                                    fontSize: '10px',
-                                    fontWeight: '600',
-                                    color: '#fff',
-                                    background:
-                                      event.type === 'draft_start' ? '#8b5cf6' :
-                                      event.type === 'match' ? '#3b82f6' :
-                                      event.type === 'meeting' ? '#10b981' :
-                                      event.type === 'playoffs_start' ? '#ec4899' :
-                                      event.type === 'playoffs_end' ? '#f97316' :
-                                      event.type === 'league_end' ? '#ef4444' :
-                                      '#f59e0b',
-                                    textOverflow: 'ellipsis',
-                                    overflow: 'hidden',
-                                    whiteSpace: 'nowrap',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  {event.type.replace(/_/g, ' ')}
-                                </div>
-                                {hoveredEvent === event.id && (
-                                  <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: '0',
-                                    marginTop: '4px',
-                                    background: '#fff',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
-                                    padding: '10px',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                    zIndex: 1000,
-                                    minWidth: '200px',
-                                    whiteSpace: 'normal',
-                                    color: '#333',
-                                    fontSize: '12px'
-                                  }}>
-                                    <div style={{ fontWeight: '700', marginBottom: '6px', color:
-                                      event.type === 'draft_start' ? '#8b5cf6' :
-                                      event.type === 'match' ? '#3b82f6' :
-                                      event.type === 'meeting' ? '#10b981' :
-                                      event.type === 'playoffs_start' ? '#ec4899' :
-                                      event.type === 'playoffs_end' ? '#f97316' :
-                                      event.type === 'league_end' ? '#ef4444' :
-                                      '#f59e0b'
-                                    }}>
-                                      {event.type.replace(/_/g, ' ').toUpperCase()}
-                                    </div>
-                                    {event.notes && (
-                                      <div style={{ marginBottom: '8px', fontSize: '11px', color: '#666', lineHeight: '1.4' }}>
-                                        {event.notes}
-                                      </div>
-                                    )}
-                                    {event.players && event.players.length > 0 && (
-                                      <div>
-                                        <div style={{ fontWeight: '600', fontSize: '10px', color: '#888', marginBottom: '4px' }}>PLAYERS:</div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                          {event.players.map(player => (
-                                            <span key={player} style={{ background: '#e0e0e0', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', color: '#333' }}>
-                                              {player}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
         </div>
       )}
 
@@ -9090,6 +9040,372 @@ Replays must be posted to the appropriate channel.`;
                 >
                   {loading ? 'Saving...' : 'Save'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Match Team Upload Modal */}
+      {showMatchTeamModal && (
+        <div className="modal-overlay" onClick={() => setShowMatchTeamModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>Upload Team for Match</h2>
+              <button onClick={() => setShowMatchTeamModal(false)} className="modal-close">&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '15px', color: '#666' }}>
+                Paste your team in Pokemon Showdown format (the format used when exporting from the team builder)
+              </p>
+              <textarea
+                value={matchTeamText}
+                onChange={(e) => setMatchTeamText(e.target.value)}
+                placeholder={`Example:\n\narchaludon\n\ntogekiss\n\nscizor @ expert-belt\nAbility: technician\nTera Type: Water\nEVs: 255 HP / 255 Spe\n- swords-dance\n- double-team\n- mimic\n- hyper-beam\n\ngholdengo\n\nkingambit\n\nforretress`}
+                style={{
+                  width: '100%',
+                  minHeight: '300px',
+                  padding: '10px',
+                  fontSize: '13px',
+                  fontFamily: 'monospace',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  marginBottom: '15px',
+                  resize: 'vertical'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => {
+                    setShowMatchTeamModal(false);
+                    setMatchTeamText('');
+                  }}
+                  style={{ 
+                    padding: '8px 16px',
+                    background: '#e0e0e0',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveMatchTeam}
+                  disabled={loading || !matchTeamText.trim()}
+                  style={{ 
+                    padding: '8px 16px',
+                    background: matchTeamText.trim() ? '#8b5cf6' : '#ccc',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: matchTeamText.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {loading ? 'Saving...' : 'Save Team'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Match Teams Modal */}
+      {showViewMatchTeamsModal && selectedMatchForView && (
+        <div className="modal-overlay" onClick={() => {
+          console.log('Closing modal');
+          setShowViewMatchTeamsModal(false);
+          setSelectedMatchForView(null);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1200px', width: '90%' }}>
+            <div className="modal-header">
+              <h2>Match Teams</h2>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button 
+                  onClick={handleExportMatch}
+                  disabled={loading}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  {loading ? 'Exporting...' : 'Export as Image'}
+                </button>
+                <button onClick={() => setShowViewMatchTeamsModal(false)} className="modal-close">&times;</button>
+              </div>
+            </div>
+            <div className="modal-body" style={{ padding: '30px 20px' }}>
+              <div ref={matchExportRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '40px', background: '#1a1a2e', padding: '20px', borderRadius: '16px' }}>
+                {/* Player 1 Team */}
+                {(() => {
+                  const player1 = players.find(p => p.username === selectedMatchForView.player1);
+                  const team1Data = player1?.submittedTeamId && playerTeamData[player1.submittedTeamId] 
+                    ? playerTeamData[player1.submittedTeamId] 
+                    : null;
+                  const uploadedTeam1 = selectedMatchForView.teams?.[selectedMatchForView.player1];
+                  const pokemon1 = uploadedTeam1 ? parseTeamText(uploadedTeam1) : [];
+
+                  return (
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '20px',
+                      padding: '30px',
+                      background: `linear-gradient(135deg, ${player1?.teamCustomization?.cardColor || '#667eea'} 0%, ${player1?.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}>
+                      {/* Team Image */}
+                      <div style={{
+                        width: '180px',
+                        height: '180px',
+                        borderRadius: '16px',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '72px',
+                        fontWeight: '700',
+                        color: '#fff',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                        overflow: 'hidden'
+                      }}>
+                        {(player1?.teamCustomization?.teamImage?.startsWith('http') || player1?.teamCustomization?.teamImage?.startsWith('data:')) ? (
+                          <img 
+                            src={player1.teamCustomization.teamImage} 
+                            alt="Team" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.textContent = (player1?.teamCustomization?.teamName || team1Data?.name || selectedMatchForView.player1 || 'T').charAt(0).toUpperCase();
+                            }}
+                          />
+                        ) : (
+                          player1?.teamCustomization?.teamImage || (player1?.teamCustomization?.teamName || team1Data?.name || selectedMatchForView.player1 || 'T').charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      {/* Team Name */}
+                      <h3 style={{ 
+                        margin: 0, 
+                        fontSize: '24px', 
+                        fontWeight: '700',
+                        color: '#fff',
+                        textAlign: 'center'
+                      }}>
+                        {player1?.teamCustomization?.teamName || team1Data?.name || 'Team 1'}
+                      </h3>
+
+                      {/* Coach Name */}
+                      <div style={{ 
+                        fontSize: '16px', 
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        textAlign: 'center'
+                      }}>
+                        Coach: <span style={{ fontWeight: '600', color: '#fff' }}>{selectedMatchForView.player1 || 'TBD'}</span>
+                      </div>
+
+                      {/* Pokemon Team */}
+                      {uploadedTeam1 && pokemon1.length > 0 ? (
+                        <div style={{
+                          width: '100%',
+                          background: 'rgba(255, 255, 255, 0.15)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          backdropFilter: 'blur(10px)'
+                        }}>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#fff',
+                            marginBottom: '15px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            textAlign: 'center'
+                          }}>
+                            Pokémon Team
+                          </div>
+                          <div style={{ 
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, 1fr)',
+                            gap: '8px'
+                          }}>
+                            {pokemon1.slice(0, 6).map((pokemonName, idx) => (
+                              <PokemonCard
+                                key={idx}
+                                pokemonName={pokemonName}
+                                gradientStart={player1?.teamCustomization?.cardColor || '#667eea'}
+                                gradientEnd={player1?.teamCustomization?.cardColorEnd || '#764ba2'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '14px',
+                          fontStyle: 'italic'
+                        }}>
+                          No team uploaded
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* VS Badge */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '32px',
+                    fontWeight: '900',
+                    color: '#fff',
+                    boxShadow: '0 6px 16px rgba(245, 87, 108, 0.4)',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                  }}>
+                    VS
+                  </div>
+                </div>
+
+                {/* Player 2 Team */}
+                {(() => {
+                  const player2 = players.find(p => p.username === selectedMatchForView.player2);
+                  const team2Data = player2?.submittedTeamId && playerTeamData[player2.submittedTeamId] 
+                    ? playerTeamData[player2.submittedTeamId] 
+                    : null;
+                  const uploadedTeam2 = selectedMatchForView.teams?.[selectedMatchForView.player2];
+                  const pokemon2 = uploadedTeam2 ? parseTeamText(uploadedTeam2) : [];
+
+                  return (
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '20px',
+                      padding: '30px',
+                      background: `linear-gradient(135deg, ${player2?.teamCustomization?.cardColor || '#667eea'} 0%, ${player2?.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}>
+                      {/* Team Image */}
+                      <div style={{
+                        width: '180px',
+                        height: '180px',
+                        borderRadius: '16px',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '72px',
+                        fontWeight: '700',
+                        color: '#fff',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                        overflow: 'hidden'
+                      }}>
+                        {(player2?.teamCustomization?.teamImage?.startsWith('http') || player2?.teamCustomization?.teamImage?.startsWith('data:')) ? (
+                          <img 
+                            src={player2.teamCustomization.teamImage} 
+                            alt="Team" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.textContent = (player2?.teamCustomization?.teamName || team2Data?.name || selectedMatchForView.player2 || 'T').charAt(0).toUpperCase();
+                            }}
+                          />
+                        ) : (
+                          player2?.teamCustomization?.teamImage || (player2?.teamCustomization?.teamName || team2Data?.name || selectedMatchForView.player2 || 'T').charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      {/* Team Name */}
+                      <h3 style={{ 
+                        margin: 0, 
+                        fontSize: '24px', 
+                        fontWeight: '700',
+                        color: '#fff',
+                        textAlign: 'center'
+                      }}>
+                        {player2?.teamCustomization?.teamName || team2Data?.name || 'Team 2'}
+                      </h3>
+
+                      {/* Coach Name */}
+                      <div style={{ 
+                        fontSize: '16px', 
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        textAlign: 'center'
+                      }}>
+                        Coach: <span style={{ fontWeight: '600', color: '#fff' }}>{selectedMatchForView.player2 || 'TBD'}</span>
+                      </div>
+
+                      {/* Pokemon Team */}
+                      {uploadedTeam2 && pokemon2.length > 0 ? (
+                        <div style={{
+                          width: '100%',
+                          background: 'rgba(255, 255, 255, 0.15)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          backdropFilter: 'blur(10px)'
+                        }}>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#fff',
+                            marginBottom: '15px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            textAlign: 'center'
+                          }}>
+                            Pokémon Team
+                          </div>
+                          <div style={{ 
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, 1fr)',
+                            gap: '8px'
+                          }}>
+                            {pokemon2.slice(0, 6).map((pokemonName, idx) => (
+                              <PokemonCard
+                                key={idx}
+                                pokemonName={pokemonName}
+                                gradientStart={player2?.teamCustomization?.cardColor || '#667eea'}
+                                gradientEnd={player2?.teamCustomization?.cardColorEnd || '#764ba2'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '14px',
+                          fontStyle: 'italic'
+                        }}>
+                          No team uploaded
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { getDeviceInfo } from '../utils/deviceFingerprint';
 
 const AuthContext = createContext(null);
@@ -13,19 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load token from localStorage on mount or try device auto-login
-  useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token');
-    if (storedToken) {
-      // Verify token is still valid
-      verifyToken(storedToken);
-    } else {
-      // Try device-based auto-login
-      tryDeviceLogin();
-    }
-  }, []);
-
-  const tryDeviceLogin = async () => {
+  const tryDeviceLogin = useCallback(async () => {
     try {
       const deviceInfo = getDeviceInfo();
       const response = await fetch(`${API_BASE}/api/auth/device-login`, {
@@ -49,9 +37,9 @@ export const AuthProvider = ({ children }) => {
       console.error('Device auto-login failed:', error);
       setLoading(false);
     }
-  };
+  }, []);
 
-  const verifyToken = async (tokenToVerify) => {
+  const verifyToken = useCallback(async (tokenToVerify) => {
     try {
       const response = await fetch(`${API_BASE}/api/auth/verify`, {
         headers: {
@@ -79,7 +67,19 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tryDeviceLogin]);
+
+  // Load token from localStorage on mount or try device auto-login
+  useEffect(() => {
+    const storedToken = localStorage.getItem('auth_token');
+    if (storedToken) {
+      // Verify token is still valid
+      verifyToken(storedToken);
+    } else {
+      // Try device-based auto-login
+      tryDeviceLogin();
+    }
+  }, [verifyToken, tryDeviceLogin]);
 
   const registerDevice = async (authToken) => {
     try {

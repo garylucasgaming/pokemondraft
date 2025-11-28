@@ -84,7 +84,12 @@ const leagueSchema = new mongoose.Schema({
       week: Number,
       round: Number,
       nextMatchId: String,
-      replay: String
+      replay: String,
+      replayLink: String,
+      flaggedWinner: String,
+      flaggedBy: String,
+      needsApproval: Boolean,
+      teams: { type: Map, of: String } // Map of username -> team text in Showdown format
     }]
   },
   playoffBracket: {
@@ -102,7 +107,8 @@ const leagueSchema = new mongoose.Schema({
       replayLink: String,
       flaggedWinner: String,
       flaggedBy: String,
-      needsApproval: Boolean
+      needsApproval: Boolean,
+      teams: { type: Map, of: String } // Map of username -> team text in Showdown format
     }]
   },
   status: { type: String, enum: ['open', 'in_progress', 'completed'], default: 'open' },
