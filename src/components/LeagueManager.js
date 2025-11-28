@@ -143,6 +143,17 @@ const LeagueManager = ({ username, onStartLeagueDraft }) => {
   const [showTeamSubmissionModal, setShowTeamSubmissionModal] = useState(false);
   const [savedTeamsForSubmission, setSavedTeamsForSubmission] = useState([]);
   const [selectedTeamForSubmission, setSelectedTeamForSubmission] = useState(null);
+  const [showPlayerTeamModal, setShowPlayerTeamModal] = useState(false);
+  const [selectedPlayerTeam, setSelectedPlayerTeam] = useState(null);
+  const [playerTeamData, setPlayerTeamData] = useState({}); // Map of teamId -> team data
+
+  // Edit team modal state
+  const [showEditTeamModal, setShowEditTeamModal] = useState(false);
+  const [editingTeam, setEditingTeam] = useState(null);
+  const [editTeamName, setEditTeamName] = useState('');
+  const [editTeamImage, setEditTeamImage] = useState('');
+  const [editTeamColor, setEditTeamColor] = useState('#667eea');
+  const [editTeamColorEnd, setEditTeamColorEnd] = useState('#764ba2');
 
   const DEFAULT_DRAFT_RULES = `-credit to abriel and princess autumn for this default text-
 You have up to 120 points with which to draft 10-12 Pokémon. Costs are listed on the draft board.
@@ -688,23 +699,55 @@ Replays must be posted to the appropriate channel.`;
   };
 
   const loadSavedTeamsForSubmission = async () => {
-    if (!currentLeague || !username) return;
+    console.log('[loadSavedTeamsForSubmission] Starting...');
+    console.log('[loadSavedTeamsForSubmission] username:', username);
+    console.log('[loadSavedTeamsForSubmission] currentLeague:', currentLeague);
+    
+    if (!currentLeague || !username) {
+      console.log('[loadSavedTeamsForSubmission] Missing required data, returning early');
+      return;
+    }
     
     try {
-      // Fetch saved teams that match the current username and league code
-      const response = await fetch(`${API_BASE}/api/saved-teams?username=${username}&leagueCode=${currentLeague.code}`);
+      // First, check ALL teams for this user to debug
+      const debugUrl = `${API_BASE}/api/teams?username=${encodeURIComponent(username)}`;
+      console.log('[loadSavedTeamsForSubmission] DEBUG - Fetching ALL teams from:', debugUrl);
+      const debugResponse = await fetch(debugUrl);
+      const debugData = await debugResponse.json();
+      console.log('[loadSavedTeamsForSubmission] DEBUG - All teams for user:', debugData.teams);
+      console.log('[loadSavedTeamsForSubmission] DEBUG - League codes in teams:', debugData.teams?.map(t => ({
+        name: t.name,
+        leagueCode: t.leagueCode,
+        hasLeagueCode: !!t.leagueCode
+      })));
+      
+      // Now fetch with league code filter
+      const url = `${API_BASE}/api/teams?username=${encodeURIComponent(username)}&leagueCode=${encodeURIComponent(currentLeague.code)}`;
+      console.log('[loadSavedTeamsForSubmission] Fetching from:', url);
+      
+      const response = await fetch(url);
+      console.log('[loadSavedTeamsForSubmission] Response status:', response.status);
+      
       if (!response.ok) throw new Error('Failed to load saved teams');
       
       const data = await response.json();
+      console.log('[loadSavedTeamsForSubmission] Received data:', data);
+      console.log('[loadSavedTeamsForSubmission] Teams count:', data.teams?.length || 0);
+      
       setSavedTeamsForSubmission(data.teams || []);
     } catch (err) {
-      console.error('Error loading saved teams:', err);
+      console.error('[loadSavedTeamsForSubmission] Error:', err);
       setError('Failed to load saved teams');
     }
   };
 
   const handleSubmitTeam = async () => {
     if (!selectedTeamForSubmission || !currentLeague) return;
+    
+    console.log('[handleSubmitTeam] Starting submission...');
+    console.log('[handleSubmitTeam] Username:', username);
+    console.log('[handleSubmitTeam] League code:', currentLeague.code);
+    console.log('[handleSubmitTeam] Selected team:', selectedTeamForSubmission);
     
     try {
       setLoading(true);
@@ -717,21 +760,66 @@ Replays must be posted to the appropriate channel.`;
         })
       });
       
-      if (!response.ok) throw new Error('Failed to submit team');
+      console.log('[handleSubmitTeam] Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to submit team' }));
+        throw new Error(errorData.error || 'Failed to submit team');
+      }
+      
+      const result = await response.json();
+      console.log('[handleSubmitTeam] Response data:', result);
       
       // Reload players to reflect team submission
+      console.log('[handleSubmitTeam] Reloading players...');
       const playersData = await getLeaguePlayers(currentLeague.code);
+      console.log('[handleSubmitTeam] Reloaded players:', playersData.players);
       setPlayers(playersData.players);
       
       setShowTeamSubmissionModal(false);
       setMessage('Team submitted successfully!');
       setError('');
     } catch (err) {
+      console.error('[handleSubmitTeam] Error:', err);
       setError(err.message);
+      // Don't reload players on error - keep existing state
     } finally {
       setLoading(false);
     }
   };
+
+  // Load team data when viewing a player's submitted team
+  useEffect(() => {
+    const loadAllSubmittedTeams = async () => {
+      if (!players || players.length === 0) return;
+      
+      // Load teams for all players who have submitted
+      const teamsToLoad = players.filter(p => p.teamSubmitted && p.submittedTeamId);
+      
+      console.log('[loadAllSubmittedTeams] Loading teams for', teamsToLoad.length, 'players');
+      
+      const teamDataMap = {};
+      
+      for (const player of teamsToLoad) {
+        try {
+          const response = await fetch(`${API_BASE}/api/teams/${player.submittedTeamId}`);
+          if (response.ok) {
+            const data = await response.json();
+            teamDataMap[player.submittedTeamId] = data.team;
+            console.log('[loadAllSubmittedTeams] Loaded team for', player.username);
+          }
+        } catch (err) {
+          console.error('[loadAllSubmittedTeams] Error loading team for', player.username, err);
+        }
+      }
+      
+      setPlayerTeamData(teamDataMap);
+    };
+    
+    if (players && players.length > 0) {
+      loadAllSubmittedTeams();
+    }
+  }, [players]);
 
   // Handle replay link upload for a match
   const handleUploadReplayLink = (match) => {
@@ -4356,70 +4444,263 @@ Replays must be posted to the appropriate channel.`;
                 ) : null}
               </div>
 
-              <div className="league-section">
+                <div className="league-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div>
                     <h3 style={{ margin: 0 }}>Players</h3>
                     <p className="player-count" style={{ margin: '5px 0 0 0' }}>{players.length}/{currentLeague.maxPlayers || '∞'} players</p>
                   </div>
-                  {!players.some(p => p.username === username) && (
-                    <button onClick={handleJoinAsPlayer} className="admin-btn" style={{ margin: 0 }}>
-                      Join as Player?
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {players.some(p => p.username === username) && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setShowTeamSubmissionModal(true);
+                            loadSavedTeamsForSubmission();
+                          }} 
+                          className="admin-btn" 
+                          style={{ margin: 0 }}
+                        >
+                          Submit Team
+                        </button>
+                        {players.find(p => p.username === username)?.teamSubmitted && (
+                          <button
+                            onClick={() => {
+                              const currentPlayer = players.find(p => p.username === username);
+                              const teamData = currentPlayer.submittedTeamId && playerTeamData[currentPlayer.submittedTeamId] 
+                                ? playerTeamData[currentPlayer.submittedTeamId] 
+                                : null;
+                              setEditingTeam(currentPlayer);
+                              setEditTeamName(currentPlayer.teamCustomization?.teamName || teamData?.name || 'My Team');
+                              setEditTeamImage(currentPlayer.teamCustomization?.teamImage || '');
+                              setEditTeamColor(currentPlayer.teamCustomization?.cardColor || '#667eea');
+                              setEditTeamColorEnd(currentPlayer.teamCustomization?.cardColorEnd || '#764ba2');
+                              setShowEditTeamModal(true);
+                            }}
+                            className="admin-btn"
+                            style={{ margin: 0 }}
+                          >
+                            Edit Team
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {!players.some(p => p.username === username) && (
+                      <button onClick={handleJoinAsPlayer} className="admin-btn" style={{ margin: 0 }}>
+                        Join as Player?
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {loading ? (
                   <p>Loading players...</p>
                 ) : players.length === 0 ? (
                   <p>No players have joined yet.</p>
                 ) : (
-                  <table className="standings-table">
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>Player</th>
-                        <th>Wins</th>
-                        <th>Losses</th>
-                        <th>Win %</th>
-                        <th>Team</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {players.map((player, idx) => {
-                        const winRate = player.wins + player.losses > 0
-                          ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1)
-                          : '0.0';
-                        
-                        return (
-                          <tr key={player._id}>
-                            <td>{idx + 1}</td>
-                            <td>{player.username}</td>
-                            <td>{player.wins || 0}</td>
-                            <td>{player.losses || 0}</td>
-                            <td>{winRate}%</td>
-                            <td>
-                              {player.username === username && !player.teamSubmitted ? (
-                                <button 
-                                  onClick={() => {
-                                    setShowTeamSubmissionModal(true);
-                                    loadSavedTeamsForSubmission();
-                                  }} 
-                                  className="admin-btn"
-                                  style={{ padding: '6px 12px', fontSize: '13px' }}
-                                >
-                                  Upload Team
-                                </button>
-                              ) : player.teamSubmitted ? (
-                                <span style={{ color: '#16a34a', fontSize: '13px' }}>✓ Submitted</span>
-                              ) : (
-                                <span style={{ color: '#94a3b8', fontSize: '13px' }}>-</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: '16px',
+                    marginTop: '20px'
+                  }}>
+                    {players.map((player, idx) => {
+                      const winRate = player.wins + player.losses > 0
+                        ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1)
+                        : '0.0';
+                      
+                      const teamData = player.submittedTeamId && playerTeamData[player.submittedTeamId] 
+                        ? playerTeamData[player.submittedTeamId] 
+                        : null;
+                      
+                      console.log('Player card render:', player.username, 'teamSubmitted:', player.teamSubmitted, 'submittedTeamId:', player.submittedTeamId, 'hasTeamData:', !!teamData);
+                      
+                      return (
+                        <div 
+                          key={player._id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '24px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            background: `linear-gradient(135deg, ${player.teamCustomization?.cardColor || '#667eea'} 0%, ${player.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                            transition: 'transform 0.2s, box-shadow 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateX(4px)';
+                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateX(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                          }}
+                        >
+                          {/* Team Image */}
+                          <div style={{
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '12px',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            fontSize: '32px',
+                            fontWeight: '700',
+                            color: '#fff',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                            overflow: 'hidden'
+                          }}>
+                            {(player.teamCustomization?.teamImage?.startsWith('http') || player.teamCustomization?.teamImage?.startsWith('data:')) ? (
+                              <img 
+                                key={player.teamCustomization.teamImage}
+                                src={player.teamCustomization.teamImage} 
+                                alt="Team" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  console.log('Image failed to load:', player.teamCustomization.teamImage?.substring(0, 50));
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.textContent = (player.teamCustomization?.teamName || teamData?.name || player.username || 'T').charAt(0).toUpperCase();
+                                }}
+                                onLoad={() => console.log('Image loaded successfully')}
+                              />
+                            ) : (
+                              player.teamCustomization?.teamImage || (player.teamCustomization?.teamName || teamData?.name || player.username || 'T').charAt(0).toUpperCase()
+                            )}
+                          </div>
+
+                          {/* Team Info */}
+                          <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
+                            <h4 style={{ 
+                              margin: '0 0 4px 0', 
+                              fontSize: '18px', 
+                              fontWeight: '600',
+                              color: '#fff'
+                            }}>
+                              {player.teamCustomization?.teamName || teamData?.name || `Team ${idx + 1}`}
+                            </h4>
+                            <div style={{ 
+                              fontSize: '14px', 
+                              color: 'rgba(255, 255, 255, 0.9)'
+                            }}>
+                              Coach: <span style={{ fontWeight: '500', color: '#fff' }}>{player.username}</span>
+                            </div>
+                          </div>
+
+                          {/* Stats */}
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '32px',
+                            flexShrink: 0
+                          }}>
+                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Wins</div>
+                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{player.wins || 0}</div>
+                            </div>
+                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Losses</div>
+                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{player.losses || 0}</div>
+                            </div>
+                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Win %</div>
+                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{winRate}%</div>
+                            </div>
+                          </div>
+
+                          {/* Pokemon Team */}
+                          <div style={{ 
+                            borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+                            paddingLeft: '24px',
+                            flexShrink: 0
+                          }}>
+                            {teamData ? (
+                              <div style={{
+                                background: 'rgba(255, 255, 255, 0.15)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '12px',
+                                padding: '12px',
+                                backdropFilter: 'blur(10px)'
+                              }}>
+                                <div style={{
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  color: '#fff',
+                                  marginBottom: '10px',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px'
+                                }}>
+                                  Pokémon Team
+                                </div>
+                                <div style={{ 
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(5, 56px)',
+                                  gap: '8px'
+                                }}>
+                                  {teamData.pokemon.map((pokemon, idx) => (
+                                    <div 
+                                      key={idx}
+                                      style={{
+                                        width: '56px',
+                                        height: '56px',
+                                        border: '1px solid rgba(255, 255, 255, 0.5)',
+                                        borderRadius: '8px',
+                                        background: `linear-gradient(135deg, ${player.teamCustomization?.cardColor || '#667eea'} 0%, ${player.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'transform 0.2s, box-shadow 0.2s',
+                                        cursor: 'pointer'
+                                      }}
+                                      title={pokemon.name}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                      }}
+                                    >
+                                      <img
+                                        src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id || idx + 1}.png`}
+                                        alt={pokemon.name}
+                                        style={{ 
+                                          width: '48px', 
+                                          height: '48px',
+                                          objectFit: 'contain'
+                                        }}
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : player.teamSubmitted ? (
+                              <div style={{ 
+                                color: '#fff',
+                                fontSize: '14px',
+                                fontWeight: '500'
+                              }}>
+                                ✓ Team Submitted (Loading...)
+                              </div>
+                            ) : (
+                              <div style={{ 
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                fontSize: '14px'
+                              }}>
+                                No team submitted
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
@@ -4652,60 +4933,261 @@ Replays must be posted to the appropriate channel.`;
               </div>
 
               <div className="league-section">
-                <h3>Standings</h3>
-                <p className="player-count">{players.length} players</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>Standings</h3>
+                    <p className="player-count" style={{ margin: '5px 0 0 0' }}>{players.length} players</p>
+                  </div>
+                  {players.some(p => p.username === username) && (
+                    <button 
+                      onClick={() => {
+                        setShowTeamSubmissionModal(true);
+                        loadSavedTeamsForSubmission();
+                      }} 
+                      className="admin-btn" 
+                      style={{ margin: 0 }}
+                    >
+                      Submit Draft Team
+                    </button>
+                  )}
+                </div>
                 {loading ? (
                   <p>Loading standings...</p>
                 ) : players.length === 0 ? (
                   <p>No players have joined yet.</p>
                 ) : (
-                  <table className="standings-table">
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>Player</th>
-                        <th>Wins</th>
-                        <th>Losses</th>
-                        <th>Win %</th>
-                        <th>Team</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {players.map((player, idx) => {
-                        const winRate = player.wins + player.losses > 0
-                          ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1)
-                          : '0.0';
-                        
-                        return (
-                          <tr key={player._id}>
-                            <td>{idx + 1}</td>
-                            <td>{player.username}</td>
-                            <td>{player.wins || 0}</td>
-                            <td>{player.losses || 0}</td>
-                            <td>{winRate}%</td>
-                            <td>
-                              {player.username === username && !player.teamSubmitted ? (
-                                <button 
-                                  onClick={() => {
-                                    setShowTeamSubmissionModal(true);
-                                    loadSavedTeamsForSubmission();
-                                  }} 
-                                  className="admin-btn"
-                                  style={{ padding: '6px 12px', fontSize: '13px' }}
-                                >
-                                  Upload Team
-                                </button>
-                              ) : player.teamSubmitted ? (
-                                <span style={{ color: '#16a34a', fontSize: '13px' }}>✓ Submitted</span>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: '16px',
+                    marginTop: '20px'
+                  }}>
+                    {players.map((player, idx) => {
+                      const winRate = player.wins + player.losses > 0
+                        ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1)
+                        : '0.0';
+                      
+                      const teamData = player.submittedTeamId && playerTeamData[player.submittedTeamId] 
+                        ? playerTeamData[player.submittedTeamId] 
+                        : null;
+                      
+                      return (
+                        <div 
+                          key={player._id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '24px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            background: `linear-gradient(135deg, ${player.teamCustomization?.cardColor || '#667eea'} 0%, ${player.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                            transition: 'transform 0.2s, box-shadow 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateX(4px)';
+                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateX(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                          }}
+                        >
+                            {/* Team Image */}
+                            <div style={{
+                              width: '80px',
+                              height: '80px',
+                              borderRadius: '12px',
+                              background: 'rgba(255, 255, 255, 0.2)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              fontSize: '32px',
+                              fontWeight: '700',
+                              color: '#fff',
+                              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                              overflow: 'hidden'
+                            }}>
+                              {(player.teamCustomization?.teamImage?.startsWith('http') || player.teamCustomization?.teamImage?.startsWith('data:')) ? (
+                                <img 
+                                  key={player.teamCustomization.teamImage}
+                                  src={player.teamCustomization.teamImage} 
+                                  alt="Team" 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    console.log('Image failed to load (standings)');
+                                    e.target.style.display = 'none';
+                                    e.target.parentElement.textContent = (player.teamCustomization?.teamName || teamData?.name || player.username || 'T').charAt(0).toUpperCase();
+                                  }}
+                                  onLoad={() => console.log('Image loaded (standings)')}
+                                />
                               ) : (
-                                <span style={{ color: '#94a3b8', fontSize: '13px' }}>-</span>
+                                player.teamCustomization?.teamImage || (player.teamCustomization?.teamName || teamData?.name || player.username || 'T').charAt(0).toUpperCase()
                               )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            </div>
+
+                          {/* Team Info */}
+                          <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
+                            <h4 style={{ 
+                              margin: '0 0 4px 0', 
+                              fontSize: '18px', 
+                              fontWeight: '600',
+                              color: '#fff'
+                            }}>
+                              {player.teamCustomization?.teamName || teamData?.name || `Team ${idx + 1}`}
+                            </h4>
+                            <div style={{ 
+                              fontSize: '14px', 
+                              color: 'rgba(255, 255, 255, 0.9)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px'
+                            }}>
+                              <span>Coach: <span style={{ fontWeight: '500', color: '#fff' }}>{player.username}</span></span>
+                              {player.username === username && player.teamSubmitted && (
+                                <button
+                                  onClick={() => {
+                                    setEditingTeam(player);
+                                    setEditTeamName(player.teamCustomization?.teamName || teamData?.name || `Team ${idx + 1}`);
+                                    setEditTeamImage(player.teamCustomization?.teamImage || '');
+                                    setEditTeamColor(player.teamCustomization?.cardColor || '#667eea');
+                                    setEditTeamColorEnd(player.teamCustomization?.cardColorEnd || '#764ba2');
+                                    setShowEditTeamModal(true);
+                                  }}
+                                  style={{
+                                    padding: '4px 12px',
+                                    fontSize: '12px',
+                                    background: '#3b82f6',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#2563eb'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#3b82f6'}
+                                >
+                                  Edit Team
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Stats */}
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '32px',
+                            flexShrink: 0
+                          }}>
+                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Wins</div>
+                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{player.wins || 0}</div>
+                            </div>
+                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Losses</div>
+                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{player.losses || 0}</div>
+                            </div>
+                            <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '4px' }}>Win %</div>
+                              <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{winRate}%</div>
+                            </div>
+                          </div>
+
+                          {/* Pokemon Team */}
+                          <div style={{ 
+                            borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+                            paddingLeft: '24px',
+                            flexShrink: 0
+                          }}>
+                            {teamData ? (
+                              <div style={{
+                                background: 'rgba(255, 255, 255, 0.15)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '12px',
+                                padding: '12px',
+                                backdropFilter: 'blur(10px)'
+                              }}>
+                                <div style={{
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  color: '#fff',
+                                  marginBottom: '10px',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px'
+                                }}>
+                                  Pokémon Team
+                                </div>
+                                <div style={{ 
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(5, 56px)',
+                                  gap: '8px'
+                                }}>
+                                  {teamData.pokemon.map((pokemon, idx) => (
+                                    <div 
+                                      key={idx}
+                                      style={{
+                                        width: '56px',
+                                        height: '56px',
+                                        border: '1px solid rgba(255, 255, 255, 0.5)',
+                                        borderRadius: '8px',
+                                        background: `linear-gradient(135deg, ${player.teamCustomization?.cardColor || '#667eea'} 0%, ${player.teamCustomization?.cardColorEnd || '#764ba2'} 100%)`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'transform 0.2s, box-shadow 0.2s',
+                                        cursor: 'pointer'
+                                      }}
+                                      title={pokemon.name}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                      }}
+                                    >
+                                      <img
+                                        src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id || idx + 1}.png`}
+                                        alt={pokemon.name}
+                                        style={{ 
+                                          width: '48px', 
+                                          height: '48px',
+                                          objectFit: 'contain'
+                                        }}
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : player.teamSubmitted ? (
+                              <div style={{ 
+                                color: '#fff',
+                                fontSize: '14px',
+                                fontWeight: '500'
+                              }}>
+                                ✓ Team Submitted (Loading...)
+                              </div>
+                            ) : (
+                              <div style={{ 
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                fontSize: '14px'
+                              }}>
+                                No team submitted
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
@@ -8037,6 +8519,211 @@ Replays must be posted to the appropriate channel.`;
         </div>
       )}
 
+      {/* Edit Team Modal */}
+      {showEditTeamModal && (
+        <div className="modal-overlay" onClick={() => setShowEditTeamModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', padding: '30px' }}>
+            <h2 style={{ marginTop: 0 }}>Edit Team</h2>
+            
+            {/* Team Preview */}
+            <div style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              background: `linear-gradient(135deg, ${editTeamColor} 0%, ${editTeamColorEnd} 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              color: '#fff'
+            }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '8px',
+                background: (editTeamImage.startsWith('http') || editTeamImage.startsWith('data:')) ? 'transparent' : 'rgba(255, 255, 255, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                fontWeight: '700',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                overflow: 'hidden'
+              }}>
+                {(editTeamImage.startsWith('http') || editTeamImage.startsWith('data:')) ? (
+                  <img 
+                    key={editTeamImage}
+                    src={editTeamImage} 
+                    alt="Team" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.textContent = (editTeamName || 'T').charAt(0).toUpperCase();
+                    }}
+                  />
+                ) : (
+                  editTeamImage || (editTeamName || 'T').charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: '600' }}>{editTeamName || 'Team Name'}</div>
+                <div style={{ fontSize: '14px', opacity: 0.9 }}>Coach: {username}</div>
+              </div>
+            </div>
+
+            {/* Team Name */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Team Name</label>
+              <input
+                type="text"
+                value={editTeamName}
+                onChange={(e) => setEditTeamName(e.target.value)}
+                placeholder="Enter team name"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+                maxLength={30}
+              />
+            </div>
+
+            {/* Team Image/Initial */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Team Image URL</label>
+              <input
+                type="text"
+                value={editTeamImage}
+                onChange={(e) => setEditTeamImage(e.target.value)}
+                placeholder="Enter image URL or a single character"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>
+                Enter a full image URL (http://...) or a single character/emoji
+              </div>
+            </div>
+
+            {/* Card Colors */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Card Background Gradient</label>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>Start Color</label>
+                  <input
+                    type="color"
+                    value={editTeamColor}
+                    onChange={(e) => setEditTeamColor(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>End Color</label>
+                  <input
+                    type="color"
+                    value={editTeamColorEnd}
+                    onChange={(e) => setEditTeamColorEnd(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button onClick={() => { setEditTeamColor('#667eea'); setEditTeamColorEnd('#764ba2'); }} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#fff', cursor: 'pointer' }}>Purple</button>
+                <button onClick={() => { setEditTeamColor('#f093fb'); setEditTeamColorEnd('#f5576c'); }} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: '#fff', cursor: 'pointer' }}>Pink</button>
+                <button onClick={() => { setEditTeamColor('#4facfe'); setEditTeamColorEnd('#00f2fe'); }} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: '#fff', cursor: 'pointer' }}>Blue</button>
+                <button onClick={() => { setEditTeamColor('#43e97b'); setEditTeamColorEnd('#38f9d7'); }} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: '#fff', cursor: 'pointer' }}>Green</button>
+                <button onClick={() => { setEditTeamColor('#fa709a'); setEditTeamColorEnd('#fee140'); }} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: '#fff', cursor: 'pointer' }}>Sunset</button>
+                <button onClick={() => { setEditTeamColor('#30cfd0'); setEditTeamColorEnd('#330867'); }} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', color: '#fff', cursor: 'pointer' }}>Ocean</button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowEditTeamModal(false)} 
+                className="cancel-btn"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    console.log('Saving team customization:', {
+                      username,
+                      leagueCode: currentLeague.code,
+                      teamName: editTeamName,
+                      teamImage: editTeamImage,
+                      cardColor: editTeamColor,
+                      cardColorEnd: editTeamColorEnd
+                    });
+
+                    // Update team customization in backend
+                    const response = await fetch(`${API_BASE}/api/leagues/${currentLeague.code}/customize-team`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        username: username,
+                        teamCustomization: {
+                          teamName: editTeamName,
+                          teamImage: editTeamImage,
+                          cardColor: editTeamColor,
+                          cardColorEnd: editTeamColorEnd
+                        }
+                      }),
+                    });
+
+                    const data = await response.json();
+                    console.log('Server response:', data);
+
+                    if (!response.ok) {
+                      throw new Error(data.error || 'Failed to save team customization');
+                    }
+
+                    setShowEditTeamModal(false);
+                    alert('Team customization saved successfully!');
+                    
+                    // Reload players to get updated data
+                    const playersData = await getLeaguePlayers(currentLeague.code);
+                    console.log('Reloaded players data:', playersData);
+                    console.log('First player teamCustomization:', playersData.players?.[0]?.teamCustomization);
+                    setPlayers(playersData.players || []);
+                  } catch (error) {
+                    console.error('Error saving team customization:', error);
+                    alert(`Failed to save team customization: ${error.message}`);
+                  }
+                }}
+                className="admin-btn"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Team Submission Modal */}
       {showTeamSubmissionModal && (
         <div className="modal-overlay" onClick={() => setShowTeamSubmissionModal(false)}>
@@ -8075,22 +8762,22 @@ Replays must be posted to the appropriate channel.`;
                 {savedTeamsForSubmission.map((team) => (
                   <div
                     key={team._id}
-                    onClick={() => setSelectedTeamForSubmission(team._id)}
+                    onClick={() => setSelectedTeamForSubmission(team)}
                     style={{
                       padding: '15px',
                       borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
-                      background: selectedTeamForSubmission === team._id ? '#eff6ff' : '#fff',
+                      background: selectedTeamForSubmission?._id === team._id ? '#eff6ff' : '#fff',
                       transition: 'background 0.15s',
                       ':hover': { background: '#f8f9fa' }
                     }}
                     onMouseEnter={(e) => {
-                      if (selectedTeamForSubmission !== team._id) {
+                      if (selectedTeamForSubmission?._id !== team._id) {
                         e.currentTarget.style.background = '#f8f9fa';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (selectedTeamForSubmission !== team._id) {
+                      if (selectedTeamForSubmission?._id !== team._id) {
                         e.currentTarget.style.background = '#fff';
                       }
                     }}
@@ -8098,8 +8785,8 @@ Replays must be posted to the appropriate channel.`;
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                       <input
                         type="radio"
-                        checked={selectedTeamForSubmission === team._id}
-                        onChange={() => setSelectedTeamForSubmission(team._id)}
+                        checked={selectedTeamForSubmission?._id === team._id}
+                        onChange={() => setSelectedTeamForSubmission(team)}
                         style={{ marginRight: '10px', cursor: 'pointer' }}
                       />
                       <div>
@@ -8174,6 +8861,96 @@ Replays must be posted to the appropriate channel.`;
                 }}
               >
                 {loading ? 'Submitting...' : 'Submit Team'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Player Team Modal */}
+      {showPlayerTeamModal && (
+        <div className="modal-overlay" onClick={() => {
+          setShowPlayerTeamModal(false);
+          setSelectedPlayerTeam(null);
+          setPlayerTeamData(null);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', padding: '30px' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>
+              {selectedPlayerTeam?.username}'s Team
+            </h2>
+            
+            {!playerTeamData ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                Loading team...
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
+                    {playerTeamData.pokemon.length} Pokémon
+                    {playerTeamData.pointsRemaining != null && (
+                      <span> · {playerTeamData.pointsRemaining} points remaining</span>
+                    )}
+                  </div>
+                  
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', 
+                    gap: '15px' 
+                  }}>
+                    {playerTeamData.pokemon.map((pokemon, idx) => (
+                      <div 
+                        key={idx}
+                        style={{
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          textAlign: 'center',
+                          background: '#fff'
+                        }}
+                      >
+                        <img 
+                          src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${idx + 1}.png`}
+                          alt={pokemon.name}
+                          style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                        <div style={{ 
+                          fontSize: '14px', 
+                          fontWeight: '500', 
+                          marginTop: '8px',
+                          wordBreak: 'break-word'
+                        }}>
+                          {pokemon.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginTop: '20px', textAlign: 'right' }}>
+              <button 
+                onClick={() => {
+                  setShowPlayerTeamModal(false);
+                  setSelectedPlayerTeam(null);
+                  setPlayerTeamData(null);
+                }}
+                style={{ 
+                  padding: '12px 24px',
+                  background: '#e5e7eb',
+                  color: '#1f2937',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Close
               </button>
             </div>
           </div>

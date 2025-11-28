@@ -106,6 +106,11 @@ const leagueSchema = new mongoose.Schema({
     }]
   },
   status: { type: String, enum: ['open', 'in_progress', 'completed'], default: 'open' },
+  submittedTeams: [{
+    username: { type: String, required: true },
+    teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'SavedTeam', required: true },
+    submittedAt: { type: Date, default: Date.now }
+  }],
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -118,6 +123,14 @@ const playerSchema = new mongoose.Schema({
     name: String,
     points: Number
   }],
+  submittedTeamId: { type: mongoose.Schema.Types.ObjectId, ref: 'SavedTeam' }, // Reference to submitted team
+  teamSubmitted: { type: Boolean, default: false }, // Flag for quick checks
+  teamCustomization: {
+    teamName: { type: String },
+    teamImage: { type: String },
+    cardColor: { type: String, default: '#667eea' },
+    cardColorEnd: { type: String, default: '#764ba2' }
+  },
   totalPoints: { type: Number, default: 0 },
   wins: { type: Number, default: 0 },
   losses: { type: Number, default: 0 },
@@ -193,6 +206,8 @@ const savedTeamSchema = new mongoose.Schema({
   description: String,
   isPublic: { type: Boolean, default: false },
   teamBuilderData: mongoose.Schema.Types.Mixed, // Store team builder format data
+  leagueCode: { type: String }, // Optional: Link to a league if this team is from a league draft
+  pointsRemaining: { type: Number }, // Optional: Points remaining after draft (for league standings)
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -260,6 +275,7 @@ matchSchema.index({ leagueId: 1, week: 1 });
 tournamentSchema.index({ leagueId: 1 });
 savedTeamSchema.index({ userId: 1 });
 savedTeamSchema.index({ isPublic: 1, createdAt: -1 });
+savedTeamSchema.index({ username: 1, leagueCode: 1 }); // For filtering teams by user and league
 draftSessionSchema.index({ 'participants.userId': 1 });
 draftSessionSchema.index({ 'participants.username': 1 }); // For username search
 draftSessionSchema.index({ lobbyName: 'text' }); // Text search for lobby names

@@ -12,6 +12,17 @@ import AuthModal from './components/AuthModal';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
+// Helper function to get pokemon image URL from ID
+const getPokemonImageUrl = (pokemon) => {
+  if (!pokemon) return '';
+  // If img property exists, use it (for backward compatibility)
+  if (pokemon.img) return pokemon.img;
+  // Generate from ID
+  if (pokemon.id) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png`;
+  }
+  return '';
+};
 
 function App() {
   return (
@@ -1897,8 +1908,19 @@ function AppContent() {
     }
   };
 
+  // Guard to prevent multiple simultaneous rejoin attempts
+  const rejoiningRef = useRef(false);
+
   // Rejoin draft from MongoDB - load draft state and go directly to draft view
   const rejoinDraftFromMongo = async (code, draftEntry) => {
+    // Prevent multiple simultaneous rejoin attempts
+    if (rejoiningRef.current) {
+      console.log('[Rejoin] Already rejoining, ignoring duplicate request');
+      return;
+    }
+    
+    rejoiningRef.current = true;
+    
     try {
       const currentUsername = PokemonName?.trim();
       if (!currentUsername) {
@@ -1913,6 +1935,61 @@ function AppContent() {
 
       // Get the full draft from the API response
       const fullDraft = draftEntry._fullDraft || draftEntry;
+
+      // First, rejoin the socket server lobby (recreates from MongoDB if needed)
+      let rejoinResult = null;
+      if (socket && socket.connected) {
+        rejoinResult = await new Promise((resolve) => {
+          socket.emit('rejoin_draft_lobby', { code, username: currentUsername }, (response) => {
+            resolve(response);
+          });
+        });
+        
+        if (!rejoinResult.ok) {
+          alert(`Failed to rejoin lobby: ${rejoinResult.error}`);
+          return;
+        }
+        
+        console.log('[Rejoin] Successfully reconnected to server lobby');
+        console.log('[Rejoin] Received selections:', rejoinResult.selections);
+        console.log('[Rejoin] Received selections keys:', rejoinResult.selections ? Object.keys(rejoinResult.selections) : 'none');
+        console.log('[Rejoin] My username:', currentUsername);
+        console.log('[Rejoin] My selections by username:', rejoinResult.selections?.[currentUsername]);
+        console.log('[Rejoin] Received points:', rejoinResult.pointsRemaining);
+        console.log('[Rejoin] Received leagueCode:', rejoinResult.leagueCode);
+        
+        // Restore league code if present
+        if (rejoinResult.leagueCode) {
+          console.log('[Rejoin] Restoring lobbyLeagueCode:', rejoinResult.leagueCode);
+          setLobbyLeagueCode(rejoinResult.leagueCode);
+        }
+        
+        // Use the data from the socket callback (already has selections in client format)
+        if (rejoinResult.selections) {
+          setRemoteSelections(rejoinResult.selections);
+        }
+        if (rejoinResult.pointsRemaining) {
+          setPointsRemaining(rejoinResult.pointsRemaining);
+        }
+        if (rejoinResult.users) {
+          setLobbyUsers(rejoinResult.users);
+        }
+        if (rejoinResult.draftOrder) {
+          setLobbyDraftOrder(rejoinResult.draftOrder);
+        }
+        if (rejoinResult.currentTurn) {
+          setCurrentTurn(rejoinResult.currentTurn);
+        }
+        if (rejoinResult.currentTurnStartTime) {
+          setCurrentTurnStartTime(rejoinResult.currentTurnStartTime);
+        }
+        // Use the filtered draft pokemon list from server (already has picked pokemon removed)
+        if (rejoinResult.draftPokemonList && Array.isArray(rejoinResult.draftPokemonList)) {
+          console.log('[Rejoin] Using filtered draftPokemonList from server:', rejoinResult.draftPokemonList.length, 'pokemon');
+          setDraftPokemonList(rejoinResult.draftPokemonList);
+          setPokemonList(rejoinResult.draftPokemonList);
+        }
+      }
 
       // DON'T restore full list yet - we'll set the correct filtered list below
       
@@ -1944,93 +2021,35 @@ function AppContent() {
         setLobbyGenFilter(settings.genFilter);
       }
 
-      // Reconstruct lobby users from participants (read-only, preserve MongoDB data)
-      const participants = fullDraft.participants || [];
-      const users = participants.map((participant) => ({
-        id: `mongo-${participant.username}`, // Use username-based ID for consistency
-        name: participant.username,
-        isConnected: participant.isConnected || false // Track connection status from MongoDB
-      }));
-      
-      // Mark current user as connected and use socket.id for them
-      const myUserIndex = users.findIndex(u => u.name === currentUsername);
-      if (myUserIndex >= 0 && socket && socket.id) {
-        users[myUserIndex] = {
-          ...users[myUserIndex],
-          id: socket.id, // Use socket.id for current user
-          isConnected: true
-        };
-      }
-      
-      setLobbyUsers(users);
+      // NOTE: users, selections, points, draftOrder, currentTurn are already set from socket callback above
+      // We just need to set host and local player name
       setLocalPlayerName(currentUsername);
 
       // Set host based on MongoDB data
       const hostUsername = fullDraft.hostUsername;
-      const hostUser = users.find(u => u.name === hostUsername);
-      setHostId(hostUser?.id || users[0]?.id || socket?.id || `mongo-${currentUsername}`);
-
-      // Find my user ID from the users list
-      const myUser = users.find(u => u.name === currentUsername);
-      const myUserId = myUser?.id;
-
-      // Reconstruct all selections from all participants
-      const allSelections = {};
-      let myTeam = [];
-      
-      participants.forEach((participant) => {
-        const username = participant.username;
-        const userId = `mongo-${username}`; // Use username-based ID
-        const team = (participant.selections || []).map(s => ({
-          id: s.pokemonId,
-          name: s.pokemonName,
-          points: s.points || 0,
-          img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${s.pokemonId}.png`
-        }));
-        
-        // Store by username and mongo ID
-        allSelections[username] = team;
-        allSelections[userId] = team;
-        
-        // Also store by socket.id for current user
-        if (username === currentUsername && socket && socket.id) {
-          allSelections[socket.id] = team;
+      if (hostUsername) {
+        // Find host in the users we got from socket callback
+        const socketCallbackUsers = rejoinResult?.users || [];
+        const hostUser = socketCallbackUsers.find(u => u.name === hostUsername);
+        if (hostUser) {
+          setHostId(hostUser.id);
         }
-        
-        if (username === currentUsername) {
-          myTeam = team;
-        }
-      });
-      
-      setRemoteSelections(allSelections);
+      }
 
-      // Set points remaining for all participants
-      const pointsRemainingMap = {};
-      participants.forEach((participant) => {
-        const username = participant.username;
-        const userId = `mongo-${username}`;
-        if (participant.pointsRemaining != null) {
-          pointsRemainingMap[username] = participant.pointsRemaining;
-          pointsRemainingMap[userId] = participant.pointsRemaining;
-          
-          // Also store by socket.id for current user
-          if (username === currentUsername && socket && socket.id) {
-            pointsRemainingMap[socket.id] = participant.pointsRemaining;
-          }
-        }
-      });
-      setPointsRemaining(pointsRemainingMap);
-
-      // Set the available pokemon list (remove already selected ones)
-      const allSelectedIds = Object.values(allSelections).flat().map(p => p.id).filter(Boolean);
-      
-      // Use draftPokemon from MongoDB if available, otherwise calculate from full list
-      if (fullDraft.draftPokemon && Array.isArray(fullDraft.draftPokemon) && fullDraft.draftPokemon.length > 0) {
-        // MongoDB has the remaining available pokemon - use it directly
+      // Set the available pokemon list
+      // Priority 1: Use filtered list from socket callback (server already removed picked pokemon)
+      // Priority 2: Fallback to MongoDB if socket didn't include it
+      if (!rejoinResult?.draftPokemonList && fullDraft.draftPokemon && Array.isArray(fullDraft.draftPokemon) && fullDraft.draftPokemon.length > 0) {
+        console.log('[Rejoin] Using draftPokemon from MongoDB as fallback:', fullDraft.draftPokemon.length, 'pokemon');
         setDraftPokemonList(fullDraft.draftPokemon);
         setPokemonList(fullDraft.draftPokemon);
-      } else {
-        // Calculate: restore full list, apply gen filter, remove selected and banned
+      } else if (!rejoinResult?.draftPokemonList) {
+        // Fallback: Calculate from selections if neither socket nor MongoDB has the list
+        console.log('[Rejoin] No draftPokemonList from server or MongoDB, calculating from selections');
+        const allSelectedIds = (rejoinResult && rejoinResult.selections)
+          ? Object.values(rejoinResult.selections).flat().map(p => p.id).filter(Boolean)
+          : [];
+        
         restoreFullPokemonList();
         
         // Wait for state to update, then filter
@@ -2059,40 +2078,10 @@ function AppContent() {
           });
         }, 0);
       }
+      // Else: rejoinResult.draftPokemonList was already set above in the socket callback block
 
-      // Set draft order (turn order) - read from MongoDB, use socket.id for current player
-      if (fullDraft.turnOrder && fullDraft.turnOrder.length > 0) {
-        // Turn order from MongoDB contains usernames
-        // Map them to our user IDs, using socket.id for current player
-        const mappedTurnOrder = fullDraft.turnOrder.map(turn => {
-          // Check if this turn is for the current user
-          if (turn === currentUsername) {
-            return socket?.id || `mongo-${turn}`;
-          }
-          // Find user by name
-          const user = users.find(u => u.name === turn);
-          return user ? user.id : `mongo-${turn}`;
-        }).filter(Boolean);
-        setLobbyDraftOrder(mappedTurnOrder);
-      }
 
-      // Set current turn if available - use socket.id if it's current player's turn
-      if (fullDraft.currentTurn) {
-        // Check if it's the current user's turn
-        if (fullDraft.currentTurn === currentUsername) {
-          setCurrentTurn(socket?.id || `mongo-${currentUsername}`);
-        } else {
-          // Find the user and use their ID
-          const turnUser = users.find(u => u.name === fullDraft.currentTurn);
-          const mappedCurrentTurn = turnUser?.id || `mongo-${fullDraft.currentTurn}`;
-          setCurrentTurn(mappedCurrentTurn);
-        }
-      }
-      
-      // Set current turn start time if available (for timer persistence)
-      if (fullDraft.currentTurnStartTime) {
-        setCurrentTurnStartTime(fullDraft.currentTurnStartTime);
-      }
+      // NOTE: draftOrder and currentTurn already set from socket callback above, no need to remap
 
       // Update connection status in MongoDB
       try {
@@ -2117,6 +2106,9 @@ function AppContent() {
       console.error('Failed to rejoin draft - detailed error:', error);
       console.error('Error stack:', error.stack);
       alert(`Failed to rejoin draft: ${error.message}`);
+    } finally {
+      // Reset the guard so user can retry if needed
+      rejoiningRef.current = false;
     }
   };
 
@@ -2943,12 +2935,15 @@ function AppContent() {
       } catch (err) {
         // ignore and continue with normal checks
       }
-      // ensure current turn is this client
-      if (currentTurn && socket.id !== currentTurn) {
+      // ensure current turn is this client (compare by username, not socket ID)
+      const myUsername = localPlayerName || PokemonName;
+      if (currentTurn && myUsername !== currentTurn) {
         return;
       }
       const cost = (pointsMap[toRemove.name] == null) ? 1 : Number(pointsMap[toRemove.name]);
-      const rem = pointsRemaining && pointsRemaining[socket.id] != null ? pointsRemaining[socket.id] : lobbySettings.pointsLimit;
+      const rem = pointsRemaining && (pointsRemaining[myUsername] != null ? pointsRemaining[myUsername] : 
+                  pointsRemaining[socket.id] != null ? pointsRemaining[socket.id] : 
+                  lobbySettings.pointsLimit);
       if (rem < cost) {
         return;
       }
@@ -3386,11 +3381,58 @@ function AppContent() {
 
   const startDraft = () => {
     if (socket && lobbyCode) {
-      socket.emit('start_draft', { code: lobbyCode, leagueCode: lobbyLeagueCode }, (resp) => {
-        if (resp && resp.ok) setView('draft');
-      });
+      console.log('[Start Draft] Sending to server, pokemonList length:', pokemonList?.length);
+      console.log('[Start Draft] Lobby code:', lobbyCode);
+      console.log('[Start Draft] Socket connected:', socket.connected);
+      console.log('[Start Draft] Socket object exists:', !!socket);
+      
+      if (!socket.connected) {
+        console.error('[Start Draft] Socket is disconnected! Attempting to reconnect...');
+        
+        // Try to reconnect and then send
+        socket.connect();
+        
+        // Wait a moment for reconnection
+        setTimeout(() => {
+          if (socket.connected) {
+            console.log('[Start Draft] Reconnected, now sending...');
+            sendStartDraft();
+          } else {
+            alert('Connection lost. Please refresh the page and try again.');
+          }
+        }, 500);
+        return;
+      }
+      
+      sendStartDraft();
     } else {
+      console.log('[Start Draft] No socket or lobby code, switching to draft view directly');
       setView('draft');
+    }
+    
+    function sendStartDraft() {
+      // Send the current pokemon list to the server so it can be saved
+      // Only send id and name - img can be generated from id
+      const minimalPokemonList = pokemonList.map(p => ({
+        id: p.id,
+        name: p.name
+      }));
+      
+      console.log('[Start Draft] Sending minimal pokemon list, size:', JSON.stringify(minimalPokemonList).length, 'bytes');
+      
+      socket.emit('start_draft', { 
+        code: lobbyCode, 
+        leagueCode: lobbyLeagueCode,
+        draftPokemonList: minimalPokemonList
+      }, (resp) => {
+        console.log('[Start Draft] Server response:', resp);
+        if (resp && resp.ok) {
+          console.log('[Start Draft] Switching to draft view');
+          setView('draft');
+        } else {
+          console.error('[Start Draft] Server rejected:', resp);
+        }
+      });
     }
   };
 
@@ -3661,6 +3703,21 @@ function AppContent() {
     );
     const s = io(socketUrl);
     setSocket(s);
+    
+    // Add connection handlers for debugging
+    s.on('connect', () => {
+      console.log('[Socket] Connected to server:', socketUrl);
+      console.log('[Socket] Socket ID:', s.id);
+    });
+    
+    s.on('connect_error', (error) => {
+      console.error('[Socket] Connection error:', error);
+    });
+    
+    s.on('disconnect', (reason) => {
+      console.warn('[Socket] Disconnected:', reason);
+    });
+    
     s.on('lobby_update', (data) => {
       // When rejoined from MongoDB, preserve participant list and only update connection status
       if (data && data.users) {
@@ -4134,9 +4191,13 @@ function AppContent() {
             // Send connection status update via beacon (more reliable than socket during unload)
             const currentUsername = PokemonName?.trim();
             if (currentUsername) {
+              const blob = new Blob(
+                [JSON.stringify({ username: currentUsername, isConnected: false })],
+                { type: 'application/json' }
+              );
               navigator.sendBeacon(
                 `${apiUrl}/api/drafts/${lobbyCode}/connection-status`,
-                JSON.stringify({ username: currentUsername, isConnected: false })
+                blob
               );
             }
           } catch (err) {
@@ -4198,10 +4259,11 @@ function AppContent() {
   // Memoize whether cards should be disabled (prevents recalculating on every render)
   const areCardsDisabled = useMemo(() => {
     if (view !== 'draft') return false;
-    if (currentTurn && socket && socket.id !== currentTurn) return true;
-    if (socket && socket.id === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10)) return true;
+    const myUsername = localPlayerName || PokemonName;
+    if (currentTurn && myUsername && myUsername !== currentTurn) return true;
+    if (currentTurn && myUsername === currentTurn && localTeamForRender.length >= (lobbySettings.teamSizeLimit || 10)) return true;
     return false;
-  }, [view, currentTurn, socket, localTeamForRender.length, lobbySettings.teamSizeLimit]);
+  }, [view, currentTurn, localPlayerName, PokemonName, localTeamForRender.length, lobbySettings.teamSizeLimit]);
 
   // Use callback to avoid recreating the handler on every render
   const handlePokemonCardClick = useCallback((pokemonId, pokemon) => {
@@ -4212,7 +4274,8 @@ function AppContent() {
   // Memoize ordered players list to avoid recalculating on every render
   const orderedPlayers = useMemo(() => {
     if (lobbyDraftOrder && lobbyDraftOrder.length > 0) {
-      return lobbyDraftOrder.map((id) => lobbyUsers.find(u => u.id === id)).filter(Boolean);
+      // lobbyDraftOrder now contains usernames (not socket IDs)
+      return lobbyDraftOrder.map((username) => lobbyUsers.find(u => u.name === username)).filter(Boolean);
     }
     return lobbyUsers;
   }, [lobbyDraftOrder, lobbyUsers]);
@@ -4547,6 +4610,68 @@ function AppContent() {
                           <label htmlFor="allow-trading" className="label-small" style={{ cursor: 'pointer' }}>Allow Trading</label>
                         </div>
                         
+                        {/* Trading settings - shown when trading is enabled */}
+                        {lobbySettings.allowTrading && (
+                          <div style={{ marginTop: '12px', paddingLeft: '4px' }}>
+                            <label className="label-small">Max Trades Per Player</label>
+                            <input 
+                              type="number" 
+                              min={0} 
+                              value={lobbySettings.maxTradeLimit} 
+                              onChange={(e) => {
+                                const newLimit = Math.max(0, Number(e.target.value) || 0);
+                                setLobbySettings((s) => ({...s, maxTradeLimit: newLimit}));
+                                if (socket && lobbyCode && socket.id === hostId) {
+                                  socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, maxTradeLimit: newLimit, genFilter: lobbyGenFilter } }, (resp) => {
+                                    if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                  });
+                                  // Cache updated settings
+                                  try {
+                                    const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                    const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                                    cached.maxTradeLimit = newLimit;
+                                    cached.lobbyCode = lobbyCode;
+                                    cached.hostSocketId = socket.id;
+                                    localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                  } catch (err) {
+                                    console.warn('Failed to cache setting update:', err);
+                                  }
+                                }
+                              }}
+                              className="input-full"
+                              style={{ marginTop: '4px' }}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                              <input 
+                                type="checkbox" 
+                                id="unlimited-trades"
+                                checked={lobbySettings.unlimitedTrades} 
+                                onChange={(e) => {
+                                  const newValue = e.target.checked;
+                                  setLobbySettings((s) => ({...s, unlimitedTrades: newValue}));
+                                  if (socket && lobbyCode && socket.id === hostId) {
+                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
+                                      // Cache updated settings
+                                      try {
+                                        const cacheKey = 'hostDraftSettings_' + lobbyCode;
+                                        const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                                        cached.unlimitedTrades = newValue;
+                                        cached.lobbyCode = lobbyCode;
+                                        cached.hostSocketId = socket.id;
+                                        localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                      } catch (err) {
+                                        console.warn('Failed to cache setting update:', err);
+                                      }
+                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    });
+                                  }
+                                }}
+                              />
+                              <label htmlFor="unlimited-trades" className="label-small" style={{ cursor: 'pointer' }}>Allow Unlimited Trades</label>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
                           <input 
                             type="checkbox" 
@@ -4568,6 +4693,55 @@ function AppContent() {
                           />
                           <label htmlFor="timer-enabled" className="label-small" style={{ cursor: 'pointer' }}>Enable Draft Timer</label>
                         </div>
+                        
+                        {/* Timer settings - shown when timer is enabled */}
+                        {lobbySettings.timerEnabled && (
+                          <div style={{ marginTop: '12px', paddingLeft: '4px' }}>
+                            <label className="label-small">1st Round Timer (H:MM or :MM)</label>
+                            <input 
+                              type="text" 
+                              defaultValue={formatTimerMinutes(lobbySettings.firstRoundTimer)}
+                              placeholder="8:00 (8 hours)"
+                              onBlur={(e) => {
+                                const minutes = parseTimerInput(e.target.value);
+                                if (minutes !== null) {
+                                  setLobbySettings((s) => ({...s, firstRoundTimer: minutes}));
+                                  if (socket && lobbyCode && socket.id === hostId) {
+                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, firstRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
+                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    });
+                                  }
+                                } else {
+                                  e.target.value = formatTimerMinutes(lobbySettings.firstRoundTimer);
+                                }
+                              }}
+                              className="input-full" 
+                              style={{ marginTop: '4px', marginBottom: '8px' }}
+                            />
+                            
+                            <label className="label-small">Subsequent Rounds (H:MM or :MM)</label>
+                            <input 
+                              type="text" 
+                              defaultValue={formatTimerMinutes(lobbySettings.subsequentRoundTimer)}
+                              placeholder="8:00 (8 hours)"
+                              onBlur={(e) => {
+                                const minutes = parseTimerInput(e.target.value);
+                                if (minutes !== null) {
+                                  setLobbySettings((s) => ({...s, subsequentRoundTimer: minutes}));
+                                  if (socket && lobbyCode && socket.id === hostId) {
+                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, subsequentRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
+                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
+                                    });
+                                  }
+                                } else {
+                                  e.target.value = formatTimerMinutes(lobbySettings.subsequentRoundTimer);
+                                }
+                              }}
+                              className="input-full" 
+                              style={{ marginTop: '4px' }}
+                            />
+                          </div>
+                        )}
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
                           <input 
@@ -4615,131 +4789,6 @@ function AppContent() {
                           <label htmlFor="allow-gmax" className="label-small" style={{ cursor: 'pointer' }}>Allow Gmax</label>
                         </div>
                       </div>
-                      
-                      {/* Conditional sections that span full width */}
-                      {lobbySettings.allowTrading && (
-                        <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
-                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            <div className="row" style={{ flex: '1 1 200px' }}>
-                              <div className="col-1">
-                                <label className="label-small">Max Trades Per Player</label>
-                                <input 
-                                  type="number" 
-                                  min={0} 
-                                  value={lobbySettings.maxTradeLimit} 
-                                  onChange={(e) => {
-                                    const newLimit = Math.max(0, Number(e.target.value) || 0);
-                                    setLobbySettings((s) => ({...s, maxTradeLimit: newLimit}));
-                                    if (socket && lobbyCode && socket.id === hostId) {
-                                      socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, maxTradeLimit: newLimit, genFilter: lobbyGenFilter } }, (resp) => {
-                                        if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                      });
-                                      // Cache updated settings
-                                      try {
-                                        const cacheKey = 'hostDraftSettings_' + lobbyCode;
-                                        const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-                                        cached.maxTradeLimit = newLimit;
-                                        cached.lobbyCode = lobbyCode;
-                                        cached.hostSocketId = socket.id;
-                                        localStorage.setItem(cacheKey, JSON.stringify(cached));
-                                      } catch (err) {
-                                        console.warn('Failed to cache setting update:', err);
-                                      }
-                                    }
-                                  }} 
-                                  className="input-full"
-                                  disabled={lobbySettings.unlimitedTrades}
-                                />
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 200px' }}>
-                              <input 
-                                type="checkbox" 
-                                id="unlimited-trades"
-                                checked={lobbySettings.unlimitedTrades} 
-                                onChange={(e) => {
-                                  const newValue = e.target.checked;
-                                  setLobbySettings((s) => ({...s, unlimitedTrades: newValue}));
-                                  if (socket && lobbyCode && socket.id === hostId) {
-                                    socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, unlimitedTrades: newValue, genFilter: lobbyGenFilter } }, (resp) => {
-                                      // Cache updated settings
-                                      try {
-                                        const cacheKey = 'hostDraftSettings_' + lobbyCode;
-                                        const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-                                        cached.unlimitedTrades = newValue;
-                                        cached.lobbyCode = lobbyCode;
-                                        cached.hostSocketId = socket.id;
-                                        localStorage.setItem(cacheKey, JSON.stringify(cached));
-                                      } catch (err) {
-                                        console.warn('Failed to cache setting update:', err);
-                                      }
-                                      if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                    });
-                                  }
-                                }}
-                              />
-                              <label htmlFor="unlimited-trades" className="label-small" style={{ cursor: 'pointer' }}>Allow Unlimited Trades</label>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {lobbySettings.timerEnabled && (
-                        <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
-                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            <div className="row" style={{ flex: '1 1 200px' }}>
-                              <div className="col-1">
-                                <label className="label-small">1st Round Timer (format: H:MM or :MM)</label>
-                                <input 
-                                  type="text" 
-                                  defaultValue={formatTimerMinutes(lobbySettings.firstRoundTimer)}
-                                  placeholder="8:00 (8 hours)"
-                                  onBlur={(e) => {
-                                    const minutes = parseTimerInput(e.target.value);
-                                    if (minutes !== null) {
-                                      setLobbySettings((s) => ({...s, firstRoundTimer: minutes}));
-                                      if (socket && lobbyCode && socket.id === hostId) {
-                                        socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, firstRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
-                                          if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                        });
-                                      }
-                                    } else {
-                                      // Reset to current value if invalid
-                                      e.target.value = formatTimerMinutes(lobbySettings.firstRoundTimer);
-                                    }
-                                  }}
-                                  className="input-full" 
-                                />
-                              </div>
-                            </div>
-                            <div className="row" style={{ flex: '1 1 200px' }}>
-                              <div className="col-1">
-                                <label className="label-small">Subsequent Rounds Timer (format: H:MM or :MM)</label>
-                                <input 
-                                  type="text" 
-                                  defaultValue={formatTimerMinutes(lobbySettings.subsequentRoundTimer)}
-                                  placeholder="8:00 (8 hours)"
-                                  onBlur={(e) => {
-                                    const minutes = parseTimerInput(e.target.value);
-                                    if (minutes !== null) {
-                                      setLobbySettings((s) => ({...s, subsequentRoundTimer: minutes}));
-                                      if (socket && lobbyCode && socket.id === hostId) {
-                                        socket.emit('update_settings', { code: lobbyCode, settings: { ...lobbySettings, subsequentRoundTimer: minutes, genFilter: lobbyGenFilter } }, (resp) => {
-                                          if (!resp || !resp.ok) alert(resp && resp.error ? resp.error : 'Failed to update settings');
-                                        });
-                                      }
-                                    } else {
-                                      // Reset to current value if invalid
-                                      e.target.value = formatTimerMinutes(lobbySettings.subsequentRoundTimer);
-                                    }
-                                  }}
-                                  className="input-full" 
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ) : (
                     // Non-host read-only view: show settings summary
@@ -4790,7 +4839,7 @@ function AppContent() {
                                   onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
                                   onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
                                 >
-                                  {p.img ? <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} /> : <div style={{ width: '32px', height: '32px', backgroundColor: '#e5e7eb' }} />}
+                                  <img src={getPokemonImageUrl(p)} alt={p.name} style={{ width: '32px', height: '32px' }} />
                                   <span>{p.name}</span>
                                 </div>
                               ))}
@@ -4860,7 +4909,7 @@ function AppContent() {
                                 border: '1px solid #c7d2fe'
                               }}
                             >
-                              {p.img ? <img src={p.img} alt={p.name} style={{ width: '20px', height: '20px' }} /> : <div style={{ width: '20px', height: '20px', backgroundColor: '#e5e7eb', display: 'inline-block' }} />}
+                              <img src={getPokemonImageUrl(p)} alt={p.name} style={{ width: '20px', height: '20px' }} />
                               <span>{p.name}</span>
                               <button 
                                 onClick={() => setSelectedPokemonForPoints(selectedPokemonForPoints.filter(sp => sp.id !== p.id))}
@@ -4970,7 +5019,7 @@ function AppContent() {
                               }}
                               style={{ cursor: (socket && hostId && socket.id === hostId) ? 'grab' : 'default' }}
                             >
-                              {p.img ? <img src={p.img} alt={p.name} className="points-sprite" /> : <div className="points-sprite" style={{ backgroundColor: '#e5e7eb' }} />}
+                              <img src={getPokemonImageUrl(p)} alt={p.name} className="points-sprite" />
                               <span className="points-name">{p.name}</span>
                               { (Number(pointsMap[p.name]) === 0) && (<span className="banned-badge">BANNED</span>) }
                             </div>
@@ -5246,7 +5295,7 @@ function AppContent() {
                                       className={`trading-pokemon-card ${isSelected ? 'selected' : ''} ${canSelect ? 'selectable' : 'disabled'}`}
                                       onClick={() => canSelect && handlePokemonClick(p.name, user.id)}
                                     >
-                                      {p.img ? <img src={p.img} alt={p.name} className="pokemon-img" /> : <div className="pokemon-img placeholder" />}
+                                      <img src={getPokemonImageUrl(p)} alt={p.name} className="pokemon-img" />
                                       <div className="pokemon-name">{p.name}</div>
                                     </div>
                                     {isMyTeam && !isFinished && (
@@ -5406,6 +5455,35 @@ function AppContent() {
                         }
                       };
                       
+                      console.log('[Save Team] lobbyLeagueCode:', lobbyLeagueCode);
+                      console.log('[Save Team] PokemonName:', PokemonName);
+                      console.log('[Save Team] lobbyCode:', lobbyCode);
+                      
+                      // Add league code and points remaining if this is a league draft
+                      if (lobbyLeagueCode) {
+                        console.log('[Save Team] Adding leagueCode to team data');
+                        teamData.leagueCode = lobbyLeagueCode;
+                        
+                        // Get player's remaining points (check by username first, then socket.id)
+                        const myPoints = pointsRemaining && (
+                          pointsRemaining[PokemonName] != null 
+                            ? pointsRemaining[PokemonName] 
+                            : pointsRemaining[socket?.id] != null 
+                            ? pointsRemaining[socket?.id] 
+                            : null
+                        );
+                        
+                        console.log('[Save Team] myPoints:', myPoints);
+                        
+                        if (myPoints != null) {
+                          teamData.pointsRemaining = myPoints;
+                        }
+                      } else {
+                        console.log('[Save Team] No lobbyLeagueCode - not a league draft');
+                      }
+                      
+                      console.log('[Save Team] Final teamData:', teamData);
+                      
                       // Only include userId if user is logged in
                       if (user?._id) {
                         teamData.userId = user._id;
@@ -5420,11 +5498,7 @@ function AppContent() {
                       
                       if (response.data.success) {
                         alert('Team saved to database!');
-                        // Return to lobby
-                        setDraftComplete(false);
-                        setFinalTeams(null);
-                        setTradingPhaseActive(false);
-                        setView('lobby');
+                        // Don't automatically return to lobby - let user click Return to Lobby button
                       }
                     } catch (err) {
                       console.error('Failed to save team - Full error:', err);
@@ -5780,7 +5854,7 @@ function AppContent() {
                               setSearchTerm('');
                               setDraftSuggestionsVisible(false); 
                             }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}>
-                              {p.img ? <img src={p.img} alt={p.name} style={{ width: '32px', height: '32px' }} /> : <div style={{ width: '32px', height: '32px', backgroundColor: '#e5e7eb' }} />}
+                              <img src={getPokemonImageUrl(p)} alt={p.name} style={{ width: '32px', height: '32px' }} />
                               <span>{p.name}</span>
                             </div>
                           ))}
@@ -5819,7 +5893,7 @@ function AppContent() {
                         return (
                           <div key={p.id} className={`pokemon-card ${areCardsDisabled ? 'disabled' : ''}`} onClick={() => handlePokemonCardClick(p.id, p)}>
                             <div className="pokemon-cost-badge">{cost}</div>
-                            <img className="pokemon-img" src={p.img} alt={p.name} />
+                            <img className="pokemon-img" src={getPokemonImageUrl(p)} alt={p.name} />
                             <div className="pokemon-name">{p.name}</div>
                           </div>
                         );
@@ -5843,8 +5917,8 @@ function AppContent() {
                       const sel = (socket && u.id === socket.id) ? getMergedSelectionsForUser(u) : getSelectionsForUser(u);
                       const teamDisplay = (sel && sel.length > 0) ? sel.map(p => p.name || p).join(', ') : null;
                       return (
-                      <li key={u.id} className={currentTurn === u.id ? 'player-item current' : 'player-item'}>
-                          <div className={currentTurn === u.id ? 'player-name current' : 'player-name'} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <li key={u.id} className={currentTurn === u.name ? 'player-item current' : 'player-item'}>
+                          <div className={currentTurn === u.name ? 'player-name current' : 'player-name'} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span 
                               className="connection-dot" 
                               style={{ 
@@ -5857,7 +5931,7 @@ function AppContent() {
                               title={u.isConnected ? 'Connected' : 'Disconnected'}
                             />
                             {u.name} 
-                            {currentTurn === u.id && (
+                            {currentTurn === u.name && (
                               <>
                                 <span className="player-current"> (Picking)</span>
                                 {lobbySettings.timerEnabled && timeRemaining !== null && (
@@ -5876,7 +5950,11 @@ function AppContent() {
                           <div className="player-meta">
                             <div className="fs-12 muted">Team:</div>
                             <div>{teamDisplay || <em className="muted">—</em>}</div>
-                            <div className="fs-12 muted mt-4">Points: {pointsRemaining && pointsRemaining[u.id] != null ? pointsRemaining[u.id] : lobbySettings.pointsLimit}</div>
+                            <div className="fs-12 muted mt-4">Points: {
+                              pointsRemaining && (pointsRemaining[u.name] != null ? pointsRemaining[u.name] : 
+                              pointsRemaining[u.id] != null ? pointsRemaining[u.id] : 
+                              lobbySettings.pointsLimit)
+                            }</div>
                           </div>
                         </li>
                       );
@@ -5889,7 +5967,7 @@ function AppContent() {
               <div className="removed-list">
                 {localTeamForRender.length === 0 ? (<div><em>None selected yet</em></div>) : localTeamForRender.map((p) => (
                   <div key={p.id || (p.name)} className="removed-item">
-                    {p.img && <img src={p.img} alt={p.name} />}
+                    {p.id && <img src={getPokemonImageUrl(p)} alt={p.name} />}
                     <div className="removed-name">{p.name}</div>
                   </div>
                 ))}

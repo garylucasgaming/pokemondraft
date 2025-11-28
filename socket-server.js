@@ -101,7 +101,9 @@ const io = new Server(server, {
     allowedHeaders: ['Content-Type']
   },
   transports: ['websocket', 'polling'],
-  allowEIO3: true // Enable compatibility with older clients
+  allowEIO3: true, // Enable compatibility with older clients
+  maxHttpBufferSize: 1e8, // 100 MB - increase from default 1MB to handle large pokemon lists
+  pingTimeout: 60000 // 60 seconds before considering connection dead
 });
 
 // In-memory storage for lobbies
@@ -123,13 +125,15 @@ async function saveDraftSession(lobby) {
     const connectedUsersData = lobby.users.map(user => ({
       socketId: user.id,
       username: user.name,
-      selections: (lobby.selections[user.id] || []).map(p => ({
+      selections: (lobby.selections[user.name] || lobby.selections[user.id] || []).map(p => ({
         pokemonId: p.id,
         pokemonName: p.name,
         points: p.points || 0,
         timestamp: new Date()
       })),
-      pointsRemaining: lobby.pointsRemaining[user.id] != null 
+      pointsRemaining: lobby.pointsRemaining[user.name] != null 
+        ? lobby.pointsRemaining[user.name]
+        : lobby.pointsRemaining[user.id] != null 
         ? lobby.pointsRemaining[user.id] 
         : lobby.settings.pointsLimit,
       isConnected: true,
@@ -306,7 +310,10 @@ io.on('connection', (socket) => {
       pointsMap: pointsMap || {},
       banList: banList || [],
       selections: {},
-      pointsRemaining: { [socket.id]: initialPointsLimit },
+      pointsRemaining: { 
+        [socket.id]: initialPointsLimit,
+        [name || 'Host']: initialPointsLimit  // Also store by username
+      },
       draftStarted: false,
       currentTurn: null,
       currentTurnStartTime: null, // ISO timestamp when current turn started
@@ -351,11 +358,15 @@ io.on('connection', (socket) => {
     lobby.users.push(user);
     
     // Use saved points if provided, otherwise default to points limit
+    // Store by BOTH socket ID and username for persistence
     lobby.pointsRemaining[socket.id] = savedPoints != null ? savedPoints : lobby.settings.pointsLimit;
+    lobby.pointsRemaining[user.name] = savedPoints != null ? savedPoints : lobby.settings.pointsLimit;
     
     // Restore saved selections if provided
+    // Store by BOTH socket ID and username for persistence
     if (savedSelections && Array.isArray(savedSelections) && savedSelections.length > 0) {
       lobby.selections[socket.id] = savedSelections;
+      lobby.selections[user.name] = savedSelections;
     }
     
     // If draft has started, mark user as connected in MongoDB
@@ -399,12 +410,172 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Rejoin an ongoing draft from MongoDB (recreate lobby if needed)
+  socket.on('rejoin_draft_lobby', async ({ code, username }, callback) => {
+    try {
+      // Try to get existing lobby first
+      let lobby = lobbies.get(code);
+      
+      // If lobby doesn't exist in memory, recreate it from MongoDB
+      if (!lobby) {
+        const session = await DraftSession.findOne({ lobbyCode: code });
+        if (!session) {
+          return callback({ ok: false, error: 'Draft not found in database' });
+        }
+        
+        // Recreate lobby from MongoDB data
+        lobby = {
+          code: code,
+          lobbyName: session.lobbyName || '',
+          leagueCode: session.leagueCode || null,
+          host: null, // Will be set to first rejoining player
+          users: [], // Will be populated as players rejoin
+          settings: session.settings || { pointsLimit: 100, teamSizeLimit: 10, genFilter: 0 },
+          pointsMap: session.pointsMap || {},
+          banList: session.banList || [],
+          selections: {}, // Will be populated from participants
+          pointsRemaining: {}, // Will be populated from participants
+          draftStarted: true,
+          currentTurn: session.currentTurn, // Username-based
+          currentTurnStartTime: session.currentTurnStartTime,
+          draftOrder: session.turnOrder || [], // Username-based
+          draftPokemonList: session.draftPokemon || [],
+          snakeDraftDirection: 1,
+          currentRound: 0,
+          tradesCompleted: {},
+          playersFinishedTrading: [],
+          pendingTrades: new Map()
+        };
+        
+        // No need to add img property - client can generate it from pokemon.id
+        
+        // Restore selections and points from participants
+        if (session.participants && Array.isArray(session.participants)) {
+          console.log(`[Rejoin] Restoring ${session.participants.length} participants from MongoDB`);
+          session.participants.forEach(participant => {
+            console.log(`[Rejoin] Processing participant: ${participant.username}, selections count: ${participant.selections?.length || 0}`);
+            
+            // Convert MongoDB selection format to client format
+            const selections = (participant.selections || []).map(s => ({
+              id: s.pokemonId,
+              name: s.pokemonName,
+              points: s.points || 0,
+              img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${s.pokemonId}.png`
+            }));
+            
+            console.log(`[Rejoin] Converted selections for ${participant.username}:`, selections);
+            
+            // Store by username (server now uses username-based turn system)
+            lobby.selections[participant.username] = selections;
+            lobby.pointsRemaining[participant.username] = participant.pointsRemaining;
+          });
+          
+          console.log(`[Rejoin] Final lobby.selections keys:`, Object.keys(lobby.selections));
+        }
+        
+        // DON'T recalculate draft pokemon list - MongoDB already has the filtered list!
+        // The draftPokemonList is updated in real-time during select_pokemon,
+        // so session.draftPokemon already has picked pokemon removed.
+        console.log(`[Rejoin] Using draftPokemonList from MongoDB: ${lobby.draftPokemonList?.length || 0} pokemon available`);
+        
+        lobbies.set(code, lobby);
+        console.log(`[Rejoin] Recreated lobby ${code} from MongoDB`);
+      }
+      
+      // Add rejoining user to lobby
+      const existingUser = lobby.users.find(u => u.name === username);
+      if (existingUser) {
+        // User already in lobby (shouldn't happen, but update socket ID)
+        existingUser.id = socket.id;
+      } else {
+        lobby.users.push({ id: socket.id, name: username });
+      }
+      
+      // Set host if not already set
+      if (!lobby.host) {
+        lobby.host = socket.id;
+      }
+      
+      // Map selections and points by socket ID (in addition to username)
+      // IMPORTANT: Keep BOTH username and socket.id keys so clients can find their data either way
+      if (lobby.selections[username]) {
+        lobby.selections[socket.id] = lobby.selections[username];
+        // Don't delete the username key - we need both!
+        console.log(`[Rejoin] Mapped selections for ${username}: ${lobby.selections[username].length} pokemon`);
+        console.log(`[Rejoin] Now available under both username "${username}" and socket.id "${socket.id}"`);
+      } else {
+        console.log(`[Rejoin] No selections found for username: ${username}`);
+      }
+      if (lobby.pointsRemaining[username] != null) {
+        lobby.pointsRemaining[socket.id] = lobby.pointsRemaining[username];
+        // Don't delete the username key - we need both!
+        console.log(`[Rejoin] Mapped points for ${username}: ${lobby.pointsRemaining[username]} points`);
+      } else {
+        console.log(`[Rejoin] No points found for username: ${username}`);
+      }
+      
+      socket.join(code);
+      socket.lobbyCode = code;
+      
+      // Update connection status in MongoDB
+      await updateUserConnectionStatus(code, username, true);
+      
+      console.log(`[Rejoin] Before callback - selections keys:`, Object.keys(lobby.selections));
+      console.log(`[Rejoin] Before callback - checking username key "${username}":`, !!lobby.selections[username]);
+      console.log(`[Rejoin] Before callback - checking socket.id key "${socket.id}":`, !!lobby.selections[socket.id]);
+      console.log(`[Rejoin] Sending callback with selections:`, Object.keys(lobby.selections));
+      
+      callback({
+        ok: true,
+        code,
+        host: lobby.host,
+        users: lobby.users,
+        settings: lobby.settings,
+        pointsMap: lobby.pointsMap,
+        banList: lobby.banList,
+        selections: lobby.selections,
+        pointsRemaining: lobby.pointsRemaining,
+        draftOrder: lobby.draftOrder,
+        currentTurn: lobby.currentTurn,
+        currentTurnStartTime: lobby.currentTurnStartTime,
+        draftStarted: lobby.draftStarted,
+        draftPokemonList: lobby.draftPokemonList,
+        leagueCode: lobby.leagueCode
+      });
+      
+      // Notify other players in the lobby
+      io.to(code).emit('lobby_update', {
+        code,
+        host: lobby.host,
+        users: lobby.users,
+        settings: lobby.settings,
+        pointsMap: lobby.pointsMap,
+        banList: lobby.banList,
+        selections: lobby.selections,
+        pointsRemaining: lobby.pointsRemaining,
+        draftOrder: lobby.draftOrder,
+        currentTurn: lobby.currentTurn,
+        currentTurnStartTime: lobby.currentTurnStartTime,
+        draftStarted: lobby.draftStarted,
+        leagueCode: lobby.leagueCode,
+        tradesCompleted: lobby.tradesCompleted || {},
+        playersFinishedTrading: lobby.playersFinishedTrading || []
+      });
+      
+      console.log(`[Rejoin] ${username} rejoined lobby ${code}`);
+    } catch (error) {
+      console.error('[Rejoin] Error:', error);
+      callback({ ok: false, error: error.message });
+    }
+  });
+
   socket.on('leave_lobby', async ({ code }) => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
     
     // Find username before removing from lobby
     const leavingUser = lobby.users.find(u => u.id === socket.id);
+
     const username = leavingUser?.name;
     
     // If draft has started, only update connection status (don't save full lobby)
@@ -586,27 +757,61 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('start_draft', async ({ code }, callback) => {
+  socket.on('start_draft', async ({ code, draftPokemonList }, callback) => {
+    console.log(`[Start Draft] Received request for lobby ${code}`);
+    console.log(`[Start Draft] draftPokemonList length:`, draftPokemonList?.length || 0);
+    
     const lobby = lobbies.get(code);
-    if (!lobby) return callback({ ok: false, error: 'Lobby not found' });
-    if (lobby.host !== socket.id) return socket.emit('start_rejected', { reason: 'not_host' });
+    if (!lobby) {
+      console.log(`[Start Draft] ERROR: Lobby not found: ${code}`);
+      return callback({ ok: false, error: 'Lobby not found' });
+    }
+    if (lobby.host !== socket.id) {
+      console.log(`[Start Draft] ERROR: Not host. Socket ID: ${socket.id}, Host: ${lobby.host}`);
+      return socket.emit('start_rejected', { reason: 'not_host' });
+    }
     
     lobby.draftStarted = true;
-    // Randomize draft order using Fisher-Yates shuffle
-    const userIds = lobby.users.map(u => u.id);
-    for (let i = userIds.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [userIds[i], userIds[j]] = [userIds[j], userIds[i]];
+    // Store the initial pokemon list from client
+    if (draftPokemonList && Array.isArray(draftPokemonList)) {
+      lobby.draftPokemonList = draftPokemonList;
+      console.log(`[Start Draft] Saved draftPokemonList: ${draftPokemonList.length} pokemon`);
+    } else {
+      console.log(`[Start Draft] WARNING: No valid draftPokemonList received!`);
     }
-    lobby.draftOrder = userIds;
+    // Randomize draft order using Fisher-Yates shuffle with USERNAMES (not socket IDs)
+    const usernames = lobby.users.map(u => u.name);
+    for (let i = usernames.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [usernames[i], usernames[j]] = [usernames[j], usernames[i]];
+    }
+    lobby.draftOrder = usernames;
     lobby.currentTurn = lobby.draftOrder[0];
     lobby.currentTurnStartTime = new Date().toISOString(); // Set timer start
     lobby.snakeDraftDirection = 1; // Start going forward
     lobby.currentRound = 0;
     
-    // Save draft session when starting
-    await saveDraftSession(lobby);
+    // Initialize points and selections by username (in addition to socket ID) for persistence
+    lobby.users.forEach(user => {
+      // Copy socket.id-keyed data to username keys
+      if (lobby.pointsRemaining[user.id] != null && !lobby.pointsRemaining[user.name]) {
+        lobby.pointsRemaining[user.name] = lobby.pointsRemaining[user.id];
+      }
+      if (lobby.selections[user.id] && !lobby.selections[user.name]) {
+        lobby.selections[user.name] = lobby.selections[user.id];
+      }
+    });
     
+    // Save draft session when starting
+    try {
+      await saveDraftSession(lobby);
+      console.log(`[Start Draft] Successfully saved to MongoDB`);
+    } catch (error) {
+      console.error(`[Start Draft] Failed to save to MongoDB:`, error);
+      // Continue anyway - don't block the draft from starting
+    }
+    
+    console.log(`[Start Draft] Sending callback with ok: true`);
     callback({ ok: true });
     io.to(code).emit('draft_started', {
       code,
@@ -636,12 +841,17 @@ io.on('connection', (socket) => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
     
-    if (lobby.currentTurn !== socket.id) {
+    // Validate turn by USERNAME (not socket ID) so rejoining players can pick
+    const currentUser = lobby.users.find(u => u.id === socket.id);
+    if (!currentUser || lobby.currentTurn !== currentUser.name) {
       return socket.emit('select_rejected', { pokemon, reason: 'not_your_turn' });
     }
     
     const cost = lobby.pointsMap[pokemon.name] != null ? lobby.pointsMap[pokemon.name] : 1;
-    const remaining = lobby.pointsRemaining[socket.id] || 0;
+    // Check points by username first, then socket ID as fallback
+    const remaining = lobby.pointsRemaining[currentUser.name] != null 
+      ? lobby.pointsRemaining[currentUser.name]
+      : lobby.pointsRemaining[socket.id] || 0;
     
     if (remaining < cost) {
       return socket.emit('select_rejected', { pokemon, reason: 'insufficient_points' });
@@ -654,13 +864,26 @@ io.on('connection', (socket) => {
       }
     }
     
+    // Store selections by BOTH username and socket ID for compatibility
+    if (!lobby.selections[currentUser.name]) {
+      lobby.selections[currentUser.name] = [];
+    }
     if (!lobby.selections[socket.id]) {
       lobby.selections[socket.id] = [];
     }
+    lobby.selections[currentUser.name].push(pokemon);
     lobby.selections[socket.id].push(pokemon);
+    
+    // Store points by BOTH username and socket ID
+    lobby.pointsRemaining[currentUser.name] = remaining - cost;
     lobby.pointsRemaining[socket.id] = remaining - cost;
     
-    // Snake draft turn advancement
+    // Remove picked pokemon from the available draft list
+    if (lobby.draftPokemonList && Array.isArray(lobby.draftPokemonList)) {
+      lobby.draftPokemonList = lobby.draftPokemonList.filter(p => p.id !== pokemon.id);
+    }
+    
+    // Snake draft turn advancement (using USERNAMES)
     const currentIndex = lobby.draftOrder.indexOf(lobby.currentTurn);
     const direction = lobby.snakeDraftDirection || 1;
     let nextIndex = currentIndex + direction;
@@ -678,35 +901,16 @@ io.on('connection', (socket) => {
       lobby.currentRound++;
     }
     
-    let attempts = 0;
-    const maxAttempts = lobby.draftOrder.length;
-    
-    // Find next active player (one who is still in the lobby)
-    while (attempts < maxAttempts) {
-      const nextPlayerId = lobby.draftOrder[nextIndex];
-      const playerExists = lobby.users.some(u => u.id === nextPlayerId);
-      if (playerExists) {
-        lobby.currentTurn = nextPlayerId;
-        lobby.currentTurnStartTime = new Date().toISOString(); // Reset timer for new turn
-        break;
-      }
-      // Move in the current direction to find next active player
-      nextIndex = nextIndex + (lobby.snakeDraftDirection || 1);
-      if (nextIndex >= lobby.draftOrder.length) {
-        nextIndex = lobby.draftOrder.length - 1;
-        lobby.snakeDraftDirection = -1;
-      } else if (nextIndex < 0) {
-        nextIndex = 0;
-        lobby.snakeDraftDirection = 1;
-      }
-      attempts++;
-    }
+    // Simply advance to next player in turn order (username-based)
+    // Players can be disconnected but still in turn order - they can rejoin and pick
+    lobby.currentTurn = lobby.draftOrder[nextIndex];
+    lobby.currentTurnStartTime = new Date().toISOString(); // Reset timer for new turn
     
     
     // Check if draft is complete (all players have reached team size limit)
     const teamSizeLimit = lobby.settings.teamSizeLimit || 10;
-    const allPlayersComplete = lobby.users.every(user => {
-      const userSelections = lobby.selections[user.id] || [];
+    const allPlayersComplete = lobby.draftOrder.every(username => {
+      const userSelections = lobby.selections[username] || [];
       return userSelections.length >= teamSizeLimit;
     });
     

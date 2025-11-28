@@ -15,7 +15,11 @@ function generateShareCode() {
 // Create a new saved team
 router.post('/teams', async (req, res) => {
   try {
-    const { userId, username, name, pokemon, format, description, isPublic, teamBuilderData } = req.body;
+    const { userId, username, name, pokemon, format, description, isPublic, teamBuilderData, leagueCode, pointsRemaining } = req.body;
+
+    console.log('[POST /teams] Request body fields:', Object.keys(req.body));
+    console.log('[POST /teams] leagueCode:', leagueCode);
+    console.log('[POST /teams] pointsRemaining:', pointsRemaining);
 
     if (!name || !pokemon || !Array.isArray(pokemon) || pokemon.length === 0) {
       return res.status(400).json({ error: 'Name and pokemon array are required' });
@@ -28,7 +32,7 @@ router.post('/teams', async (req, res) => {
       }
     }
 
-    const team = new SavedTeam({
+    const teamData = {
       userId,
       username,
       name,
@@ -37,14 +41,27 @@ router.post('/teams', async (req, res) => {
       description,
       isPublic: isPublic || false,
       teamBuilderData
-    });
+    };
+    
+    // Add league-specific fields if present
+    if (leagueCode) {
+      teamData.leagueCode = leagueCode;
+    }
+    if (pointsRemaining != null) {
+      teamData.pointsRemaining = pointsRemaining;
+    }
+
+    console.log('[POST /teams] Creating team with data:', { ...teamData, pokemon: `[${teamData.pokemon.length} pokemon]` });
+
+    const team = new SavedTeam(teamData);
 
     await team.save();
+    console.log('[POST /teams] Team saved successfully:', team._id);
     res.status(201).json({ success: true, team });
   } catch (error) {
-    console.error('Error creating saved team:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('[POST /teams] Error creating saved team:', error);
+    console.error('[POST /teams] Error details:', error.message);
+    console.error('[POST /teams] Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to create team' });
   }
 });
@@ -83,19 +100,32 @@ router.get('/teams/share/:code', async (req, res) => {
 // List saved teams for a user
 router.get('/teams', async (req, res) => {
   try {
-    const { userId, username } = req.query;
+    const { userId, username, leagueCode } = req.query;
+    
+    console.log('[GET /api/teams] Query params:', { userId, username, leagueCode });
     
     const query = {};
     if (userId) query.userId = userId;
     if (username) query.username = username;
+    if (leagueCode) query.leagueCode = leagueCode;
+    
+    console.log('[GET /api/teams] MongoDB query:', query);
 
     const teams = await SavedTeam.find(query)
       .sort({ updatedAt: -1 })
       .limit(100);
     
+    console.log('[GET /api/teams] Found teams count:', teams.length);
+    console.log('[GET /api/teams] Teams:', teams.map(t => ({ 
+      id: t._id, 
+      name: t.name, 
+      username: t.username, 
+      leagueCode: t.leagueCode 
+    })));
+    
     res.json({ success: true, teams });
   } catch (error) {
-    console.error('Error listing saved teams:', error);
+    console.error('[GET /api/teams] Error:', error);
     res.status(500).json({ error: 'Failed to list teams' });
   }
 });

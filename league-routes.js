@@ -469,6 +469,14 @@ router.get('/leagues/:code/players', async (req, res) => {
     const players = await Player.find({ leagueId: league._id })
       .sort({ wins: -1, losses: 1 });
     
+    console.log('[GET /leagues/:code/players] Found', players.length, 'players');
+    console.log('[GET /leagues/:code/players] Player team statuses:', players.map(p => ({
+      username: p.username,
+      teamSubmitted: p.teamSubmitted,
+      hasTeamId: !!p.submittedTeamId,
+      teamIdValue: p.submittedTeamId
+    })));
+    
     res.json({ ok: true, players });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -652,6 +660,79 @@ router.get('/leagues/:code/matches', async (req, res) => {
   }
 });
 
+// Submit team for league
+router.post('/leagues/:code/submit-team', async (req, res) => {
+  try {
+    const { username, teamId } = req.body;
+    
+    console.log('[Submit Team] Request for league:', req.params.code);
+    console.log('[Submit Team] Username:', username);
+    console.log('[Submit Team] TeamId:', teamId);
+    
+    const league = await League.findOne({ code: req.params.code });
+    if (!league) {
+      return res.status(404).json({ ok: false, error: 'League not found' });
+    }
+    
+    // Find the player in this league
+    const player = await Player.findOne({ leagueId: league._id, username });
+    if (!player) {
+      return res.status(404).json({ ok: false, error: 'Player not found in league' });
+    }
+    
+    // Validate that the team exists
+    const { SavedTeam } = require('./models');
+    const team = await SavedTeam.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ ok: false, error: 'Team not found' });
+    }
+    
+    console.log('[Submit Team] Player before update:', {
+      _id: player._id,
+      username: player.username,
+      submittedTeamId: player.submittedTeamId,
+      teamSubmitted: player.teamSubmitted
+    });
+    console.log('[Submit Team] Team found:', team.name, 'with', team.pokemon?.length || 0, 'Pokemon');
+    
+    // Update player with submitted team
+    player.submittedTeamId = teamId;
+    player.teamSubmitted = true;
+    await player.save();
+    
+    console.log('[Submit Team] Player after update:', {
+      _id: player._id,
+      username: player.username,
+      submittedTeamId: player.submittedTeamId,
+      teamSubmitted: player.teamSubmitted
+    });
+    
+    // Add team to league's submittedTeams array (or update if already exists)
+    const existingTeamIndex = league.submittedTeams.findIndex(t => t.username === username);
+    if (existingTeamIndex >= 0) {
+      // Update existing submission
+      league.submittedTeams[existingTeamIndex].teamId = teamId;
+      league.submittedTeams[existingTeamIndex].submittedAt = new Date();
+    } else {
+      // Add new submission
+      league.submittedTeams.push({
+        username,
+        teamId,
+        submittedAt: new Date()
+      });
+    }
+    await league.save();
+    
+    console.log('[Submit Team] Team submitted successfully for player:', username);
+    console.log('[Submit Team] League now has', league.submittedTeams.length, 'submitted teams');
+    
+    res.json({ ok: true, message: 'Team submitted successfully' });
+  } catch (err) {
+    console.error('[Submit Team] Error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ============ TOURNAMENT ROUTES ============
 
 // Create a tournament
@@ -696,4 +777,47 @@ router.get('/leagues/:code/tournaments', async (req, res) => {
   }
 });
 
+// Update team customization for a player in a league
+router.put('/leagues/:code/customize-team', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const { username, teamCustomization } = req.body;
+
+    if (!username || !teamCustomization) {
+      return res.status(400).json({ ok: false, error: 'Username and team customization required' });
+    }
+
+    const league = await League.findOne({ code: code.toUpperCase() });
+    if (!league) {
+      return res.status(404).json({ ok: false, error: 'League not found' });
+    }
+
+    // Find the player in the league
+    const player = await Player.findOne({ leagueId: league._id, username });
+    if (!player) {
+      return res.status(404).json({ ok: false, error: 'Player not found in league' });
+    }
+
+    // Update player's team customization
+    player.teamCustomization = {
+      teamName: teamCustomization.teamName || player.teamCustomization?.teamName,
+      teamImage: teamCustomization.teamImage || player.teamCustomization?.teamImage,
+      cardColor: teamCustomization.cardColor || player.teamCustomization?.cardColor || '#667eea',
+      cardColorEnd: teamCustomization.cardColorEnd || player.teamCustomization?.cardColorEnd || '#764ba2'
+    };
+
+    await player.save();
+
+    res.json({ 
+      ok: true, 
+      message: 'Team customization updated successfully',
+      teamCustomization: player.teamCustomization
+    });
+  } catch (err) {
+    console.error('Error updating team customization:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;
+
